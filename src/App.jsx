@@ -6,8 +6,22 @@ import {
   MoreHorizontal, Filter, Columns, List, Box, PlayCircle, Plus,
   AlertTriangle, ArrowUp, ArrowDown, AlignLeft,
   UploadCloud, Download, Eye, Edit, Trash2, X, Check, Info, AlertCircle,
-  Save, XCircle, FileJson, CheckCircle2, XOctagon, Copy, CalendarDays, Pin
+  Save, XCircle, FileJson, CheckCircle2, XOctagon, Copy, CalendarDays, Pin,
+  Maximize2, Minimize2
 } from 'lucide-react';
+
+const TREE_COLUMNS = [
+  { id: 'user', label: 'User', width: 'w-24' },
+  { id: 'metric', label: 'Metric', width: 'w-24' },
+  { id: 'progress', label: 'Progress', width: 'w-28' },
+  { id: 'status', label: 'Status', width: 'w-16' },
+  { id: 'team', label: 'Team', width: 'w-24' },
+  { id: 'timeline', label: 'Timeline', width: 'w-28' },
+  { id: 'agg', label: 'Agg', width: 'w-16' },
+  { id: 'description', label: 'Description', width: 'w-36' },
+];
+
+const DEFAULT_VISIBLE_COLUMNS = ['user', 'metric', 'progress', 'status'];
 
 // --- COMPONENTS ---
 // 0. Disclaimer Note Component
@@ -22,16 +36,62 @@ const DisclaimerNote = () => {
   );
 };
 
+// Column Toggle Component
+const ColumnToggle = ({ visibleColumns, onToggle }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors"
+        title="Toggle columns"
+      >
+        <Plus size={16} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1 w-40">
+          <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">Show Columns</div>
+          {TREE_COLUMNS.map(col => (
+            <label key={col.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs">
+              <input
+                type="checkbox"
+                checked={visibleColumns.includes(col.id)}
+                onChange={() => {
+                  onToggle(col.id);
+                  setIsOpen(false);
+                }}
+                className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600"
+              />
+              <span>{col.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // 0.1 OKR Tree Preview Component (Reusable)
 const OKRTreePreview = ({ 
   treeData, 
   selectedFields = [], 
   showNameColumn = true,
   onNodeClick = null,
-  showDisclaimer = true 
+  showDisclaimer = true,
+  visibleColumns = DEFAULT_VISIBLE_COLUMNS,
+  onToggleColumn = null,
+  maximizable = false,
+  isMaximized = false,
+  onMaximizeChange = null
 }) => {
+  const [collapsedObjectives, setCollapsedObjectives] = useState({});
+  const [localMaximized, setLocalMaximized] = useState(false);
+
+  const maximized = onMaximizeChange ? isMaximized : localMaximized;
+  const setMaximized = onMaximizeChange || setLocalMaximized;
+
   const getFieldValue = (node, fieldId) => {
-    // Nếu field không được chọn, trả về giá trị default
     if (!selectedFields.includes(fieldId)) {
       const defaults = {
         'description': 'Default description',
@@ -44,7 +104,6 @@ const OKRTreePreview = ({
       return defaults[fieldId] || '-';
     }
     
-    // Trả về giá trị thực tế
     const fieldMap = {
       'description': node.description,
       'user': node.assign || node.user,
@@ -57,120 +116,144 @@ const OKRTreePreview = ({
     return fieldMap[fieldId] || '-';
   };
 
-  const renderNode = (node, level = 0) => {
+  const toggleCollapse = (id) => {
+    setCollapsedObjectives(prev => ({...prev, [id]: !prev[id]}));
+  };
+
+  const renderCell = (node, colId) => {
+    switch (colId) {
+      case 'user':
+        return <span className="truncate">{getFieldValue(node, 'user')}</span>;
+      case 'metric':
+        return (
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${selectedFields.includes('metric') ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 italic'}`}>
+            {getFieldValue(node, 'metric')}
+          </span>
+        );
+      case 'progress': {
+        const pct = selectedFields.includes('progress_percent') ? getFieldValue(node, 'progress_percent') : '0%';
+        return (
+          <div className="flex items-center justify-center gap-1">
+            <div className="w-10 bg-gray-200 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-green-500 h-full" style={{ width: pct }}></div>
+            </div>
+            <span className="text-[10px] text-green-600 font-medium">{pct}</span>
+          </div>
+        );
+      }
+      case 'status':
+        return (
+          <>
+            {node.status === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}
+            {node.status === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}
+            {node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}
+          </>
+        );
+      case 'team':
+        return <span className="truncate">{getFieldValue(node, 'team')}</span>;
+      case 'timeline':
+        return <span className="truncate">{node.timeline || '-'}</span>;
+      case 'agg':
+        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'SUM'}</span>;
+      case 'description':
+        return <span className="truncate">{node.description || '-'}</span>;
+      default:
+        return null;
+    }
+  };
+
+  const renderNode = (node, level = 0, objId = null) => {
     const isObjective = node.type === 'objective';
     const hasWarning = node.status === 'warning';
     const hasError = node.status === 'error';
-    
-    return (
-      <div 
-        key={node.id} 
-        className={`flex items-center border-b border-gray-100 py-2.5 px-4 hover:bg-blue-50/30 transition-colors ${hasWarning ? 'bg-amber-50/40' : hasError ? 'bg-red-50/40' : ''}`}
-        style={{ paddingLeft: `${16 + level * 24}px` }}
-      >
-        {/* Icon */}
-        <div className="w-8 flex items-center justify-center shrink-0">
-          {isObjective ? (
-            <Box size={14} className="text-blue-500" />
-          ) : (
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-          )}
-        </div>
+    const isCollapsed = objId && collapsedObjectives[objId];
 
-        {/* Name Column - Conditionally rendered */}
-        {showNameColumn && (
-          <div className="w-64 px-2">
+    return (
+      <React.Fragment key={node.id}>
+        <div 
+          className={`flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors ${hasWarning ? 'bg-amber-50/40' : hasError ? 'bg-red-50/40' : ''}`}
+          style={{ paddingLeft: `${8 + level * 20}px` }}
+        >
+          <div className="flex items-center gap-1.5 min-w-0 shrink-0" style={{ width: '180px' }}>
+            {isObjective && (
+              <button onClick={() => objId && toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                <ChevronRight size={12} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+              </button>
+            )}
+            {!isObjective && <div className="w-4 shrink-0"></div>}
+            {isObjective ? (
+              <Box size={13} className="text-blue-500 shrink-0" />
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+            )}
             <div 
               onClick={() => onNodeClick && onNodeClick(node)}
-              className={`text-sm font-medium truncate ${onNodeClick ? 'cursor-pointer hover:underline' : ''} ${isObjective ? 'text-blue-600' : 'text-gray-700'}`}
+              className={`text-xs font-medium truncate ${onNodeClick ? 'cursor-pointer hover:underline' : ''} ${isObjective ? 'text-blue-600' : 'text-gray-700'}`}
             >
               {node.name}
             </div>
-            {node.warnMsg && <p className="text-xs text-amber-600 italic truncate mt-0.5">{node.warnMsg}</p>}
-            {node.errorMsg && <p className="text-xs text-red-600 italic truncate mt-0.5">{node.errorMsg}</p>}
+            {node.warnMsg && <p className="text-[10px] text-amber-600 italic truncate">{node.warnMsg}</p>}
+            {node.errorMsg && <p className="text-[10px] text-red-600 italic truncate">{node.errorMsg}</p>}
           </div>
-        )}
 
-        {/* User */}
-        <div className="w-32 px-2 text-xs text-gray-600 truncate">
-          {getFieldValue(node, 'user')}
-        </div>
-
-        {/* Metric */}
-        <div className="w-28 px-2 text-center">
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${selectedFields.includes('metric') ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 italic'}`}>
-            {getFieldValue(node, 'metric')}
-          </span>
-        </div>
-
-        {/* Agg */}
-        <div className="w-20 px-2 text-center">
-          <span className="px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-600 font-medium">
-            {node.agg || 'SUM'}
-          </span>
-        </div>
-
-        {/* Team */}
-        <div className="w-32 px-2 text-xs text-gray-600 truncate">
-          {getFieldValue(node, 'team')}
-        </div>
-
-        {/* Progress */}
-        <div className="w-24 px-2 text-center">
-          {selectedFields.includes('progress_percent') ? (
-            <div className="flex items-center justify-center gap-1">
-              <div className="w-12 bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-green-500 h-full" style={{ width: getFieldValue(node, 'progress_percent') }}></div>
+          <div className="flex items-center gap-3 ml-2">
+            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+              <div key={col.id} className={`${col.width} text-[11px] text-gray-600 text-center shrink-0`}>
+                {renderCell(node, col.id)}
               </div>
-              <span className="text-xs text-green-600 font-medium">{getFieldValue(node, 'progress_percent')}</span>
-            </div>
-          ) : (
-            <span className="text-xs text-gray-400 italic">0%</span>
-          )}
+            ))}
+          </div>
         </div>
-
-        {/* Timeline */}
-        <div className="w-28 px-2 text-xs text-gray-600 truncate text-center">
-          {node.timeline || '-'}
-        </div>
-
-        {/* Status */}
-        <div className="w-16 text-center">
-          {node.status === 'valid' && <CheckCircle2 size={16} className="inline text-green-600" />}
-          {node.status === 'warning' && <AlertTriangle size={16} className="inline text-amber-600" />}
-          {node.status === 'error' && <XOctagon size={16} className="inline text-red-600" />}
-        </div>
-      </div>
+        {isObjective && !isCollapsed && treeData.krs && treeData.krs.map(kr => renderNode(kr, 1, objId))}
+      </React.Fragment>
     );
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
-          <div className="w-8"></div>
-          {showNameColumn && <div className="w-64 px-2">OKR Name</div>}
-          <div className="w-32 px-2">User</div>
-          <div className="w-28 px-2 text-center">Metric</div>
-          <div className="w-20 px-2 text-center">Agg</div>
-          <div className="w-32 px-2">Team</div>
-          <div className="w-24 px-2 text-center">Progress</div>
-          <div className="w-28 px-2 text-center">Timeline</div>
-          <div className="w-16 text-center">Status</div>
-        </div>
+  const objId = treeData.objective?.id || 'obj-root';
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {treeData.objective && renderNode(treeData.objective, 0)}
-          {treeData.krs && treeData.krs.map(kr => renderNode(kr, 1))}
+    const treeContent = (
+      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
+          <div className="flex items-center gap-3 ml-2">
+            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+            ))}
+          </div>
+          <div className="ml-auto shrink-0 flex items-center gap-1">
+            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+            {onMaximize && (
+              <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                {maximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="divide-y divide-gray-50 overflow-auto">
+          <div className="min-w-[500px]">{rows}</div>
+        </div>
+        <div className="text-xs text-gray-400 italic mt-2 px-2">Note: OKR preview và node details chỉ mang tính minh họa, trong triển khai phải sử dụng giao diện OKR/Details của hệ thống gốc trên XCORP</div>
+      </div>
+    );
+
+  if (maximized) {
+    return (
+      <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow-2xl w-[90vw] h-[90vh] flex flex-col overflow-hidden relative">
+          <div className="absolute top-3 right-3 z-20">
+            <button onClick={() => setMaximized(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 p-4 pt-12 overflow-hidden">
+            {treeContent}
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Disclaimer */}
-      {showDisclaimer && <DisclaimerNote />}
-    </div>
-  );
+  return treeContent;
 };
 
 // 1. Stepper Component
@@ -490,16 +573,24 @@ const App = () => {
   const [formData, setFormData] = useState({ title: '', description: '', domain: '', tags: '' });
   const [formErrors, setFormErrors] = useState({});
   const [selectedFields, setSelectedFields] = useState(availableFields.map(f => f.id));
+  const [savePreviewVisibleColumns, setSavePreviewVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
+  const [previewCollapsed, setPreviewCollapsed] = useState({});
+  const [previewMaximized, setPreviewMaximized] = useState(false);
+  const [importValidationCollapsed, setImportValidationCollapsed] = useState({});
+  const [importValidationMaximized, setImportValidationMaximized] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addStep, setAddStep] = useState(1);
   const [addSearchQuery, setAddSearchQuery] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [addSelectedFields, setAddSelectedFields] = useState(['name']);
+  const [addPreviewVisibleColumns, setAddPreviewVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
 
   // --- STATES FLOW C & FLOW C' ---
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
+  const [viewTreeVisibleColumns, setViewTreeVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
+  const [viewCollapsedObjs, setViewCollapsedObjs] = useState({});
   const [nodeDetailConfig, setNodeDetailConfig] = useState({ isOpen: false, mode: 'view', data: null, path: [] }); 
   const [editingNodeData, setEditingNodeData] = useState(null);
   
@@ -520,6 +611,8 @@ const App = () => {
   const [importSelectedFields, setImportSelectedFields] = useState(availableFields.map(f => f.id)); 
   const [importFormData, setImportFormData] = useState({ title: '', desc: '', tags: '' });
   const [importFormErrors, setImportFormErrors] = useState({});
+  const [importTreeVisibleColumns, setImportTreeVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
+  const [importValidationVisibleColumns, setImportValidationVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
   const fileInputRef = useRef(null);
 
   // --- STATES FLOW E ---
@@ -579,6 +672,7 @@ const App = () => {
     setFormData({ title: '', description: '', domain: '', tags: '' });
     setFormErrors({});
     setSelectedFields(availableFields.map(f => f.id)); 
+    setSavePreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
   };
 
   const handleNextSaveStep = () => {
@@ -643,6 +737,7 @@ const App = () => {
     setSelectedTemplateId(null);
     setAddSearchQuery('');
     setAddSelectedFields(['name']); 
+    setAddPreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
   };
 
   const handleNextAddStep = () => {
@@ -653,6 +748,14 @@ const App = () => {
   const toggleAddField = (fieldId) => {
     if (fieldId === 'name') return;
     setAddSelectedFields(prev => prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]);
+  };
+
+  const toggleAddPreviewColumn = (colId) => {
+    setAddPreviewVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
+  };
+
+  const toggleSavePreviewColumn = (colId) => {
+    setSavePreviewVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
   };
 
   const handleApplyTemplate = () => {
@@ -704,10 +807,15 @@ const App = () => {
     triggerToast('Template deleted.');
   };
 
-  const handleViewClick = (template) => setViewTarget(template);
+  const handleViewClick = (template) => { setViewTarget(template); setViewTreeVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]); setViewCollapsedObjs({}); };
+
+  const toggleViewTreeColumn = (colId) => {
+    setViewTreeVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
+  };
   const closeViewModal = () => {
     setViewTarget(null);
     setNodeDetailConfig({ isOpen: false, mode: 'view', data: null, path: [] });
+    setViewCollapsedObjs({});
   };
   
   const openNodeDetail = (nodeData, mode, path = []) => {
@@ -899,6 +1007,16 @@ const App = () => {
     setImportSelectedFields(availableFields.map(f => f.id)); 
     setImportFormData({ title: '', desc: '', tags: '' });
     setImportFormErrors({});
+    setImportTreeVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    setImportValidationVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    setImportFormData({ title: '', desc: '', tags: '' });
+    setImportFormErrors({});
+  };
+
+  const toggleImportValidationColumn = (colId) => {
+    setImportValidationVisibleColumns(prev =>
+      prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]
+    );
   };
 
   const handleFileSelect = (e) => {
@@ -1023,93 +1141,195 @@ const App = () => {
     setConfirmCloseTarget(null);
   };
 
-  // --- RENDER HELPERS: PREVIEW CÂY (TABLE STYLE) ---
-  const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData) => {
-    const isDescUnchecked = isStep2 && !currentFields.includes('description');
-    const isUserUnchecked = isStep2 && !currentFields.includes('user');
-    const isMetricUnchecked = isStep2 && !currentFields.includes('metric');
-    const isTeamUnchecked = isStep2 && !currentFields.includes('team');
-    const isNameUnchecked = isStep2 && !currentFields.includes('name');
+  // --- RENDER HELPERS: PREVIEW CÂY (COMPACT COLLAPSIBLE) ---
+  const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
+    const toggleCollapse = (id) => setPreviewCollapsed(prev => ({...prev, [id]: !prev[id]}));
 
-    const renderRow = (node, level, status) => {
-      const isObj = level === 0;
-      
-      const displayUser = isUserUnchecked && !isObj ? <span className="text-gray-400 italic">Default</span> : (node.assign || node.user || <span className="text-gray-300">-</span>);
-      const displayMetric = isMetricUnchecked && !isObj ? <span className="text-gray-400 italic">Default</span> : (node.metric ? <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.metric}</span> : <span className="text-gray-300">-</span>);
-      const displayAgg = node.agg ? <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-600">{node.agg}</span> : <span className="text-gray-300">-</span>;
-      const displayTeam = isTeamUnchecked && !isObj ? <span className="text-gray-400 italic">Default</span> : (node.team || <span className="text-gray-300">-</span>);
+    const getFieldValue = (node, fieldId) => {
+      if (isStep2 && !currentFields.includes(fieldId)) {
+        const defaults = { 'description': 'Default description', 'user': 'Unassigned', 'team': 'Default Team', 'metric': 'Default Metric', 'progress_percent': '0%' };
+        return defaults[fieldId] || '-';
+      }
+      const map = { 'description': node.description, 'user': node.assign || node.user, 'team': node.team, 'metric': node.metric, 'progress_percent': node.progress };
+      return map[fieldId] || '-';
+    };
 
-      return (
-        <div key={node.id} className={`flex items-center border-b border-gray-100 py-2 px-4 transition-colors hover:bg-gray-50`} style={{ paddingLeft: `${16 + level * 24}px` }}>
-          <div className="flex-1 min-w-0 flex items-center">
-            {isObj ? <Box size={14} className="text-blue-500 mr-1.5 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2 shrink-0"></div>}
-            <div className="flex flex-col min-w-0">
-              <div onClick={() => openNodeDetail(node, 'view')} className={`text-sm font-medium truncate cursor-pointer hover:underline ${isObj ? 'text-blue-600' : 'text-gray-700'}`}>
-                {isNameUnchecked && !isObj ? <span className="text-gray-400 italic">Default Title</span> : node.name}
-              </div>
-              {isDescUnchecked && !isObj ? (
-                <span className="text-xs text-gray-400 italic truncate">Default description</span>
-              ) : (
-                node.description && <span className="text-xs text-gray-400 truncate">{node.description}</span>
-              )}
+    const getStatus = (node) => node.status || 'valid';
+
+    const renderCell = (node, colId, isObj) => {
+      if (isObj) {
+        if (colId === 'status') return <CheckCircle2 size={14} className="inline text-green-600" />;
+        return <span className="text-gray-300">-</span>;
+      }
+      switch (colId) {
+        case 'user': return <span className="truncate">{getFieldValue(node, 'user')}</span>;
+        case 'metric': return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{getFieldValue(node, 'metric')}</span>;
+        case 'progress': {
+          const p = getFieldValue(node, 'progress_percent');
+          return (
+            <div className="flex items-center justify-center gap-1">
+              <div className="w-10 bg-gray-200 h-1.5 rounded-full overflow-hidden"><div className="bg-green-500 h-full" style={{ width: p }}></div></div>
+              <span className="text-[10px] text-green-600 font-medium">{p}</span>
             </div>
-          </div>
-          <div className="w-24 text-xs text-gray-600 text-center">{isObj ? <span className="text-gray-300">-</span> : displayUser}</div>
-          <div className="w-20 text-xs text-center">{isObj ? <span className="text-gray-300">-</span> : displayMetric}</div>
-          <div className="w-16 text-xs text-center">{isObj ? <span className="text-gray-300">-</span> : displayAgg}</div>
-          <div className="w-20 text-xs text-center">{isObj ? <span className="text-gray-300">-</span> : displayTeam}</div>
-          <div className="w-20 text-xs text-center">
-            {isObj ? <span className="text-gray-300">-</span> : (node.progress ? (
-              <div className="flex items-center justify-center gap-1">
-                <div className="w-12 bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-green-500 h-full" style={{ width: `${parseInt(node.progress)}%` }}></div>
-                </div>
-                <span className="text-green-600 font-medium">{node.progress}</span>
-              </div>
-            ) : <span className="text-gray-300">-</span>)}
-          </div>
-          <div className="w-24 text-xs text-center">
-             {isObj ? <span className="text-gray-300">-</span> : (node.timeline || <span className="text-gray-300">-</span>)}
-          </div>
-          <div className="w-12 text-center flex justify-center">
-            {status === 'valid' && <div className="w-4 h-4 rounded bg-green-100 flex items-center justify-center"><Check size={10} className="text-green-600" strokeWidth={3}/></div>}
-            {status === 'warning' && <div className="w-4 h-4 rounded bg-orange-100 flex items-center justify-center"><AlertTriangle size={10} className="text-orange-600" /></div>}
-            {status === 'error' && <div className="w-4 h-4 rounded bg-red-100 flex items-center justify-center"><AlertCircle size={10} className="text-red-600" /></div>}
-          </div>
-        </div>
-      );
+          );
+        }
+        case 'status':
+          const s = getStatus(node);
+          return <>
+            {s === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}
+            {s === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}
+            {s === 'error' && <XOctagon size={14} className="inline text-red-600" />}
+          </>;
+        case 'team': return <span className="truncate">{getFieldValue(node, 'team')}</span>;
+        case 'timeline': return <span className="truncate">{node.timeline || '-'}</span>;
+        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'SUM'}</span>;
+        case 'description': return <span className="truncate">{node.description || '-'}</span>;
+        default: return null;
+      }
     };
 
     const rows = [];
-    rows.push(renderRow(treeData.objective, 0, 'valid'));
-    treeData.krs.forEach(kr => {
-      let status = 'valid';
-      if (kr.status === 'error') status = 'error';
-      else if (kr.status === 'warning') status = 'warning';
-      rows.push(renderRow(kr, 1, status));
-    });
+    const objId = treeData.objective?.id || 'root';
+    const isCollapsed = previewCollapsed[objId];
+    rows.push(
+      <div key={objId} className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors">
+        <div className="flex items-center gap-1.5 shrink-0" style={{ width: '180px' }}>
+          <button onClick={() => toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+            <ChevronRight size={12} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+          </button>
+          <Box size={13} className="text-blue-500 shrink-0" />
+          <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-xs font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective?.name}</div>
+        </div>
+        <div className="flex items-center gap-3 ml-2">
+          {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+            <div key={col.id} className={`${col.width} text-[11px] text-gray-500 text-center shrink-0`}>{renderCell(treeData.objective, col.id, true)}</div>
+          ))}
+        </div>
+        <div className="ml-auto shrink-0">
+          {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+        </div>
+      </div>
+    );
+    if (!isCollapsed) {
+      treeData.krs.forEach(kr => {
+        const s = getStatus(kr);
+        rows.push(
+          <div key={kr.id} className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '28px' }}>
+            <div className="flex items-center gap-1.5 shrink-0" style={{ width: '160px' }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+              <div onClick={() => openNodeDetail(kr, 'view')} className={`text-xs font-medium truncate cursor-pointer hover:underline ${s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.name}</div>
+            </div>
+            <div className="flex items-center gap-3 ml-2">
+              {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                <div key={col.id} className={`${col.width} text-[11px] text-gray-600 text-center shrink-0`}>{renderCell(kr, col.id, false)}</div>
+              ))}
+            </div>
+          </div>
+        );
+      });
+    }
 
     return (
       <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-4 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-          <div className="flex-1 min-w-0">OKR Name</div>
-          <div className="w-24 text-center">User</div>
-          <div className="w-20 text-center">Metric</div>
-          <div className="w-16 text-center">Agg</div>
-          <div className="w-20 text-center">Team</div>
-          <div className="w-20 text-center">Progress</div>
-          <div className="w-24 text-center">Timeline</div>
-          <div className="w-12 text-center">Status</div>
+        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
+          <div className="flex items-center gap-3 ml-2">
+            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+            ))}
+          </div>
+          <div className="ml-auto shrink-0">
+            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+            {onMaximize && (
+              <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                {maximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="divide-y divide-gray-50">
-          {rows}
+        <div className="divide-y divide-gray-50 overflow-auto">
+          <div className="min-w-[500px]">{rows}</div>
         </div>
         <div className="text-xs text-gray-400 italic mt-2 px-2">Note: OKR preview và node details chỉ mang tính minh họa, trong triển khai phải sử dụng giao diện OKR/Details của hệ thống gốc trên XCORP</div>
       </div>
     );
+
+    const treeContent = (
+      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
+          <div className="flex items-center gap-3 ml-2">
+            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+            ))}
+          </div>
+          <div className="ml-auto shrink-0 flex items-center gap-1">
+            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+            {onMaximize && (
+              <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                {maximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="divide-y divide-gray-50 overflow-auto">
+          <div className="min-w-[500px]">
+            {objVisible && (
+              <div className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors">
+                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '180px' }}>
+                  <button onClick={() => toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                    <ChevronRight size={12} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                  </button>
+                  <Box size={13} className="text-blue-500 shrink-0" />
+                  <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-xs font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
+                </div>
+                <div className="flex items-center gap-3 ml-2">
+                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                    <div key={col.id} className={`${col.width} text-[11px] text-gray-500 text-center shrink-0`}>{renderValidationCell(treeData.objective, col.id)}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!isCollapsed && visibleKRs.map(kr => (
+              <div key={kr.id} className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '28px' }}>
+                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '160px' }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+                  <div onClick={() => openNodeDetail(kr, 'view')} className={`text-xs font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
+                </div>
+                <div className="flex items-center gap-3 ml-2">
+                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                    <div key={col.id} className={`${col.width} text-[11px] text-gray-600 text-center shrink-0`}>{renderValidationCell(kr, col.id)}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+
+    if (maximized) {
+      return (
+        <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
+          <div className="bg-white rounded-xl shadow-2xl w-[90vw] h-[90vh] flex flex-col overflow-hidden relative">
+            <div className="absolute top-3 right-3 z-20">
+              <button onClick={() => onMaximize(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 p-4 pt-12 overflow-hidden">
+              {treeContent}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return treeContent;
   };
 
-  const renderImportValidationTree = (filterTab) => {
+  const renderImportValidationTree = (filterTab, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
+
     const isNodeVisible = (n) => {
       if (filterTab === 'all') return true;
       if (filterTab === 'errors') return n.status === 'error';
@@ -1127,58 +1347,109 @@ const App = () => {
        return <div className="p-8 text-center text-gray-500">No nodes match the current filter.</div>;
     }
 
-    const renderValidationRow = (node, level) => {
-      const isObj = level === 0;
-      return (
-        <div key={node.id} className={`flex flex-col border-b border-gray-100 hover:bg-gray-50 py-2 px-4 transition-colors`}>
-           <div className="flex items-center" style={{ paddingLeft: `${level * 24}px` }}>
-              <div className="flex-1 min-w-0 flex items-center">
-                {isObj ? <Box size={14} className="text-blue-500 mr-1.5 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2 shrink-0"></div>}
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-2">
-                     <div onClick={() => openNodeDetail(node, 'view')} className={`text-sm font-medium truncate cursor-pointer hover:underline ${isObj ? 'text-blue-600' : 'text-gray-700'}`}>
-                        {node.id}: {node.name}
-                     </div>
-                     {node.status === 'valid' && <span className="text-[10px] font-bold text-green-600 bg-green-100 px-1 py-0.5 rounded"><Check size={10} className="inline mr-0.5" />Valid</span>}
-                     {node.status === 'warning' && <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1 py-0.5 rounded"><AlertTriangle size={10} className="inline mr-0.5" />Warning</span>}
-                     {node.status === 'error' && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1 py-0.5 rounded"><AlertCircle size={10} className="inline mr-0.5" />Error</span>}
-                  </div>
-                  <span className="text-xs text-gray-400 truncate">{node.description || 'Default description'}</span>
-                </div>
-              </div>
-              <div className="w-24 text-xs text-gray-600 text-center">{node.assign || node.user || '-'}</div>
-              <div className="w-20 text-xs text-center">{node.metric || '-'}</div>
-              <div className="w-16 text-xs text-center"><span className="px-1 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 font-bold">{node.agg || '-'}</span></div>
-              <div className="w-20 text-xs text-center">{node.team || '-'}</div>
-              <div className="w-24 text-xs text-center">{node.timeline || '-'}</div>
-           </div>
-           
-           {(node.warnMsg || node.errorMsg) && (
-             <div className="mt-1 flex flex-col gap-1" style={{ paddingLeft: `${level * 24 + 20}px` }}>
-               {node.warnMsg && <span className="text-[11px] font-medium text-amber-600 flex items-center gap-1"><AlertTriangle size={12}/>{node.warnMsg}</span>}
-               {node.errorMsg && <span className="text-[11px] font-medium text-red-500 flex items-center gap-1"><AlertCircle size={12}/>{node.errorMsg}</span>}
-             </div>
-           )}
-        </div>
-      );
+    const renderValidationCell = (node, colId) => {
+      switch (colId) {
+        case 'user': return <span className="truncate">{node.assign || node.user || '-'}</span>;
+        case 'metric': return <span className="truncate">{node.metric || '-'}</span>;
+        case 'progress': {
+          const p = node.progress || '0%';
+          return (
+            <div className="flex items-center justify-center gap-1">
+              <div className="w-10 bg-gray-200 h-1.5 rounded-full overflow-hidden"><div className="bg-green-500 h-full" style={{ width: p }}></div></div>
+              <span className="text-[10px] text-green-600 font-medium">{p}</span>
+            </div>
+          );
+        }
+        case 'status':
+          return <>
+            {node.status === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}
+            {node.status === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}
+            {node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}
+          </>;
+        case 'team': return <span className="truncate">{node.team || '-'}</span>;
+        case 'timeline': return <span className="truncate">{node.timeline || '-'}</span>;
+        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || '-'}</span>;
+        case 'description': return <span className="truncate">{node.description || '-'}</span>;
+        default: return null;
+      }
     };
+
+    const toggleCollapse = (id) => setImportValidationCollapsed(prev => ({...prev, [id]: !prev[id]}));
+    const objId = treeData.objective?.id || 'val-root';
+    const isCollapsed = importValidationCollapsed[objId];
 
     return (
       <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-4 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-          <div className="flex-1 min-w-0">OKR Name</div>
-          <div className="w-24 text-center">User</div>
-          <div className="w-20 text-center">Metric</div>
-          <div className="w-16 text-center">Agg</div>
-          <div className="w-20 text-center">Team</div>
-          <div className="w-24 text-center">Timeline</div>
+        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
+          <div className="flex items-center gap-3 ml-2">
+            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+            ))}
+          </div>
+          <div className="ml-auto shrink-0 flex items-center gap-1">
+            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+            {onMaximize && (
+              <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                {maximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="divide-y divide-gray-50">
-          {shouldShowObj && renderValidationRow(treeData.objective, 0)}
-          {visibleKRs.map(kr => renderValidationRow(kr, 1))}
+        <div className="divide-y divide-gray-50 overflow-auto">
+          <div className="min-w-[500px]">
+            {objVisible && (
+              <div className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors">
+                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '180px' }}>
+                  <button onClick={() => toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                    <ChevronRight size={12} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                  </button>
+                  <Box size={13} className="text-blue-500 shrink-0" />
+                  <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-xs font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
+                </div>
+                <div className="flex items-center gap-3 ml-2">
+                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                    <div key={col.id} className={`${col.width} text-[11px] text-gray-500 text-center shrink-0`}>{renderValidationCell(treeData.objective, col.id)}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!isCollapsed && visibleKRs.map(kr => (
+              <div key={kr.id} className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '28px' }}>
+                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '160px' }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+                  <div onClick={() => openNodeDetail(kr, 'view')} className={`text-xs font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
+                </div>
+                <div className="flex items-center gap-3 ml-2">
+                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                    <div key={col.id} className={`${col.width} text-[11px] text-gray-600 text-center shrink-0`}>{renderValidationCell(kr, col.id)}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
+
+    if (maximized) {
+      return (
+        <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
+          <div className="bg-white rounded-xl shadow-2xl w-[90vw] h-[90vh] flex flex-col overflow-hidden relative">
+            <div className="absolute top-3 right-3 z-20">
+              <button onClick={() => onMaximize(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex-1 p-4 pt-12 overflow-hidden">
+              {treeContent}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return treeContent;
   };
 
   const FieldRow = ({ label, required, children }) => (
@@ -1470,43 +1741,71 @@ const App = () => {
                  </div>
                </div>
 
-               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-x-auto mb-6">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-5 py-3 border-b border-gray-200 bg-gray-50/50">OKR Tree Structure Preview</h4>
-                  <div className="min-w-[900px]">
-                    <div className="flex items-center border-b border-gray-200 bg-gray-50 py-2 px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                      <div className="w-72">OKR</div><div className="w-28">User</div><div className="w-28">Team</div><div className="w-24">Metric</div><div className="w-20">Agg.Type</div><div className="w-20 text-center">Progress</div><div className="w-20 text-center">Timeline</div>
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {viewTarget.tree.map((obj, oi) => (
-                        <div key={obj.id}>
-                          <div className="flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'view')}>
-                            <div className="w-72 flex items-center gap-2">
-                              <Box size={14} className="text-blue-500 shrink-0" />
-                              <span className="font-semibold text-[13px] text-blue-600 hover:underline line-clamp-1">{obj.id} - {obj.name}</span>
-                            </div>
-                            <div className="w-28 text-[12px] text-gray-600">{obj.user || <span className="text-gray-300">-</span>}</div>
-                            <div className="w-28 text-[12px] text-gray-600">{obj.team || <span className="text-gray-300">-</span>}</div>
-                            <div className="w-24 text-[12px] text-gray-600">{obj.metric || <span className="text-gray-300">-</span>}</div>
-                            <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{obj.agg}</span></div>
-                            <div className="w-20 text-center text-[12px] text-gray-400">-</div>
-                            <div className="w-20 text-center text-[12px] text-gray-400">-</div>
-                          </div>
-                          {obj.children && obj.children.map(kr => (
-                            <div key={kr.id} className="flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')} style={{ paddingLeft: '44px' }}>
-                              <div className="w-72 flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                                <span className="text-[13px] text-gray-700 hover:text-blue-600 hover:underline line-clamp-1">{kr.id} - {kr.name}</span>
-                              </div>
-                              <div className="w-28 text-[12px] text-gray-600">{kr.user || <span className="text-gray-300">-</span>}</div>
-                              <div className="w-28 text-[12px] text-gray-600">{kr.team || <span className="text-gray-300">-</span>}</div>
-                              <div className="w-24 text-[12px] text-gray-600">{kr.metric || <span className="text-gray-300">-</span>}</div>
-                              <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{kr.agg}</span></div>
-                              <div className="w-20 text-center text-[12px]"><span className="font-medium text-green-600">{kr.progress}</span></div>
-                              <div className="w-20 text-center text-[12px] text-gray-500">{kr.timeline || <span className="text-gray-300">-</span>}</div>
-                            </div>
+               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-6">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-5 py-3 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                    <span>OKR Tree Structure Preview</span>
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[500px]">
+                      <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
+                        <div className="flex items-center gap-3 ml-2">
+                          {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
+                            <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
                           ))}
                         </div>
-                      ))}
+                        <div className="ml-auto shrink-0">
+                          <ColumnToggle visibleColumns={viewTreeVisibleColumns} onToggle={toggleViewTreeColumn} />
+                        </div>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {viewTarget.tree.map((obj) => {
+                          const objCollapsed = viewCollapsedObjs[obj.id];
+                          const toggleViewObj = () => setViewCollapsedObjs(prev => ({...prev, [obj.id]: !prev[obj.id]}));
+                          const renderCell = (node, colId, isKr = false) => {
+                            if (colId === 'user') return <span className="truncate text-[12px]">{node.user || <span className="text-gray-300">-</span>}</span>;
+                            if (colId === 'metric') return <span className="truncate text-[12px]">{node.metric || <span className="text-gray-300">-</span>}</span>;
+                            if (colId === 'team') return <span className="truncate text-[12px]">{node.team || <span className="text-gray-300">-</span>}</span>;
+                            if (colId === 'progress') return <span className="text-[12px] font-medium text-green-600">{isKr ? (node.progress || '-') : <span className="text-gray-300">-</span>}</span>;
+                            if (colId === 'timeline') return <span className="truncate text-[12px]">{isKr ? (node.timeline || <span className="text-gray-300">-</span>) : <span className="text-gray-300">-</span>}</span>;
+                            if (colId === 'agg') return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg || 'SUM'}</span>;
+                            if (colId === 'status') return <CheckCircle2 size={14} className="inline text-green-600" />;
+                            if (colId === 'description') return <span className="truncate text-[12px]">{node.description || '-'}</span>;
+                            return null;
+                          };
+                          return (
+                            <div key={obj.id}>
+                              <div className="flex items-center py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'view')}>
+                                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '180px' }}>
+                                  <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                                    <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
+                                  </button>
+                                  <Box size={13} className="text-blue-500 shrink-0" />
+                                  <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3 ml-2">
+                                  {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
+                                    <div key={col.id} className={`${col.width} text-center shrink-0`}>{renderCell(obj, col.id, false)}</div>
+                                  ))}
+                                </div>
+                              </div>
+                              {!objCollapsed && obj.children && obj.children.map(kr => (
+                                <div key={kr.id} className="flex items-center py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')} style={{ paddingLeft: '28px' }}>
+                                  <div className="flex items-center gap-1.5 shrink-0" style={{ width: '170px' }}>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+                                    <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 ml-2">
+                                    {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
+                                      <div key={col.id} className={`${col.width} text-center shrink-0`}>{renderCell(kr, col.id, true)}</div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                   <div className="px-5 pb-4">
@@ -1543,7 +1842,6 @@ const App = () => {
             </div>
 
             <div className="flex-1 overflow-hidden flex bg-gray-50/50">
-              
               <div className="w-[350px] bg-white border-r border-gray-200 p-6 overflow-y-auto custom-scrollbar shrink-0">
                 <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-2 mb-4">General Information</h3>
                 {editFormErrors.general && (
@@ -1597,53 +1895,36 @@ const App = () => {
                          {editTreeData.map((obj, oIdx) => {
                            const renderNode = (node, path, level = 1) => {
                              const isObjective = level === 1;
-                             const canAddChild = level < 4; // Max 4 levels
+                             const canAddChild = level < 4;
                              const paddingLeft = 16 + (level - 1) * 24;
-                             
                              return (
                                <React.Fragment key={node.id}>
                                  <div className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors relative" style={{ paddingLeft: `${paddingLeft}px` }}>
                                    <div className="w-72 flex items-center gap-2">
-                                     {isObjective ? (
-                                       <Box size={14} className="text-blue-500 shrink-0" />
-                                     ) : (
-                                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                                     )}
-                                     <span onClick={() => openNodeDetail(node, 'edit', path)} className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] hover:underline cursor-pointer line-clamp-1`}>
-                                       {node.id} - {node.name}
-                                     </span>
+                                     {isObjective ? <Box size={14} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
+                                     <span onClick={() => openNodeDetail(node, 'edit', path)} className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] hover:underline cursor-pointer line-clamp-1`}>{node.id} - {node.name}</span>
                                      {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded">L{level}</span>}
                                    </div>
-                                   <div className="w-28 text-[12px] text-gray-600">{node.user || <span className="text-gray-300">-</span>}</div>
-                                   <div className="w-28 text-[12px] text-gray-600">{node.team || <span className="text-gray-300">-</span>}</div>
-                                   <div className="w-24 text-[12px] text-gray-600">{node.metric || <span className="text-gray-300">-</span>}</div>
+                                   <div className="w-28 text-[12px] text-gray-600">{node.user || '-'}</div>
+                                   <div className="w-28 text-[12px] text-gray-600">{node.team || '-'}</div>
+                                   <div className="w-24 text-[12px] text-gray-600">{node.metric || '-'}</div>
                                    <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg}</span></div>
                                    <div className="w-20 text-center text-[12px]">{node.progress ? <span className="font-medium text-green-600">{node.progress}</span> : <span className="text-gray-400">-</span>}</div>
-                                   <div className="w-24 text-center flex items-center justify-center gap-1 opacity-100 transition-opacity">
-                                     {isObjective && (
-                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>
-                                     )}
-                                     {!isObjective && canAddChild && (
-                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>
-                                     )}
+                                   <div className="w-24 text-center flex items-center justify-center gap-1">
+                                     {isObjective && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
+                                     {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>}
                                      <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
-                                     {isObjective ? (
-                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
-                                     ) : level === 2 ? (
-                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
-                                     ) : (
-                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>
-                                     )}
+                                     {isObjective ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
+                                       : level === 2 ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
+                                       : <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>}
                                    </div>
                                  </div>
                                  {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
                                </React.Fragment>
                              );
                            };
-                           
                            return renderNode(obj, [oIdx], 1);
                          })}
-                         
                          {editTreeData.length === 0 && (
                            <div className="py-10 text-center text-gray-400">
                               <FolderTree size={32} className="mx-auto mb-2 opacity-50" />
@@ -1699,7 +1980,7 @@ const App = () => {
       )}
 
       {/* ================================================================================================== */}
-      {/* --- MODAL D: IMPORT JSON TEMPLATE FLOW (THIẾT KẾ MỚI) --- */}
+      {/* --- MODAL D: IMPORT JSON TEMPLATE FLOW --- */}
       {/* ================================================================================================== */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4">
@@ -1800,7 +2081,7 @@ const App = () => {
                             </div>
                           </div>
                           
-                          {/* Form: Add input fields */}
+                          {/* Form */}
                           <div className="bg-white border border-blue-200 rounded-lg p-4 shadow-sm relative">
                             <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">Template Info</div>
                             <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Imported Template Information</h4>
@@ -1861,7 +2142,7 @@ const App = () => {
                           </div>
 
                           <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50 custom-scrollbar">
-                            {renderImportValidationTree(importReviewTab)}
+                            {renderImportValidationTree(importReviewTab, importValidationVisibleColumns, toggleImportValidationColumn, importValidationMaximized, setImportValidationMaximized)}
                           </div>
                         </div>
                       </div>
@@ -1946,6 +2227,9 @@ const App = () => {
                         selectedFields={importSelectedFields}
                         showNameColumn={false}
                         showDisclaimer={true}
+                        visibleColumns={importTreeVisibleColumns}
+                        onToggleColumn={toggleImportTreeColumn}
+                        maximizable={true}
                       />
                     </div>
                   </div>
@@ -2031,6 +2315,9 @@ const App = () => {
                         selectedFields={importSelectedFields}
                         showNameColumn={false}
                         showDisclaimer={true}
+                        visibleColumns={importTreeVisibleColumns}
+                        onToggleColumn={toggleImportTreeColumn}
+                        maximizable={true}
                       />
                     </div>
                   </div>
@@ -2472,10 +2759,10 @@ ${exportSelectedTemplates.map(tId => {
             
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-[#1e3a8a]">Add Template</h2>
-                <div className="text-xs text-gray-700 mt-1">
-                  <div className="flex items-center mb-0.5"><span className="text-gray-500 w-14">Space:</span><span className="font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2 py-0.5 rounded">{selectedSpace}</span></div>
-                  <div className="flex items-center"><span className="text-gray-500 w-14">Timeline:</span><span className="font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2 py-0.5 rounded">{selectedPeriod}</span></div>
+                <h2 className="text-xl font-bold text-[#1e3a8a]">{tableData.length === 0 ? 'Add template to' : 'Override template to'} <span className="text-sm font-normal text-gray-500">(Apply to)</span></h2>
+                <div className="flex items-center gap-6 mt-2">
+                  <div className="flex items-center gap-2"><span className="text-xs font-medium text-gray-500">Space:</span><span className="text-xs font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2.5 py-1 rounded">{selectedSpace}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-xs font-medium text-gray-500">Timeline:</span><span className="text-xs font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2.5 py-1 rounded">{selectedYear}</span></div>
                 </div>
               </div>
               <button onClick={() => handleCloseAttempt('add')} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-200">
@@ -2645,7 +2932,7 @@ ${exportSelectedTemplates.map(tId => {
                       <div className="bg-blue-50/50 p-3 rounded-md border border-blue-100">
                         <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context (Apply to)</span>
                         <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {selectedSpace}</div>
-                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {selectedPeriod}</div>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {selectedYear}</div>
                       </div>
                       <div>
                         <span className="text-xs text-gray-500 block mb-1">Template Selected</span>
@@ -2693,7 +2980,7 @@ ${exportSelectedTemplates.map(tId => {
                           <span className="text-sm font-medium text-gray-700">Template OKR Structure</span>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
-                           {renderPreviewTree(false, availableFields.map(f=>f.id))}
+                           {renderPreviewTree(false, availableFields.map(f=>f.id), false, previewTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
                         </div>
                       </>
                     ) : (
@@ -2710,7 +2997,7 @@ ${exportSelectedTemplates.map(tId => {
                        <span className="text-sm font-bold text-gray-700 block">Import Data Preview</span>
                        <span className="text-xs text-gray-500">Preview how nodes will be created on Timeline.</span>
                     </div>
-                    {renderPreviewTree(true, addSelectedFields)}
+                    {renderPreviewTree(true, addSelectedFields, false, previewTreeData, addPreviewVisibleColumns, previewMaximized, setPreviewMaximized)}
                   </div>
                 )}
                 {addStep === 3 && (
@@ -2719,7 +3006,7 @@ ${exportSelectedTemplates.map(tId => {
                        <span className="text-sm font-bold text-gray-700 block">Final Validation Preview</span>
                        <span className="text-xs text-gray-500">Final OKR structure to be applied.</span>
                     </div>
-                    {renderPreviewTree(true, addSelectedFields, true)}
+                    {renderPreviewTree(true, addSelectedFields, true, previewTreeData, addPreviewVisibleColumns, previewMaximized, setPreviewMaximized)}
                   </div>
                 )}
               </div>
@@ -2841,9 +3128,9 @@ ${exportSelectedTemplates.map(tId => {
                 )}
               </div>
               <div className="w-1/2 p-6 overflow-y-auto bg-gray-50/50 custom-scrollbar border-l border-gray-200">
-                {saveStep === 1 && (<div className="animate-fade-in"><div className="mb-4 flex items-center justify-between"><span className="text-sm font-medium text-gray-700">Previewing OKR from current View</span><span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">Total Nodes: 3</span></div>{renderPreviewTree(false, selectedFields)}</div>)}
-                {saveStep === 2 && (<div className="animate-fade-in"><div className="mb-4"><span className="text-sm font-medium text-gray-700 block">Field Preview</span><span className="text-xs text-gray-500">Live preview of how unchecking fields affects the template.</span></div>{renderPreviewTree(true, selectedFields)}</div>)}
-                {saveStep === 3 && (<div className="animate-fade-in"><div className="mb-4 flex items-center"><CheckSquare size={16} className="text-green-500 mr-2" /><span className="text-sm font-medium text-gray-700">Final Template Structure</span></div>{renderPreviewTree(true, selectedFields)}</div>)}
+                {saveStep === 1 && (<div className="animate-fade-in"><div className="mb-4 flex items-center justify-between"><span className="text-sm font-medium text-gray-700">Previewing OKR from current View</span><span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">Total Nodes: 3</span></div>{renderPreviewTree(false, selectedFields, false, previewTreeData, savePreviewVisibleColumns, previewMaximized, setPreviewMaximized)}</div>)}
+                {saveStep === 2 && (<div className="animate-fade-in"><div className="mb-4"><span className="text-sm font-medium text-gray-700 block">Field Preview</span><span className="text-xs text-gray-500">Live preview of how unchecking fields affects the template.</span></div>{renderPreviewTree(true, selectedFields, false, previewTreeData, savePreviewVisibleColumns, previewMaximized, setPreviewMaximized)}</div>)}
+                {saveStep === 3 && (<div className="animate-fade-in"><div className="mb-4 flex items-center"><CheckSquare size={16} className="text-green-500 mr-2" /><span className="text-sm font-medium text-gray-700">Final Template Structure</span></div>{renderPreviewTree(true, selectedFields, false, previewTreeData, savePreviewVisibleColumns, previewMaximized, setPreviewMaximized)}</div>)}
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center shrink-0">
