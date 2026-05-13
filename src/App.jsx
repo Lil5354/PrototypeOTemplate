@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Menu, ChevronDown, ChevronRight, Search, Globe, Bell, User, Clock,
   Briefcase, CheckSquare, LayoutDashboard, Calendar, BarChart2,
@@ -72,7 +73,73 @@ const ColumnToggle = ({ visibleColumns, onToggle }) => {
   );
 };
 
-// 0.1 OKR Tree Preview Component (Reusable)
+// 0.1 Full-Screen Window Component (opens real separate browser popup via portal)
+const FullScreenWindow = ({ children, onClose }) => {
+  const [container, setContainer] = useState(null);
+  const stateRef = useRef({});
+
+  useEffect(() => {
+    const w = Math.round(window.screen.width * 0.7);
+    const h = Math.round(window.screen.height * 0.7);
+    const left = Math.round((window.screen.width - w) / 2);
+    const top = Math.round((window.screen.height - h) / 2);
+
+    const win = window.open(
+      '', '_blank',
+      `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+
+    if (!win || win.closed) {
+      onClose?.();
+      return;
+    }
+
+    stateRef.current = { win, closing: false };
+    win.document.title = 'OKR Tree Preview (Full Screen)';
+
+    document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => {
+      try { win.document.head.appendChild(el.cloneNode(true)); } catch (e) {}
+    });
+
+    win.document.body.style.margin = '0';
+    win.document.body.style.padding = '0';
+    win.document.body.style.overflow = 'hidden';
+    win.document.body.style.backgroundColor = '#f9fafb';
+    win.document.body.style.height = '100vh';
+
+    const div = win.document.createElement('div');
+    div.style.width = '100vw';
+    div.style.height = '100vh';
+    div.style.overflow = 'auto';
+    win.document.body.appendChild(div);
+
+    const done = new Promise(resolve => setTimeout(resolve, 0));
+    done.then(() => setContainer(div));
+
+    const timer = setInterval(() => {
+      try {
+        if (win.closed && !stateRef.current.closing) {
+          stateRef.current.closing = true;
+          clearInterval(timer);
+          onClose?.();
+        }
+      } catch (e) {}
+    }, 500);
+
+    return () => {
+      clearInterval(timer);
+      stateRef.current.closing = true;
+      const delay = new Promise(r => setTimeout(r, 100));
+      delay.then(() => { try { if (!win.closed) win.close(); } catch (e) {} });
+    };
+  }, []);
+
+  if (!container) return null;
+
+  return createPortal(children, container);
+};
+
+// 0.2 OKR Tree Preview Component (Reusable)
 const OKRTreePreview = ({ 
   treeData, 
   selectedFields = [], 
@@ -212,25 +279,24 @@ const OKRTreePreview = ({
   const treeContent = (
     <div className="flex flex-col h-full min-h-0">
       <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
-          <div className="shrink-0" style={{ width: '130px', paddingLeft: '2px' }}>Node</div>
-          <div className="flex items-center gap-1 ml-1">
-            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
-            ))}
-          </div>
-          <div className="ml-auto shrink-0 flex items-center gap-0.5">
-            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-            {maximizable && (
-              <button onClick={() => setMaximized(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="flex-1 overflow-auto min-h-0 custom-scrollbar">
           <div className="min-w-[400px]">
+            <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+              <div className="shrink-0" style={{ width: '160px', paddingLeft: '2px' }}>Node</div>
+              <div className="flex items-center gap-2 ml-1">
+                {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                  <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+                ))}
+              </div>
+              <div className="ml-auto shrink-0 flex items-center gap-0.5">
+                {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+                {maximizable && (
+                  <button onClick={() => setMaximized(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                    {maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  </button>
+                )}
+              </div>
+            </div>
             {treeData.objective && renderNode(treeData.objective, 0, objId)}
           </div>
         </div>
@@ -239,22 +305,13 @@ const OKRTreePreview = ({
     </div>
   );
 
-  if (maximized) {
-    return (
-      <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
-          <div className="bg-white rounded-xl shadow-2xl w-[80vw] h-[80vh] flex flex-col overflow-hidden relative">
-            <div className="absolute top-3 right-3 z-20">
-              <button onClick={() => setMaximized(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
-                <X size={18} />
-              </button>
-            </div>
-          <div className="flex-1 p-4 pt-12 overflow-hidden">
-            {treeContent}
-          </div>
-        </div>
-      </div>
-    );
-  }
+    if (maximized) {
+      return (
+        <FullScreenWindow onClose={() => setMaximized(false)}>
+          {treeContent}
+        </FullScreenWindow>
+      );
+    }
 
   return treeContent;
 };
@@ -1208,17 +1265,14 @@ const App = () => {
             <div key={col.id} className={`${col.width} text-[10px] text-gray-500 text-center shrink-0`}>{renderCell(treeData.objective, col.id, true)}</div>
           ))}
         </div>
-        <div className="ml-auto shrink-0">
-          {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-        </div>
       </div>
     );
     if (!isCollapsed) {
       treeData.krs.forEach(kr => {
         const s = getStatus(kr);
         rows.push(
-          <div key={kr.id} className="flex items-center border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '20px' }}>
-            <div className="flex items-center gap-1 shrink-0" style={{ width: '125px' }}>
+          <div key={kr.id} className="flex items-center border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors">
+            <div className="flex items-center gap-1 shrink-0" style={{ width: '140px', paddingLeft: '14px' }}>
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
               <div onClick={() => openNodeDetail(kr, 'view')} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.name}</div>
             </div>
@@ -1232,76 +1286,43 @@ const App = () => {
       });
     }
 
-    return (
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-          <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
-          <div className="flex items-center gap-3 ml-2">
-            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
-            ))}
-          </div>
-          <div className="ml-auto shrink-0">
-            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-            {onMaximize && (
-              <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                {maximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="divide-y divide-gray-50 overflow-auto">
-          <div className="min-w-[500px]">{rows}</div>
-        </div>
-        <div className="text-xs text-gray-400 italic mt-2 px-2">Note: OKR preview và node details chỉ mang tính minh họa, trong triển khai phải sử dụng giao diện OKR/Details của hệ thống gốc trên XCORP</div>
-      </div>
-    );
-
     const treeContent = (
-      <div className="flex flex-col h-full min-h-0">
-        <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
-          <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
-            <div className="shrink-0" style={{ width: '130px', paddingLeft: '2px' }}>Node</div>
-            <div className="flex items-center gap-1 ml-1">
-              {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
-              ))}
+      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex flex-col h-full">
+        <div className="flex-1 overflow-auto min-h-0 custom-scrollbar">
+          <div className="min-w-[500px]">
+            <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
+              <div className="shrink-0" style={{ width: '140px', paddingLeft: '2px' }}>Node</div>
+              <div className="flex items-center gap-1.5 ml-1">
+                {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                  <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+                ))}
+              </div>
+              <div className="ml-auto shrink-0 flex items-center gap-0.5">
+                {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+                {onMaximize && (
+                  <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                    {maximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="ml-auto shrink-0 flex items-center gap-0.5">
-              {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-              {onMaximize && (
-                <button onClick={() => onMaximize(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                  {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 overflow-auto custom-scrollbar">
-            <div className="min-w-[400px]">{rows}</div>
+            {rows}
           </div>
         </div>
-        <div className="text-[10px] text-gray-400 italic mt-0.5 px-1 shrink-0">OKR preview mang tính minh họa.</div>
+        <div className="text-[10px] text-gray-400 italic px-2 py-0.5 shrink-0 bg-gray-50/50 border-t border-gray-100">Note: OKR preview và node details chỉ mang tính minh họa, trong triển khai phải sử dụng giao diện OKR/Details của hệ thống gốc trên XCORP</div>
       </div>
     );
 
-    if (maximized) {
+    if (maximized && onMaximize) {
       return (
-        <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
-          <div className="bg-white rounded-xl shadow-2xl w-[90vw] h-[90vh] flex flex-col overflow-hidden relative">
-            <div className="absolute top-3 right-3 z-20">
-              <button onClick={() => onMaximize(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex-1 p-4 pt-12 overflow-hidden">
-              {treeContent}
-            </div>
-          </div>
-        </div>
+        <FullScreenWindow onClose={() => onMaximize(false)}>
+          {treeContent}
+        </FullScreenWindow>
       );
     }
 
     return treeContent;
+
   };
 
   const renderImportValidationTree = (filterTab, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
@@ -2949,15 +2970,15 @@ ${exportSelectedTemplates.map(tId => {
 
               </div>
               
-              <div className="w-1/2 p-6 overflow-y-auto bg-gray-50/50 custom-scrollbar border-l border-gray-200 relative">
+              <div className="w-1/2 flex flex-col h-full bg-gray-50/50 custom-scrollbar border-l border-gray-200 relative">
                 {addStep === 1 && (
-                  <div className="animate-fade-in h-full flex flex-col">
+                  <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
                     {selectedTemplateId ? (
                       <>
                         <div className="mb-4 flex items-center justify-between shrink-0">
                           <span className="text-sm font-medium text-gray-700">Template OKR Structure</span>
                         </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                        <div className="flex-1 min-h-0">
                            {renderPreviewTree(false, availableFields.map(f=>f.id), false, previewTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
                         </div>
                       </>
@@ -2970,21 +2991,25 @@ ${exportSelectedTemplates.map(tId => {
                   </div>
                 )}
                 {addStep === 2 && (
-                  <div className="animate-fade-in">
-                    <div className="mb-4">
+                  <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                    <div className="mb-4 shrink-0">
                        <span className="text-sm font-bold text-gray-700 block">Import Data Preview</span>
                        <span className="text-xs text-gray-500">Preview how nodes will be created on Timeline.</span>
                     </div>
-                    {renderPreviewTree(true, addSelectedFields, false, previewTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
+                    <div className="flex-1 min-h-0">
+                      {renderPreviewTree(true, addSelectedFields, false, previewTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
+                    </div>
                   </div>
                 )}
                 {addStep === 3 && (
-                  <div className="animate-fade-in">
-                    <div className="mb-4">
+                  <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                    <div className="mb-4 shrink-0">
                        <span className="text-sm font-bold text-gray-700 block">Final Validation Preview</span>
                        <span className="text-xs text-gray-500">Final OKR structure to be applied.</span>
                     </div>
-                    {renderPreviewTree(true, addSelectedFields, true, previewTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
+                    <div className="flex-1 min-h-0">
+                      {renderPreviewTree(true, addSelectedFields, true, previewTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
+                    </div>
                   </div>
                 )}
               </div>
@@ -3105,10 +3130,10 @@ ${exportSelectedTemplates.map(tId => {
                   </div>
                 )}
               </div>
-              <div className="w-1/2 p-6 overflow-y-auto bg-gray-50/50 custom-scrollbar border-l border-gray-200">
-                {saveStep === 1 && (<div className="animate-fade-in"><div className="mb-4 flex items-center justify-between"><span className="text-sm font-medium text-gray-700">Previewing OKR from current View</span><span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">Total Nodes: 3</span></div>{renderPreviewTree(false, selectedFields, false, previewTreeData, savePreviewVisibleColumns, previewMaximized, setPreviewMaximized)}</div>)}
-                {saveStep === 2 && (<div className="animate-fade-in"><div className="mb-4"><span className="text-sm font-medium text-gray-700 block">Field Preview</span><span className="text-xs text-gray-500">Live preview of how unchecking fields affects the template.</span></div>{renderPreviewTree(true, selectedFields, false, previewTreeData, savePreviewVisibleColumns, previewMaximized, setPreviewMaximized)}</div>)}
-                {saveStep === 3 && (<div className="animate-fade-in"><div className="mb-4 flex items-center"><CheckSquare size={16} className="text-green-500 mr-2" /><span className="text-sm font-medium text-gray-700">Final Template Structure</span></div>{renderPreviewTree(true, selectedFields, false, previewTreeData, savePreviewVisibleColumns, previewMaximized, setPreviewMaximized)}</div>)}
+              <div className="w-1/2 flex flex-col h-full bg-gray-50/50 custom-scrollbar border-l border-gray-200">
+                {saveStep === 1 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6"><div className="mb-4 flex items-center justify-between shrink-0"><span className="text-sm font-medium text-gray-700">Previewing OKR from current View</span><span className="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs">Total Nodes: 3</span></div><div className="flex-1 min-h-0">{renderPreviewTree(false, selectedFields, false, previewTreeData, savePreviewVisibleColumns, toggleSavePreviewColumn, previewMaximized, setPreviewMaximized)}</div></div>)}
+                {saveStep === 2 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6"><div className="mb-4 shrink-0"><span className="text-sm font-medium text-gray-700 block">Field Preview</span><span className="text-xs text-gray-500">Live preview of how unchecking fields affects the template.</span></div><div className="flex-1 min-h-0">{renderPreviewTree(true, selectedFields, false, previewTreeData, savePreviewVisibleColumns, toggleSavePreviewColumn, previewMaximized, setPreviewMaximized)}</div></div>)}
+                {saveStep === 3 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6"><div className="mb-4 flex items-center shrink-0"><CheckSquare size={16} className="text-green-500 mr-2" /><span className="text-sm font-medium text-gray-700">Final Template Structure</span></div><div className="flex-1 min-h-0">{renderPreviewTree(true, selectedFields, false, previewTreeData, savePreviewVisibleColumns, toggleSavePreviewColumn, previewMaximized, setPreviewMaximized)}</div></div>)}
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center shrink-0">
