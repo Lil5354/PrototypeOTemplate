@@ -280,16 +280,41 @@ const TimelineTreeDropdown = ({ selected, onSelect, space }) => {
           <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 bg-gray-50/50 sticky top-0">
             {space} Timelines
           </div>
-          {Object.keys(tree).map(year => (
+          {Object.keys(tree).map(year => {
+            // Get first quarter's first period as year-level selection
+            const firstQuarter = Object.keys(tree[year])[0];
+            const yearPeriod = tree[year][firstQuarter]?.find(p => p.startsWith('Quarter'));
+            
+            return (
             <div key={year}>
-              <div className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50" onClick={() => toggleYear(year)}>
+              <div 
+                className={`flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 ${selected?.includes(year) ? 'bg-gray-50' : ''}`}
+                onClick={() => {
+                  toggleYear(year);
+                  if (yearPeriod) {
+                    onSelect(yearPeriod);
+                    setIsOpen(false);
+                  }
+                }}
+              >
                 <ChevronRight size={14} className={`text-gray-400 mr-1.5 transition-transform ${expandedYears[year] ? 'rotate-90' : ''}`} />
                 <CalendarDays size={14} className="text-gray-500 mr-2" />
                 <span className="font-medium text-gray-700">{year}</span>
               </div>
-              {expandedYears[year] && Object.keys(tree[year]).map(quarter => (
+              {expandedYears[year] && Object.keys(tree[year]).map(quarter => {
+                const quarterPeriod = tree[year][quarter].find(p => p.startsWith('Quarter'));
+                return (
                 <div key={quarter}>
-                  <div className="flex items-center pl-8 pr-3 py-1.5 hover:bg-gray-50 cursor-pointer" onClick={() => toggleQuarter(year, quarter)}>
+                  <div 
+                    className={`flex items-center pl-8 pr-3 py-1.5 hover:bg-blue-50 cursor-pointer ${selected === quarterPeriod ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}
+                    onClick={() => {
+                      toggleQuarter(year, quarter);
+                      if (quarterPeriod) {
+                        onSelect(quarterPeriod);
+                        setIsOpen(false);
+                      }
+                    }}
+                  >
                     <ChevronRight size={14} className={`text-gray-400 mr-1.5 transition-transform ${expandedQuarters[`${year}-${quarter}`] ? 'rotate-90' : ''}`} />
                     <CalendarDays size={14} className="text-gray-400 mr-2" />
                     <span className="text-gray-600 text-xs">{quarter === 'Q1' ? 'Quarter 1' : quarter === 'Q2' ? 'Quarter 2' : quarter === 'Q3' ? 'Quarter 3' : 'Quarter 4'}</span>
@@ -298,16 +323,22 @@ const TimelineTreeDropdown = ({ selected, onSelect, space }) => {
                     <div
                       key={period}
                       className={`flex items-center pl-14 pr-3 py-1.5 hover:bg-blue-50 cursor-pointer text-sm ${selected === period ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
-                      onClick={() => { onSelect(period); setIsOpen(false); }}
+                      onClick={(e) => { 
+                        e.stopPropagation();
+                        onSelect(period); 
+                        setIsOpen(false); 
+                      }}
                     >
                       <CalendarDays size={14} className="text-gray-400 mr-2" />
                       <span>{period.includes('Month') ? period : period.replace(', 2025', '')}</span>
                     </div>
                   ))}
                 </div>
-              ))}
+                );
+              })}
             </div>
-          ))}
+            );
+          })}
           <div className="border-t border-gray-100 p-2 mt-1">
             <button className="text-blue-600 text-xs hover:underline w-full text-left px-2">Manage Timeline</button>
           </div>
@@ -445,9 +476,11 @@ const App = () => {
   const [confirmCloseTarget, setConfirmCloseTarget] = useState(null);
   const [titleDupTarget, setTitleDupTarget] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success'); // 'success', 'error', 'warning', 'info'
 
-  const triggerToast = (msg) => {
+  const triggerToast = (msg, type = 'success') => {
     setToastMessage(msg);
+    setToastType(type);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
@@ -538,7 +571,7 @@ const App = () => {
   const handleOpenSaveModal = () => {
     setIsTemplateDropdownOpen(false);
     if (tableData.length === 0) {
-      triggerToast('No OKR data to save. Please create OKR first.');
+      triggerToast('No OKR data to save. Please create OKR first.', 'error');
       return;
     }
     setIsSaveModalOpen(true);
@@ -598,7 +631,7 @@ const App = () => {
     triggerToast('Template saved successfully.');
     setActiveView('okr-template');
     } catch (err) {
-      triggerToast('An error occurred while saving. Please try again.');
+      triggerToast('An error occurred while saving. Please try again.', 'error');
     }
   };
 
@@ -627,9 +660,9 @@ const App = () => {
     setIsAddModalOpen(false);
     setConfirmCloseTarget(null);
     const t = templateList.find(x => x.id === selectedTemplateId);
-    if (!t) { triggerToast('Template no longer exists.'); setIsAddModalOpen(true); return; }
+    if (!t) { triggerToast('Template no longer exists.', 'error'); setIsAddModalOpen(true); return; }
     executeApplyToBoard(t ? t.tree : sampleTreeData, selectedPeriod, selectedSpace);
-    } catch (err) { triggerToast('Apply failed. Please try again.'); }
+    } catch (err) { triggerToast('Apply failed. Please try again.', 'error'); }
   };
 
   const executeApplyToBoard = (treeArray, targetPeriod, targetSpace) => {
@@ -689,11 +722,11 @@ const App = () => {
   const handleOpenTimelineSelection = () => setIsTimelineModalOpen(true);
   const handleConfirmUseTemplate = () => {
     if(!selectedSpaceForUse) {
-       triggerToast('Please select Space to continue.');
+       triggerToast('Please select Space to continue.', 'warning');
        return;
     }
     if(!selectedTimelineForUse) {
-       triggerToast('Please select Timeline to continue.');
+       triggerToast('Please select Timeline to continue.', 'warning');
        return;
     }
     executeApplyToBoard(viewTarget.tree, selectedTimelineForUse, selectedSpaceForUse);
@@ -914,7 +947,7 @@ const App = () => {
       URL.revokeObjectURL(url);
       triggerToast('Sample template downloaded.');
     } catch (err) {
-      triggerToast('Failed to download sample template.');
+      triggerToast('Failed to download sample template.', 'error');
     }
   };
 
@@ -1343,8 +1376,16 @@ const App = () => {
     <div className="flex h-screen w-full bg-white text-gray-800 font-sans overflow-hidden">
       
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-[100] bg-gray-800 text-white px-4 py-3 rounded shadow-lg flex items-center animate-bounce-in max-w-md">
-          <Check size={18} className="text-green-400 mr-2 shrink-0" />
+        <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded shadow-lg flex items-center animate-bounce-in max-w-md ${
+          toastType === 'success' ? 'bg-green-600 text-white' :
+          toastType === 'error' ? 'bg-red-600 text-white' :
+          toastType === 'warning' ? 'bg-amber-600 text-white' :
+          'bg-blue-600 text-white'
+        }`}>
+          {toastType === 'success' && <Check size={18} className="text-white mr-2 shrink-0" />}
+          {toastType === 'error' && <XCircle size={18} className="text-white mr-2 shrink-0" />}
+          {toastType === 'warning' && <AlertTriangle size={18} className="text-white mr-2 shrink-0" />}
+          {toastType === 'info' && <Info size={18} className="text-white mr-2 shrink-0" />}
           <span className="text-sm font-medium">{toastMessage}</span>
         </div>
       )}
