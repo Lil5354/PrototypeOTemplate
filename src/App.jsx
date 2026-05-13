@@ -1412,7 +1412,7 @@ const App = () => {
       {/* --- TIMELINE SELECTION POPUP CHO USE TEMPLATE --- */}
       {isTimelineModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-96 overflow-visible animate-fade-in flex flex-col">
+          <div className="bg-white rounded-lg shadow-xl w-[420px] overflow-visible animate-fade-in flex flex-col">
              <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
                 <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
                 <button onClick={() => setIsTimelineModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
@@ -1538,7 +1538,7 @@ const App = () => {
               </div>
               <div className="flex space-x-3">
                  <button onClick={closeEditModal} className="px-4 py-2 border border-gray-300 rounded text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Cancel</button>
-                 <button onClick={handleSaveTemplateChanges} className="px-4 py-2 bg-blue-600 rounded text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm flex items-center"><Save size={16} className="mr-2"/> Save Template</button>
+                 <button onClick={handleSaveTemplateChanges} className="px-4 py-2 bg-blue-600 rounded text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm flex items-center"><Save size={16} className="mr-2"/> Save</button>
               </div>
             </div>
 
@@ -1703,7 +1703,7 @@ const App = () => {
       {/* ================================================================================================== */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-[1000px] h-[85vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -1739,7 +1739,10 @@ const App = () => {
                         </button>
                         <p className="text-gray-400 text-xs mt-3">.json only</p>
                       </div>
-                      <div className="mt-3 mx-auto">
+                      <div className="mt-4 flex justify-center">
+                        <button onClick={downloadSampleTemplate} className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-md transition font-medium">
+                          <Download size={14} /> Download Sample Template
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1983,6 +1986,31 @@ const App = () => {
                         <span className="text-lg font-bold text-red-700">{mockImportParsedTree.stats.error}</span>
                       </div>
                     </div>
+
+                    <div className="mt-5">
+                      <h4 className="text-sm font-bold text-gray-800 mb-3">Field Selection Summary</h4>
+                      <div className="space-y-2">
+                        <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                          <span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({importSelectedFields.length}):</span>
+                          <div className="flex flex-wrap gap-1">
+                            {importSelectedFields.map(fId => {
+                              const f = availableFields.find(x => x.id === fId);
+                              return f ? <span key={f.id} className="px-1.5 py-0.5 bg-white border border-green-200 rounded text-[10px] text-green-700 shadow-sm">{f.label}</span> : null;
+                            })}
+                          </div>
+                        </div>
+                        {importSelectedFields.length < availableFields.length && (
+                          <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                            <span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields using default values ({availableFields.length - importSelectedFields.length}):</span>
+                            <div className="flex flex-wrap gap-1">
+                              {availableFields.filter(f => !importSelectedFields.includes(f.id)).map(f => (
+                                <span key={f.id} className="px-1.5 py-0.5 bg-white border border-orange-200 rounded text-[10px] text-orange-600 shadow-sm">{f.label}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Right Column (OKR Tree Preview) */}
@@ -2063,7 +2091,7 @@ const App = () => {
       {/* ================================================================================================== */}
       {isExportModalOpen && (
         <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-[1000px] h-[85vh] flex flex-col overflow-hidden animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50 shrink-0">
               <div>
@@ -2322,6 +2350,25 @@ ${exportSelectedFields.includes('progress_percent') ? `\n    // - selected field
                         <span className="text-sm font-semibold text-green-700">Fields Mapped</span>
                         <span className="text-lg font-bold text-green-700">{exportSelectedFields.length} <span className="text-xs text-green-500 font-normal">/ {availableFields.length}</span></span>
                       </div>
+                      <div className="p-2 mt-3 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                        <span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({exportSelectedFields.length}):</span>
+                        <div className="flex flex-wrap gap-1">
+                          {exportSelectedFields.map(fId => {
+                            const f = availableFields.find(x => x.id === fId);
+                            return f ? <span key={f.id} className="px-1.5 py-0.5 bg-white border border-green-200 rounded text-[10px] text-green-700 shadow-sm">{f.label}</span> : null;
+                          })}
+                        </div>
+                      </div>
+                      {exportSelectedFields.length < availableFields.length && (
+                        <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                          <span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields not selected ({availableFields.length - exportSelectedFields.length}):</span>
+                          <div className="flex flex-wrap gap-1">
+                            {availableFields.filter(f => !exportSelectedFields.includes(f.id)).map(f => (
+                              <span key={f.id} className="px-1.5 py-0.5 bg-white border border-orange-200 rounded text-[10px] text-orange-600 shadow-sm">{f.label}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="text-xs text-gray-500 mt-4 p-3 bg-blue-50/50 rounded border border-blue-100 leading-relaxed text-center">
                         All selected templates will be consolidated into <strong className="text-gray-700">1 single JSON file</strong>. You can reuse this file via the Import function.
                       </div>
@@ -2426,8 +2473,9 @@ ${exportSelectedTemplates.map(tId => {
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-[#1e3a8a]">Add Template</h2>
-                <div className="text-xs text-gray-700 mt-1 flex items-center">
-                  Applying to: <span className="font-bold text-blue-700 ml-1 bg-blue-100/50 border border-blue-200 px-2 py-0.5 rounded">{selectedYear} / Space: {selectedSpace}</span>
+                <div className="text-xs text-gray-700 mt-1">
+                  <div className="flex items-center mb-0.5"><span className="text-gray-500 w-14">Space:</span><span className="font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2 py-0.5 rounded">{selectedSpace}</span></div>
+                  <div className="flex items-center"><span className="text-gray-500 w-14">Timeline:</span><span className="font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2 py-0.5 rounded">{selectedPeriod}</span></div>
                 </div>
               </div>
               <button onClick={() => handleCloseAttempt('add')} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-200">
@@ -2563,12 +2611,14 @@ ${exportSelectedTemplates.map(tId => {
                     <div className="mt-4 pt-3 border-t border-gray-200 shrink-0">
                       <p className="text-sm text-gray-600 leading-relaxed space-y-2">
                         <span className="font-semibold text-green-600 flex items-center mb-1"><Check size={16} className="mr-1"/> Fields selected:</span>
-                        <span className="inline-flex flex-wrap gap-1">[{availableFields.filter(f => addSelectedFields.includes(f.id)).map(f => <strong key={f.id} className="text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 text-xs">{f.label}</strong>)}]</span>
+                        <span className="inline-flex flex-wrap gap-1">{availableFields.filter(f => addSelectedFields.includes(f.id)).map(f => <strong key={f.id} className="text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 text-xs">{f.label}</strong>)}</span>
                       </p>
+                      {addSelectedFields.length < availableFields.length && (
                       <p className="text-sm text-gray-600 leading-relaxed mt-2">
                         <span className="font-semibold text-orange-600 flex items-center mb-1"><AlertTriangle size={16} className="mr-1"/> Fields not selected (will use defaults):</span>
-                        <span className="inline-flex flex-wrap gap-1">[{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <strong key={f.id} className="text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200 text-xs">{f.label}</strong>)}]</span>
+                        <span className="inline-flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <strong key={f.id} className="text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200 text-xs">{f.label}</strong>)}</span>
                       </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2594,7 +2644,8 @@ ${exportSelectedTemplates.map(tId => {
                     <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-2">
                       <div className="bg-blue-50/50 p-3 rounded-md border border-blue-100">
                         <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context (Apply to)</span>
-                        <div className="text-sm font-bold text-[#1e3a8a]">{selectedPeriod} — Space: {selectedSpace}</div>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {selectedSpace}</div>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {selectedPeriod}</div>
                       </div>
                       <div>
                         <span className="text-xs text-gray-500 block mb-1">Template Selected</span>
@@ -2802,7 +2853,7 @@ ${exportSelectedTemplates.map(tId => {
               <div className="flex space-x-3 ml-auto">
                 <button onClick={() => handleCloseAttempt('save')} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
                 {saveStep > 1 && (<button onClick={() => setSaveStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition">Back</button>)}
-                {saveStep < 3 ? (<button onClick={handleNextSaveStep} className="px-4 py-2 bg-[#2563eb] text-white rounded-md text-sm font-medium hover:bg-blue-700 transition shadow-sm">Continue</button>) : (<button onClick={handleSaveFinal} className="px-6 py-2 bg-[#16a34a] text-white rounded-md text-sm font-bold hover:bg-green-700 transition shadow-sm flex items-center">Save Template</button>)}
+                {saveStep < 3 ? (<button onClick={handleNextSaveStep} className="px-4 py-2 bg-[#2563eb] text-white rounded-md text-sm font-medium hover:bg-blue-700 transition shadow-sm">Continue</button>) : (<button onClick={handleSaveFinal} className="px-6 py-2 bg-[#16a34a] text-white rounded-md text-sm font-bold hover:bg-green-700 transition shadow-sm flex items-center">Save</button>)}
               </div>
             </div>
           </div>
@@ -2858,10 +2909,14 @@ ${exportSelectedTemplates.map(tId => {
               <span>XCORP</span><ChevronRight size={12} className="mx-1" /><span>XPERC</span><ChevronRight size={12} className="mx-1" /><span>OKR BOARD</span><ChevronRight size={12} className="mx-1" />
               <span className="font-semibold text-gray-800">{activeView === 'okr-template' ? 'OKR TEMPLATES' : 'OKR'}</span>
             </div>
-            <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-blue-700 transition">CREATE</button>
-            <button className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center hover:bg-indigo-700 transition">
-              <PlayCircle size={14} className="mr-1.5" /> AI OBJECTIVE
-            </button>
+            {activeView !== 'okr-template' && (
+              <>
+                <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-blue-700 transition">CREATE</button>
+                <button className="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center hover:bg-indigo-700 transition">
+                  <PlayCircle size={14} className="mr-1.5" /> AI OBJECTIVE
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center space-x-4 text-gray-600">
