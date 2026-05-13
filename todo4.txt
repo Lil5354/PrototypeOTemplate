@@ -1,0 +1,10 @@
+Tại giao diện Edit OKR Template, View OKR Template và trong luồng Import file JSON, khi người dùng dùng nút "+" để select thêm field hiển thị, các cột mới được thêm vào khiến dữ liệu bị lệch cột — giá trị ở các hàng body không khớp đúng với tiêu đề cột tương ứng ở header.
+Yêu cầu sửa:
+
+Xác định nguyên nhân lệch cột xảy ra cụ thể khi thêm field động qua nút "+": kiểm tra xem danh sách cột được render ở header và danh sách cột được render ở từng hàng body có đang dùng cùng một source of truth (cùng một mảng columns) hay không — nếu không đồng bộ thì đây là nguyên nhân chính.
+Đảm bảo khi người dùng thêm hoặc bỏ field, thứ tự và số lượng cột ở header và ở body luôn được cập nhật từ cùng một state/config — không để header và body render từ hai nguồn dữ liệu khác nhau.
+Nếu dùng flexbox hoặc CSS grid để dựng layout bảng: đảm bảo grid-template-columns hoặc flex sizing được tính toán và áp dụng đồng nhất cho cả hàng header lẫn hàng data, kể cả sau khi thêm cột mới.
+Nếu cột có thể ẩn/hiện động: logic ẩn/hiện phải áp dụng đồng thời cho cả ô header lẫn toàn bộ ô body của cột đó — không để một bên ẩn còn bên kia vẫn chiếm không gian.
+Kiểm tra các cột có nội dung dài hoặc wrap text — đảm bảo chiều cao hàng không vỡ layout làm đẩy lệch alignment giữa header và data.
+Trong luồng Import JSON: kiểm tra từng step hiển thị preview dữ liệu — đảm bảo mapping key → column là chính xác và không bị shift thứ tự khi danh sách field thay đổi.
+Kiểm tra lại sau khi thêm nhiều field liên tiếp, xóa bớt rồi thêm lại — đảm bảo không có trường hợp cột bị desync giữa header và body.

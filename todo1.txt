@@ -1,0 +1,13 @@
+Thêm detail node khi bấm vào title ở giao diện cây OKR trong Save as / Add / Override 
+Note: title của node đó thường nằm ở cột tên Node
+
+Mô tả lỗi:
+Khi bấm vào title của một node trong OKR tree ở các chức năng Save as, Add, Override — không có phản hồi gì xảy ra. Người dùng kỳ vọng sẽ có popup hiện ra để xem và chỉnh sửa thông tin chi tiết của node đó.
+
+Yêu cầu sửa:
+1. Tại các component OKR tree dùng trong modal/dialog Save as, Add, Override — thêm sự kiện onClick vào phần hiển thị title (tên) của từng node.
+2. Khi người dùng click vào title của bất kỳ node nào trong cây OKR đó, hiển thị popup "Detail Node".
+3. Giao diện và logic của popup Detail Node tham chiếu theo đúng component đang dùng trong chức năng View / Edit OKR Template (lấy lại form, layout, field hiển thị từ đó).
+4. Popup cần hỗ trợ chế độ Edit: người dùng có thể sửa thông tin của node ngay trong popup.
+5. Đảm bảo sau khi edit và lưu trong popup, dữ liệu được cập nhật lại đúng vào node tương ứng trong cây OKR.
+6. Kiểm tra sự kiện click không bị conflict với các sự kiện expand/collapse của node cây (nếu có).

@@ -1,0 +1,14 @@
+Sửa lỗi giao diện Import OKR Step 1 bị lệch trái/phải và tràn khung trước và sau khi load file
+
+Mô tả lỗi:
+Tại bước 1 (Step 1) của luồng Import OKR:
+- Trước khi load file: layout bên trái và bên phải bị lệch nhau theo chiều ngang.
+- Sau khi load file lên: tình trạng lệch vẫn xảy ra hoặc trở nên rõ hơn, đồng thời phần nội dung phía dưới bị tràn ra ngoài khung hiển thị (overflow ra ngoài container).
+
+Yêu cầu sửa:
+1. Kiểm tra layout tổng thể của Step 1 — thường là dạng 2 cột (trái/phải). Đảm bảo cả 2 cột dùng cùng một hệ thống layout (flexbox hoặc grid) và align-items được set đúng (ví dụ: align-items: flex-start để cả hai cột bắt đầu từ trên xuống).
+2. Trước khi load file: đảm bảo cả 2 phần (trái và phải) có chiều cao tối thiểu hoặc cùng anchor điểm bắt đầu — không để một bên bị đẩy xuống do margin/padding lạ.
+3. Sau khi load file: nội dung được render thêm vào không được vượt quá chiều cao container. Thêm overflow: hidden hoặc overflow-y: auto cho container tương ứng nếu nội dung có thể dài.
+4. Kiểm tra xem container cha có chiều cao cố định không — nếu có, đảm bảo các phần tử con không dùng height: 100% mà lại bị tràn.
+5. Nếu dùng thư viện UI (Row/Col của Ant Design, Grid của MUI,...): kiểm tra prop gutter, align, justify có phù hợp không.
+6. Test lại cả 2 trạng thái (trước và sau khi chọn file) trên nhiều kích thước màn hình khác nhau để đảm bảo layout ổn định.
