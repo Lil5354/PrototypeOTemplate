@@ -210,11 +210,11 @@ const OKRTreePreview = ({
   const objId = treeData.objective?.id || 'obj-root';
 
   const treeContent = (
-    <div className="flex flex-col h-full">
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1.5 px-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
-          <div className="shrink-0" style={{ width: '140px', paddingLeft: '2px' }}>Node</div>
-          <div className="flex items-center gap-1.5 ml-1">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
+        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+          <div className="shrink-0" style={{ width: '130px', paddingLeft: '2px' }}>Node</div>
+          <div className="flex items-center gap-1 ml-1">
             {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
               <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
             ))}
@@ -223,7 +223,7 @@ const OKRTreePreview = ({
             {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
             {maximizable && (
               <button onClick={() => setMaximized(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                {maximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
               </button>
             )}
           </div>
@@ -235,19 +235,19 @@ const OKRTreePreview = ({
           </div>
         </div>
       </div>
-      {showDisclaimer && <div className="text-[10px] text-gray-400 italic mt-1 px-1">Note: OKR tree này mang tính minh họa.</div>}
+      {showDisclaimer && <div className="text-[10px] text-gray-400 italic mt-0.5 px-1 shrink-0">OKR preview mang tính minh họa.</div>}
     </div>
   );
 
   if (maximized) {
     return (
       <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
-        <div className="bg-white rounded-xl shadow-2xl w-[90vw] h-[90vh] flex flex-col overflow-hidden relative">
-          <div className="absolute top-3 right-3 z-20">
-            <button onClick={() => setMaximized(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
-              <X size={18} />
-            </button>
-          </div>
+          <div className="bg-white rounded-xl shadow-2xl w-[80vw] h-[80vh] flex flex-col overflow-hidden relative">
+            <div className="absolute top-3 right-3 z-20">
+              <button onClick={() => setMaximized(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
+                <X size={18} />
+              </button>
+            </div>
           <div className="flex-1 p-4 pt-12 overflow-hidden">
             {treeContent}
           </div>
@@ -1258,56 +1258,29 @@ const App = () => {
     );
 
     const treeContent = (
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1.5 px-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-          <div className="shrink-0" style={{ width: '140px', paddingLeft: '2px' }}>Node</div>
-          <div className="flex items-center gap-1.5 ml-1">
-            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
-            ))}
+      <div className="flex flex-col h-full min-h-0">
+        <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
+          <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+            <div className="shrink-0" style={{ width: '130px', paddingLeft: '2px' }}>Node</div>
+            <div className="flex items-center gap-1 ml-1">
+              {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+              ))}
+            </div>
+            <div className="ml-auto shrink-0 flex items-center gap-0.5">
+              {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+              {onMaximize && (
+                <button onClick={() => onMaximize(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                  {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
+              )}
+            </div>
           </div>
-          <div className="ml-auto shrink-0 flex items-center gap-0.5">
-            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-            {onMaximize && (
-              <button onClick={() => onMaximize(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                {maximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="divide-y divide-gray-50 overflow-auto">
-          <div className="min-w-[400px]">
-            {objVisible && (
-              <div className="flex items-center border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors">
-                <div className="flex items-center gap-1 shrink-0" style={{ width: '140px' }}>
-                  <button onClick={() => toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-                    <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                  </button>
-                  <Box size={11} className="text-blue-500 shrink-0" />
-                  <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-[11px] font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
-                </div>
-                <div className="flex items-center gap-1.5 ml-1">
-                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                    <div key={col.id} className={`${col.width} text-[10px] text-gray-500 text-center shrink-0`}>{renderValidationCell(treeData.objective, col.id)}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {!isCollapsed && visibleKRs.map(kr => (
-              <div key={kr.id} className="flex items-center border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '20px' }}>
-                <div className="flex items-center gap-1 shrink-0" style={{ width: '125px' }}>
-                  <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
-                  <div onClick={() => openNodeDetail(kr, 'view')} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
-                </div>
-                <div className="flex items-center gap-1.5 ml-1">
-                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                    <div key={col.id} className={`${col.width} text-[10px] text-gray-600 text-center shrink-0`}>{renderValidationCell(kr, col.id)}</div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            <div className="min-w-[400px]">{rows}</div>
           </div>
         </div>
+        <div className="text-[10px] text-gray-400 italic mt-0.5 px-1 shrink-0">OKR preview mang tính minh họa.</div>
       </div>
     );
 
@@ -1381,55 +1354,57 @@ const App = () => {
     const objId = treeData.objective?.id || 'val-root';
     const isCollapsed = importValidationCollapsed[objId];
 
-    return (
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-          <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
-          <div className="flex items-center gap-3 ml-2">
-            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-              <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
-            ))}
+    const treeContent = (
+      <div className="flex flex-col h-full min-h-0">
+        <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
+          <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+            <div className="shrink-0" style={{ width: '130px', paddingLeft: '2px' }}>Node</div>
+            <div className="flex items-center gap-1 ml-1">
+              {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+              ))}
+            </div>
+            <div className="ml-auto shrink-0 flex items-center gap-0.5">
+              {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
+              {onMaximize && (
+                <button onClick={() => onMaximize(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
+                  {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                </button>
+              )}
+            </div>
           </div>
-          <div className="ml-auto shrink-0 flex items-center gap-1">
-            {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-            {onMaximize && (
-              <button onClick={() => onMaximize(!maximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                {maximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="divide-y divide-gray-50 overflow-auto">
-          <div className="min-w-[500px]">
-            {objVisible && (
-              <div className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors">
-                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '180px' }}>
-                  <button onClick={() => toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-                    <ChevronRight size={12} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                  </button>
-                  <Box size={13} className="text-blue-500 shrink-0" />
-                  <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-xs font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            <div className="min-w-[400px]">
+              {objVisible && (
+                <div className="flex items-center border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors">
+                  <div className="flex items-center gap-1 shrink-0" style={{ width: '130px' }}>
+                    <button onClick={() => toggleCollapse(objId)} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                      <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+                    </button>
+                    <Box size={11} className="text-blue-500 shrink-0" />
+                    <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-[11px] font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
+                  </div>
+                  <div className="flex items-center gap-1 ml-1">
+                    {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                      <div key={col.id} className={`${col.width} text-[10px] text-gray-500 text-center shrink-0`}>{renderValidationCell(treeData.objective, col.id)}</div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 ml-2">
-                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                    <div key={col.id} className={`${col.width} text-[11px] text-gray-500 text-center shrink-0`}>{renderValidationCell(treeData.objective, col.id)}</div>
-                  ))}
+              )}
+              {!isCollapsed && visibleKRs.map(kr => (
+                <div key={kr.id} className="flex items-center border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '16px' }}>
+                  <div className="flex items-center gap-1 shrink-0" style={{ width: '115px' }}>
+                    <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
+                    <div onClick={() => openNodeDetail(kr, 'view')} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
+                  </div>
+                  <div className="flex items-center gap-1 ml-1">
+                    {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+                      <div key={col.id} className={`${col.width} text-[10px] text-gray-600 text-center shrink-0`}>{renderValidationCell(kr, col.id)}</div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {!isCollapsed && visibleKRs.map(kr => (
-              <div key={kr.id} className="flex items-center border-b border-gray-100 py-2 px-3 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '28px' }}>
-                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '160px' }}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                  <div onClick={() => openNodeDetail(kr, 'view')} className={`text-xs font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
-                </div>
-                <div className="flex items-center gap-3 ml-2">
-                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                    <div key={col.id} className={`${col.width} text-[11px] text-gray-600 text-center shrink-0`}>{renderValidationCell(kr, col.id)}</div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1438,7 +1413,7 @@ const App = () => {
     if (maximized) {
       return (
         <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
-          <div className="bg-white rounded-xl shadow-2xl w-[90vw] h-[90vh] flex flex-col overflow-hidden relative">
+          <div className="bg-white rounded-xl shadow-2xl w-[80vw] h-[80vh] flex flex-col overflow-hidden relative">
             <div className="absolute top-3 right-3 z-20">
               <button onClick={() => onMaximize(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
                 <X size={18} />
