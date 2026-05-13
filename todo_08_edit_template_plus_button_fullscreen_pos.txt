@@ -1,0 +1,45 @@
+===================================================================
+TODO 08 - Edit OKR Template: Dấu "+" chưa có chức năng
+          & Nút Full Screen chưa bám sát rìa trái
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại:
+    a) Trong giao diện Edit OKR Template, dấu "+" không có chức năng
+       gì (không mở dropdown/panel để thêm field hiển thị).
+    b) Nút Full Screen (button) không bám sát rìa trái của khung
+       khi độ dài khung thay đổi - nút bị trôi theo nội dung.
+  - Mong muốn:
+    a) Dấu "+" trong Edit OKR Template phải có đầy đủ chức năng
+       thêm field hiển thị (giống như ở View OKR Template).
+    b) Nút Full Screen luôn bám sát rìa trái của khung, bất kể
+       độ rộng khung thay đổi.
+
+-------------------------------------------------------------------
+8a - Chức năng dấu "+" trong Edit OKR Template
+-------------------------------------------------------------------
+HƯỚNG XỬ LÝ:
+  Bước 1: Tham khảo implementation dấu "+" ở View OKR Template.
+  Bước 2: Copy/reuse component dropdown chọn field đó vào
+           Edit OKR Template, gắn vào onClick của dấu "+".
+  Bước 3: Đảm bảo state selectedFields được quản lý đúng trong
+           context của Edit Template.
+  Bước 4: Test chọn field mới trong Edit Template → cột mới hiện ra.
+
+-------------------------------------------------------------------
+8b - Vị trí nút Full Screen bám sát rìa trái
+-------------------------------------------------------------------
+HƯỚNG XỬ LÝ:
+  Bước 1: Xác định CSS hiện tại của nút Full Screen trong Edit Template.
+  Bước 2: Để nút bám sát rìa trái: đặt container toolbar dùng
+           display: flex; justify-content: flex-start; hoặc
+           đặt nút có position: sticky; left: 0;
+  Bước 3: Đảm bảo khi khung co/giãn, nút vẫn ở rìa trái.
+  Bước 4: Test resize khung → kiểm tra nút không bị dịch chuyển.
+
+RECHECK:
+  [ ] Bấm "+" trong Edit OKR Template → dropdown/panel chọn field hiện ra
+  [ ] Chọn field trong Edit Template → cột mới xuất hiện đúng
+  [ ] Nút Full Screen luôn bám sát rìa trái dù khung rộng hay hẹp
+  [ ] Test resize khung nhiều lần → nút không bị lệch
+===================================================================

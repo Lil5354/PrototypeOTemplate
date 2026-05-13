@@ -1,0 +1,31 @@
+===================================================================
+TODO 01 - Thêm Detail Node khi bấm vào Title trong Save as / Add / Override
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại: Khi bấm vào title của một node trong OKR Tree
+    ở các giao diện Save as / Add / Override, KHÔNG có phản ứng gì.
+  - Mong muốn: Bấm vào title của bất kỳ node nào trong OKR Tree
+    (Save as / Add / Override) → Popup ra giao diện Detail Node,
+    cho phép chỉnh sửa (edit) thông tin node đó.
+  - Tham khảo: Giao diện Detail Node đang hoạt động ở View / Edit OKR Template.
+
+HƯỚNG XỬ LÝ (STEP BY STEP):
+  Bước 1: Xác định component hiển thị OKR Tree trong
+           Save as / Add / Override (vd: OKRTreeModal, SaveAsModal...).
+  Bước 2: Tham khảo code giao diện Detail Node đang dùng ở
+           chức năng View / Edit OKR Template.
+  Bước 3: Gắn sự kiện onClick lên phần render title của mỗi node
+           trong OKR Tree ở các modal trên.
+  Bước 4: Khi onClick → mở popup Detail Node (tái sử dụng component
+           detail đã có), truyền data của node đó vào.
+  Bước 5: Trong popup Detail Node → cho phép edit các field cần thiết.
+  Bước 6: Lưu lại thay đổi khi user confirm / submit trong popup.
+  Bước 7: Test trên cả 3 giao diện: Save as, Add, Override.
+
+RECHECK:
+  [ ] Bấm title node trong Save as → popup Detail Node hiện ra, cho edit
+  [ ] Bấm title node trong Add → popup Detail Node hiện ra, cho edit
+  [ ] Bấm title node trong Override → popup Detail Node hiện ra, cho edit
+  [ ] Lưu thay đổi thành công sau khi edit trong popup
+===================================================================

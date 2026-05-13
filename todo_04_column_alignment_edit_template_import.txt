@@ -1,0 +1,30 @@
+===================================================================
+TODO 04 - Data không thẳng cột ở giao diện Edit OKR Template & Import JSON
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại: Ở giao diện Edit OKR Template và các bước Import
+    file JSON, các ô data bị lệch cột, không thẳng hàng với header.
+  - Mong muốn: Data và header phải thẳng cột, căn chỉnh đều nhau
+    trên cả giao diện Edit Template lẫn các step Import JSON.
+
+HƯỚNG XỬ LÝ (STEP BY STEP):
+  Bước 1: Xác định table/grid component dùng trong Edit OKR Template
+           và các bước Import JSON.
+  Bước 2: Kiểm tra định nghĩa width của từng cột (header vs body).
+           Nguyên nhân thường: header và row dùng khác nhau về
+           width, padding, box-sizing, hoặc scrollbar làm lệch.
+  Bước 3: Đảm bảo header và data rows dùng cùng column width định nghĩa
+           (nếu dùng table: không mix fixed/auto; nếu dùng flexbox/grid:
+           cùng flex-basis hoặc grid-template-columns).
+  Bước 4: Kiểm tra padding/margin của header cell vs data cell → thống nhất.
+  Bước 5: Nếu có scrollbar dọc, dùng kỹ thuật "scrollbar gutter"
+           để tránh header bị lệch so với body.
+  Bước 6: Test với nhiều loại data (dài/ngắn) để đảm bảo không lệch.
+
+RECHECK:
+  [ ] Header và data thẳng cột trong Edit OKR Template
+  [ ] Header và data thẳng cột trong các step Import JSON
+  [ ] Không lệch khi data dài hoặc ngắn
+  [ ] Không lệch khi có scrollbar dọc
+===================================================================
