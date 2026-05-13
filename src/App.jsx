@@ -10,6 +10,169 @@ import {
 } from 'lucide-react';
 
 // --- COMPONENTS ---
+// 0. Disclaimer Note Component
+const DisclaimerNote = () => {
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 mt-4">
+      <AlertCircle size={14} className="shrink-0 mt-0.5 text-amber-600" />
+      <p className="text-xs text-amber-700">
+        <strong>Lưu ý:</strong> OKR tree này chỉ mang tính chất minh họa, trong thực tế sẽ sử dụng giao diện gốc sẵn có của hệ thống XCORP.
+      </p>
+    </div>
+  );
+};
+
+// 0.1 OKR Tree Preview Component (Reusable)
+const OKRTreePreview = ({ 
+  treeData, 
+  selectedFields = [], 
+  showNameColumn = true,
+  onNodeClick = null,
+  showDisclaimer = true 
+}) => {
+  const getFieldValue = (node, fieldId) => {
+    // Nếu field không được chọn, trả về giá trị default
+    if (!selectedFields.includes(fieldId)) {
+      const defaults = {
+        'description': 'Default description',
+        'user': 'Unassigned',
+        'team': 'Default Team',
+        'metric': 'Default Metric',
+        'progress_percent': '0%',
+        'group': 'Default Group'
+      };
+      return defaults[fieldId] || '-';
+    }
+    
+    // Trả về giá trị thực tế
+    const fieldMap = {
+      'description': node.description,
+      'user': node.assign || node.user,
+      'team': node.team,
+      'metric': node.metric,
+      'progress_percent': node.progress,
+      'group': node.group
+    };
+    
+    return fieldMap[fieldId] || '-';
+  };
+
+  const renderNode = (node, level = 0) => {
+    const isObjective = node.type === 'objective';
+    const hasWarning = node.status === 'warning';
+    const hasError = node.status === 'error';
+    
+    return (
+      <div 
+        key={node.id} 
+        className={`flex items-center border-b border-gray-100 py-2.5 px-4 hover:bg-blue-50/30 transition-colors ${hasWarning ? 'bg-amber-50/40' : hasError ? 'bg-red-50/40' : ''}`}
+        style={{ paddingLeft: `${16 + level * 24}px` }}
+      >
+        {/* Icon */}
+        <div className="w-8 flex items-center justify-center shrink-0">
+          {isObjective ? (
+            <Box size={14} className="text-blue-500" />
+          ) : (
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+          )}
+        </div>
+
+        {/* Name Column - Conditionally rendered */}
+        {showNameColumn && (
+          <div className="w-64 px-2">
+            <div 
+              onClick={() => onNodeClick && onNodeClick(node)}
+              className={`text-sm font-medium truncate ${onNodeClick ? 'cursor-pointer hover:underline' : ''} ${isObjective ? 'text-blue-600' : 'text-gray-700'}`}
+            >
+              {node.name}
+            </div>
+            {node.warnMsg && <p className="text-xs text-amber-600 italic truncate mt-0.5">{node.warnMsg}</p>}
+            {node.errorMsg && <p className="text-xs text-red-600 italic truncate mt-0.5">{node.errorMsg}</p>}
+          </div>
+        )}
+
+        {/* User */}
+        <div className="w-32 px-2 text-xs text-gray-600 truncate">
+          {getFieldValue(node, 'user')}
+        </div>
+
+        {/* Metric */}
+        <div className="w-28 px-2 text-center">
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${selectedFields.includes('metric') ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 italic'}`}>
+            {getFieldValue(node, 'metric')}
+          </span>
+        </div>
+
+        {/* Agg */}
+        <div className="w-20 px-2 text-center">
+          <span className="px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-600 font-medium">
+            {node.agg || 'SUM'}
+          </span>
+        </div>
+
+        {/* Team */}
+        <div className="w-32 px-2 text-xs text-gray-600 truncate">
+          {getFieldValue(node, 'team')}
+        </div>
+
+        {/* Progress */}
+        <div className="w-24 px-2 text-center">
+          {selectedFields.includes('progress_percent') ? (
+            <div className="flex items-center justify-center gap-1">
+              <div className="w-12 bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                <div className="bg-green-500 h-full" style={{ width: getFieldValue(node, 'progress_percent') }}></div>
+              </div>
+              <span className="text-xs text-green-600 font-medium">{getFieldValue(node, 'progress_percent')}</span>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400 italic">0%</span>
+          )}
+        </div>
+
+        {/* Timeline */}
+        <div className="w-28 px-2 text-xs text-gray-600 truncate text-center">
+          {node.timeline || '-'}
+        </div>
+
+        {/* Status */}
+        <div className="w-16 text-center">
+          {node.status === 'valid' && <CheckCircle2 size={16} className="inline text-green-600" />}
+          {node.status === 'warning' && <AlertTriangle size={16} className="inline text-amber-600" />}
+          {node.status === 'error' && <XOctagon size={16} className="inline text-red-600" />}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2.5 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+          <div className="w-8"></div>
+          {showNameColumn && <div className="w-64 px-2">OKR Name</div>}
+          <div className="w-32 px-2">User</div>
+          <div className="w-28 px-2 text-center">Metric</div>
+          <div className="w-20 px-2 text-center">Agg</div>
+          <div className="w-32 px-2">Team</div>
+          <div className="w-24 px-2 text-center">Progress</div>
+          <div className="w-28 px-2 text-center">Timeline</div>
+          <div className="w-16 text-center">Status</div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {treeData.objective && renderNode(treeData.objective, 0)}
+          {treeData.krs && treeData.krs.map(kr => renderNode(kr, 1))}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      {showDisclaimer && <DisclaimerNote />}
+    </div>
+  );
+};
+
 // 1. Stepper Component
 const Stepper = ({ currentStep }) => {
   const steps = [
@@ -549,19 +712,102 @@ const App = () => {
     closeNodeDetail();
   };
 
-  const handleEditTreeAction = (action, objIndex, krIndex = null) => {
+  const handleEditTreeAction = (action, objIndex, krIndex = null, path = null) => {
     let newTree = [...editTreeData];
+    
     if (action === 'add-obj') {
       newTree.push({
-        id: `O-NEW-${Date.now()}`, type: 'objective', name: 'New Objective', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM',
-        children: [{ id: `KR-NEW-${Date.now()}`, type: 'kr', name: 'New Key Result', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', progress: '0%', timeline: '' }]
+        id: `O-NEW-${Date.now()}`, 
+        type: 'objective', 
+        name: 'New Objective', 
+        description: '', 
+        user: '', 
+        group: '', 
+        team: '', 
+        metric: '', 
+        agg: 'SUM',
+        level: 1,
+        children: [{ 
+          id: `KR-NEW-${Date.now()}`, 
+          type: 'kr', 
+          name: 'New Key Result', 
+          description: '', 
+          user: '', 
+          group: '', 
+          team: '', 
+          metric: '', 
+          agg: 'SUM', 
+          progress: '0%', 
+          timeline: '',
+          level: 2,
+          children: []
+        }]
       });
       setEditTreeData(newTree);
     }
     else if (action === 'add-kr') {
-      newTree[objIndex].children.push({ id: `KR-NEW-${Date.now()}`, type: 'kr', name: 'New Key Result', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', progress: '0%', timeline: '' });
+      newTree[objIndex].children.push({ 
+        id: `KR-NEW-${Date.now()}`, 
+        type: 'kr', 
+        name: 'New Key Result', 
+        description: '', 
+        user: '', 
+        group: '', 
+        team: '', 
+        metric: '', 
+        agg: 'SUM', 
+        progress: '0%', 
+        timeline: '',
+        level: 2,
+        children: []
+      });
       setEditTreeData(newTree);
-    } 
+    }
+    else if (action === 'add-child') {
+      // Add child to nested node (support up to 4 levels)
+      if (!path || path.length === 0) return;
+      
+      let targetNode = newTree[path[0]];
+      for (let i = 1; i < path.length; i++) {
+        targetNode = targetNode.children[path[i]];
+      }
+      
+      // Calculate level from path:
+      // Path [0] = Level 1 (Objective)
+      // Path [0, 0] = Level 2 (KR)
+      // Path [0, 0, 0] = Level 3
+      // Path [0, 0, 0, 0] = Level 4
+      const currentNodeLevel = path.length;
+      const newChildLevel = currentNodeLevel + 1;
+      
+      // Validate max depth (4 levels) - only alert when trying to create level 5
+      if (newChildLevel > 4) {
+        alert('Maximum depth reached!');
+        return;
+      }
+      
+      if (!targetNode.children) {
+        targetNode.children = [];
+      }
+      
+      targetNode.children.push({
+        id: `NODE-NEW-${Date.now()}`,
+        type: 'kr',
+        name: `New Node Level ${newChildLevel}`,
+        description: '',
+        user: '',
+        group: '',
+        team: '',
+        metric: '',
+        agg: 'SUM',
+        progress: '0%',
+        timeline: '',
+        level: newChildLevel,
+        children: []
+      });
+      
+      setEditTreeData(newTree);
+    }
     else if (action === 'delete-obj') {
       if (newTree[objIndex].children && newTree[objIndex].children.length > 0) {
          if(!window.confirm(`Are you sure you want to delete this Objective and ${newTree[objIndex].children.length} child KRs?`)) return;
@@ -571,6 +817,19 @@ const App = () => {
     }
     else if (action === 'delete-kr') {
       newTree[objIndex].children.splice(krIndex, 1);
+      setEditTreeData(newTree);
+    }
+    else if (action === 'delete-node') {
+      // Delete nested node
+      if (!path || path.length < 2) return;
+      
+      let parentNode = newTree[path[0]];
+      for (let i = 1; i < path.length - 1; i++) {
+        parentNode = parentNode.children[path[i]];
+      }
+      
+      const nodeIndex = path[path.length - 1];
+      parentNode.children.splice(nodeIndex, 1);
       setEditTreeData(newTree);
     }
   };
@@ -1209,6 +1468,9 @@ const App = () => {
                       ))}
                     </div>
                   </div>
+                  <div className="px-5 pb-4">
+                    <DisclaimerNote />
+                  </div>
                 </div>
                
             </div>
@@ -1274,8 +1536,10 @@ const App = () => {
                       <ul className="text-xs text-blue-700 mt-1 space-y-1 list-disc ml-4">
                          <li>Hover any node to reveal action buttons (right).</li>
                          <li>Click <strong>"+"</strong> on Objective to add new Key Result.</li>
+                         <li>Click <strong>"+"</strong> on child nodes to create nested nodes (max 4 levels).</li>
                          <li>Click <strong>Edit</strong> icon to edit Node details.</li>
-                         <li>Click <strong>Delete</strong> icon to remove node (Warning: Deleting Objective also deletes child KRs).</li>
+                         <li>Click <strong>Delete</strong> icon to remove node (Warning: Deleting parent also deletes all children).</li>
+                         <li><strong>Level indicator (L2, L3, L4)</strong> shows node depth in the tree.</li>
                       </ul>
                     </div>
                  </div>
@@ -1283,59 +1547,73 @@ const App = () => {
                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm min-h-[400px] overflow-x-auto">
                     <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 bg-gray-50/50">
                       <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
-                      <button onClick={() => handleEditTreeAction('add-obj')} className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-1 rounded hover:bg-blue-100 flex items-center shadow-sm">+ New Objective</button>
                     </div>
                     <div className="min-w-[900px]">
                       <div className="flex items-center border-b border-gray-200 bg-gray-50 py-2 px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
                         <div className="w-72">OKR</div><div className="w-28">User</div><div className="w-28">Team</div><div className="w-24">Metric</div><div className="w-20">Agg.Type</div><div className="w-20 text-center">Progress</div><div className="w-24 text-center">Actions</div>
                       </div>
                       <div className="divide-y divide-gray-100">
-                         {editTreeData.map((obj, oIdx) => (
-                           <div key={obj.id}>
-                             <div className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors relative">
-                               <div className="w-72 flex items-center gap-2">
-                                 <Box size={14} className="text-blue-500 shrink-0" />
-                                 <span onClick={() => openNodeDetail(obj, 'edit', [oIdx])} className="font-semibold text-[13px] text-blue-600 hover:underline cursor-pointer line-clamp-1">{obj.id} - {obj.name}</span>
-                               </div>
-                               <div className="w-28 text-[12px] text-gray-600">{obj.user || <span className="text-gray-300">-</span>}</div>
-                               <div className="w-28 text-[12px] text-gray-600">{obj.team || <span className="text-gray-300">-</span>}</div>
-                               <div className="w-24 text-[12px] text-gray-600">{obj.metric || <span className="text-gray-300">-</span>}</div>
-                               <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{obj.agg}</span></div>
-                               <div className="w-20 text-center text-[12px] text-gray-400">-</div>
-                               <div className="w-24 text-center flex items-center justify-center gap-1 opacity-100 transition-opacity">
-                                 <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', oIdx); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>
-                                 <button onClick={(e) => { e.stopPropagation(); openNodeDetail(obj, 'edit', [oIdx]); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
-                                 <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', oIdx); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
-                               </div>
-                             </div>
-                             {obj.children && obj.children.map((kr, kIdx) => (
-                               <div key={kr.id} className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors border-t border-gray-50" style={{ paddingLeft: '44px' }}>
-                                 <div className="w-72 flex items-center gap-2">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                                   <span onClick={() => openNodeDetail(kr, 'edit', [oIdx, kIdx])} className="text-[13px] text-gray-700 hover:text-blue-600 hover:underline cursor-pointer line-clamp-1">{kr.id} - {kr.name}</span>
+                         {editTreeData.map((obj, oIdx) => {
+                           const renderNode = (node, path, level = 1) => {
+                             const isObjective = level === 1;
+                             const canAddChild = level < 4; // Max 4 levels
+                             const paddingLeft = 16 + (level - 1) * 24;
+                             
+                             return (
+                               <React.Fragment key={node.id}>
+                                 <div className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors relative" style={{ paddingLeft: `${paddingLeft}px` }}>
+                                   <div className="w-72 flex items-center gap-2">
+                                     {isObjective ? (
+                                       <Box size={14} className="text-blue-500 shrink-0" />
+                                     ) : (
+                                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+                                     )}
+                                     <span onClick={() => openNodeDetail(node, 'edit', path)} className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] hover:underline cursor-pointer line-clamp-1`}>
+                                       {node.id} - {node.name}
+                                     </span>
+                                     {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded">L{level}</span>}
+                                   </div>
+                                   <div className="w-28 text-[12px] text-gray-600">{node.user || <span className="text-gray-300">-</span>}</div>
+                                   <div className="w-28 text-[12px] text-gray-600">{node.team || <span className="text-gray-300">-</span>}</div>
+                                   <div className="w-24 text-[12px] text-gray-600">{node.metric || <span className="text-gray-300">-</span>}</div>
+                                   <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg}</span></div>
+                                   <div className="w-20 text-center text-[12px]">{node.progress ? <span className="font-medium text-green-600">{node.progress}</span> : <span className="text-gray-400">-</span>}</div>
+                                   <div className="w-24 text-center flex items-center justify-center gap-1 opacity-100 transition-opacity">
+                                     {isObjective && (
+                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>
+                                     )}
+                                     {!isObjective && canAddChild && (
+                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>
+                                     )}
+                                     <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
+                                     {isObjective ? (
+                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
+                                     ) : level === 2 ? (
+                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
+                                     ) : (
+                                       <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>
+                                     )}
+                                   </div>
                                  </div>
-                                 <div className="w-28 text-[12px] text-gray-600">{kr.user || <span className="text-gray-300">-</span>}</div>
-                                 <div className="w-28 text-[12px] text-gray-600">{kr.team || <span className="text-gray-300">-</span>}</div>
-                                 <div className="w-24 text-[12px] text-gray-600">{kr.metric || <span className="text-gray-300">-</span>}</div>
-                                 <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{kr.agg}</span></div>
-                                 <div className="w-20 text-center text-[12px]"><span className="font-medium text-green-600">{kr.progress}</span></div>
-                                 <div className="w-24 text-center flex items-center justify-center gap-1 opacity-100 transition-opacity">
-                                   <button onClick={(e) => { e.stopPropagation(); openNodeDetail(kr, 'edit', [oIdx, kIdx]); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
-                                   <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', oIdx, kIdx); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
-                                 </div>
-                               </div>
-                             ))}
-                           </div>
-                         ))}
+                                 {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
+                               </React.Fragment>
+                             );
+                           };
+                           
+                           return renderNode(obj, [oIdx], 1);
+                         })}
                          
                          {editTreeData.length === 0 && (
                            <div className="py-10 text-center text-gray-400">
                               <FolderTree size={32} className="mx-auto mb-2 opacity-50" />
-                              <p className="text-sm font-medium">No Objectives yet</p>
-                              <p className="text-xs mt-1">Click "+ New Objective" to start building the tree.</p>
+                              <p className="text-sm font-medium">Chưa có Objectives</p>
+                              <p className="text-xs mt-1">Template này chưa có dữ liệu OKR tree.</p>
                            </div>
                          )}
                       </div>
+                    </div>
+                    <div className="px-5 pb-4">
+                      <DisclaimerNote />
                     </div>
                   </div>
               </div>
@@ -1601,12 +1879,12 @@ const App = () => {
                     </div>
                   </div>
 
-                  {/* Right Column (Preview) */}
+                  {/* Right Column (OKR Tree Preview) */}
                   <div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden">
-                    <div className="flex justify-between items-center mb-6 shrink-0">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
                       <div>
-                        <h3 className="text-base font-bold text-gray-800">Field Preview</h3>
-                        <p className="text-xs text-gray-500">Showing data from imported file</p>
+                        <h3 className="text-base font-bold text-gray-800">OKR Tree Preview</h3>
+                        <p className="text-xs text-gray-500">Real-time preview with selected fields</p>
                       </div>
                       <div className="flex gap-2 flex-wrap max-w-sm justify-end">
                         {importSelectedFields.slice(0, 3).map(f => (
@@ -1617,11 +1895,14 @@ const App = () => {
                         {importSelectedFields.length > 3 && <div className="text-xs text-gray-400 pt-1">+{importSelectedFields.length - 3}</div>}
                       </div>
                     </div>
-
-                    <h4 className="text-xs font-bold text-gray-400 mb-3 tracking-wide shrink-0">DATA TREE PREVIEW</h4>
                     
-                    <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 pb-10">
-                      {renderPreviewTree(true, importSelectedFields, false, mockImportParsedTree)}
+                    <div className="flex-1 overflow-hidden">
+                      <OKRTreePreview 
+                        treeData={mockImportParsedTree}
+                        selectedFields={importSelectedFields}
+                        showNameColumn={false}
+                        showDisclaimer={true}
+                      />
                     </div>
                   </div>
                 </div>
@@ -1663,21 +1944,25 @@ const App = () => {
                     </div>
                   </div>
 
-                  {/* Right Column */}
+                  {/* Right Column (OKR Tree Preview) */}
                   <div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden">
-                    <div className="flex justify-between items-center mb-6 shrink-0">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
                       <div>
-                        <h3 className="text-base font-bold text-gray-800">OKR Preview</h3>
+                        <h3 className="text-base font-bold text-gray-800">Final OKR Preview</h3>
                         <p className="text-xs text-gray-500">Validated items only - {mockImportParsedTree.stats.valid} of {mockImportParsedTree.stats.total} nodes</p>
-                        <p className="text-[11px] text-gray-400 italic mt-1">Note: OKR preview và node details chỉ mang tính minh họa, trong triển khai phải sử dụng giao diện OKR/Details của hệ thống gốc trên XCORP</p>
                       </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pb-10 custom-scrollbar pr-2">
-                      {renderPreviewTree(true, importSelectedFields, true, {
-                        ...mockImportParsedTree,
-                        krs: mockImportParsedTree.krs.filter(kr => kr.status !== 'error')
-                      })}
+                    <div className="flex-1 overflow-hidden">
+                      <OKRTreePreview 
+                        treeData={{
+                          ...mockImportParsedTree,
+                          krs: mockImportParsedTree.krs.filter(kr => kr.status !== 'error')
+                        }}
+                        selectedFields={importSelectedFields}
+                        showNameColumn={false}
+                        showDisclaimer={true}
+                      />
                     </div>
                   </div>
                 </div>
