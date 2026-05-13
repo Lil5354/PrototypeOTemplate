@@ -872,6 +872,11 @@ const App = () => {
   const toggleViewTreeColumn = (colId) => {
     setViewTreeVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
   };
+  
+  const toggleImportTreeColumn = (colId) => {
+    setImportTreeVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
+  };
+  
   const closeViewModal = () => {
     setViewTarget(null);
     setNodeDetailConfig({ isOpen: false, mode: 'view', data: null, path: [] });
