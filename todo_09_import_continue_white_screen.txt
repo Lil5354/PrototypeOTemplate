@@ -1,0 +1,32 @@
+===================================================================
+TODO 09 - Màn hình trắng sau khi bấm Import Step 1 → Continue
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại: Sau khi upload file ở Import Step 1 và bấm "Continue",
+    màn hình bị trắng hoàn toàn (crash hoặc render lỗi ở Step 2).
+  - Mong muốn: Sau khi bấm Continue → chuyển sang Step 2 bình thường,
+    không crash, không màn hình trắng.
+
+HƯỚNG XỬ LÝ (STEP BY STEP):
+  Bước 1: Mở Browser DevTools (Console) → ghi lại lỗi xuất hiện
+           khi bấm Continue.
+  Bước 2: Kiểm tra component Step 2:
+           - Có đang dùng data từ Step 1 chưa được validate không?
+           - Có bị null/undefined reference không?
+  Bước 3: Thêm try-catch hoặc Error Boundary bao quanh Step 2
+           để bắt lỗi render, hiển thị error message thay vì màn hình trắng.
+  Bước 4: Kiểm tra logic chuyển step (state machine / router):
+           đảm bảo data được truyền đúng từ Step 1 sang Step 2.
+  Bước 5: Nếu dùng JSON.parse trên file upload → wrap trong try-catch,
+           hiển thị error message thay vì crash.
+  Bước 6: Kiểm tra API call (nếu có) khi Continue → xử lý error response
+           đúng cách, không để unhandled rejection gây crash.
+  Bước 7: Fix lỗi tìm được → test lại toàn bộ flow Import từ Step 1.
+
+RECHECK:
+  [ ] Upload file Step 1 → bấm Continue → Step 2 hiện ra bình thường
+  [ ] Không còn màn hình trắng
+  [ ] Lỗi được bắt và hiển thị thông báo rõ ràng nếu file sai định dạng
+  [ ] Test với nhiều loại file (đúng định dạng, sai định dạng, file rỗng)
+===================================================================

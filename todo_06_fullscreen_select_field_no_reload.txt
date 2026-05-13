@@ -1,0 +1,40 @@
+===================================================================
+TODO 06 - Trang giật/reload khi Select hoặc Unselect Field ở Full Screen OKR
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại: Ở trạng thái Full Screen OKR, mỗi lần select hoặc
+    unselect 1 field để thêm cột hiển thị → trang bị load lại
+    (giật về đầu trang). Bấm 1 lần = load lại 1 lần, rất bất tiện.
+  - Mong muốn:
+    + Khi select/unselect field → KHÔNG load lại trang, giữ nguyên
+      vị trí scroll hiện tại.
+    + Cho phép chọn nhiều field một lúc, data cập nhật realtime.
+    + Dropdown/group select không bị đóng lại sau mỗi lần chọn.
+    + Trang không bị reload lại dù chọn bao nhiêu field.
+
+HƯỚNG XỬ LÝ (STEP BY STEP):
+  Bước 1: Xác định event handler xử lý khi select/unselect field.
+  Bước 2: Kiểm tra xem có gọi window.location.reload() hoặc
+           router.push() / navigate() sau khi select không → xóa bỏ.
+  Bước 3: Nếu dùng URL query params để lưu trạng thái selected fields
+           → thay bằng local state (useState/useRef) hoặc dùng
+           history.replaceState để không trigger re-render toàn trang.
+  Bước 4: Lưu vị trí scroll trước khi update state:
+             const scrollY = window.scrollY;
+           Sau khi update state → window.scrollTo(0, scrollY).
+           Hoặc tốt hơn: dùng useLayoutEffect để restore scroll.
+  Bước 5: Implement "Apply" button hoặc debounce để batch update
+           nhiều field một lúc thay vì trigger ngay sau mỗi click.
+  Bước 6: Đảm bảo dropdown không tự đóng sau mỗi lần chọn
+           (dùng stopPropagation hoặc controlled open state).
+  Bước 7: Test chọn nhiều field liên tiếp, kiểm tra scroll không giật.
+
+RECHECK:
+  [ ] Select field → trang KHÔNG reload, vị trí scroll giữ nguyên
+  [ ] Unselect field → trang KHÔNG reload
+  [ ] Chọn nhiều field liên tiếp không bị giật
+  [ ] Dropdown không tự đóng sau mỗi lần chọn
+  [ ] Data cập nhật realtime sau khi chọn field
+  [ ] Group dropdown không bị reload lại khi chọn
+===================================================================

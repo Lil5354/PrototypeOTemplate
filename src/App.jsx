@@ -51,8 +51,8 @@ const ColumnToggle = ({ visibleColumns, onToggle }) => {
         <Plus size={16} />
       </button>
       {isOpen && (
-        <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1 w-40">
-          <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">Show Columns</div>
+        <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1 w-40 max-h-[260px] overflow-y-auto">
+          <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100 sticky top-0 bg-white z-10">Show Columns</div>
           {TREE_COLUMNS.map(col => (
             <label key={col.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs">
               <input
@@ -77,6 +77,7 @@ const ColumnToggle = ({ visibleColumns, onToggle }) => {
 const FullScreenWindow = ({ children, onClose }) => {
   const [container, setContainer] = useState(null);
   const stateRef = useRef({});
+  const scrollPosRef = useRef(0);
 
   useEffect(() => {
     const w = Math.round(window.screen.width * 0.7);
@@ -136,7 +137,20 @@ const FullScreenWindow = ({ children, onClose }) => {
 
   if (!container) return null;
 
-  return createPortal(children, container);
+  return createPortal(
+    <div onScroll={(e) => { scrollPosRef.current = e.target.scrollTop; }}>
+      {children}
+    </div>,
+    container
+  );
+
+  // Restore scroll position after re-renders
+  useEffect(() => {
+    const el = container?.querySelector?.('div');
+    if (el && scrollPosRef.current > 0) {
+      el.scrollTop = scrollPosRef.current;
+    }
+  });
 };
 
 // 0.2 OKR Tree Preview Component (Reusable)
@@ -282,10 +296,10 @@ const OKRTreePreview = ({
         <div className="flex-1 overflow-auto min-h-0 custom-scrollbar">
           <div className="min-w-[400px]">
             <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
-              <div className="shrink-0" style={{ width: '160px', paddingLeft: '2px' }}>Node</div>
+              <div className="shrink-0 bg-gray-50" style={{ width: '160px', paddingLeft: '2px' }}>Node</div>
               <div className="flex items-center gap-2 ml-1">
                 {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                  <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+                  <div key={col.id} className={`${col.width} text-center shrink-0 bg-gray-50`}>{col.label}</div>
                 ))}
               </div>
               <div className="ml-auto shrink-0 flex items-center gap-0.5">
@@ -649,6 +663,7 @@ const App = () => {
   // --- STATES FLOW C & FLOW C' ---
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
+  const [viewTreeMaximized, setViewTreeMaximized] = useState(false);
   const [viewTreeVisibleColumns, setViewTreeVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
   const [viewCollapsedObjs, setViewCollapsedObjs] = useState({});
   const [nodeDetailConfig, setNodeDetailConfig] = useState({ isOpen: false, mode: 'view', data: null, path: [] }); 
@@ -673,6 +688,7 @@ const App = () => {
   const [importFormErrors, setImportFormErrors] = useState({});
   const [importTreeVisibleColumns, setImportTreeVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
   const [importValidationVisibleColumns, setImportValidationVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
+  const [editTreeVisibleColumns, setEditTreeVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
   const fileInputRef = useRef(null);
 
   // --- STATES FLOW E ---
@@ -876,6 +892,10 @@ const App = () => {
   const toggleImportTreeColumn = (colId) => {
     setImportTreeVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
   };
+
+  const toggleEditTreeColumn = (colId) => {
+    setEditTreeVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
+  };
   
   const closeViewModal = () => {
     setViewTarget(null);
@@ -883,12 +903,12 @@ const App = () => {
     setViewCollapsedObjs({});
   };
   
-  const openNodeDetail = (nodeData, mode, path = []) => {
+  const openNodeDetail = (nodeData, mode, path = [], onSave = null) => {
     setEditingNodeData({...nodeData});
-    setNodeDetailConfig({ isOpen: true, mode, data: nodeData, path });
+    setNodeDetailConfig({ isOpen: true, mode, data: nodeData, path, onSave });
   };
   const closeNodeDetail = () => {
-    setNodeDetailConfig({ isOpen: false, mode: 'view', data: null, path: [] });
+    setNodeDetailConfig({ isOpen: false, mode: 'view', data: null, path: [], onSave: null });
     setEditingNodeData(null);
   };
 
@@ -1041,6 +1061,11 @@ const App = () => {
   };
 
   const handleSaveNodeDetails = () => {
+    if (nodeDetailConfig.onSave) {
+      nodeDetailConfig.onSave(editingNodeData, nodeDetailConfig.path);
+      closeNodeDetail();
+      return;
+    }
     const newTree = [...editTreeData];
     const path = nodeDetailConfig.path; 
     if (path.length === 1) newTree[path[0]] = {...newTree[path[0]], ...editingNodeData};
@@ -1206,6 +1231,21 @@ const App = () => {
     setConfirmCloseTarget(null);
   };
 
+  // Helper: create onSave callback for preview trees
+  const makePreviewSave = (treeData) => (nodeData, path) => {
+    if (treeData.objective) {
+      if (path.length === 0 || path[0] === treeData.objective.id) {
+        treeData.objective = {...treeData.objective, ...nodeData};
+      }
+    }
+    if (treeData.krs) {
+      treeData.krs = treeData.krs.map(kr => 
+        kr.id === nodeData.id ? {...kr, ...nodeData} : kr
+      );
+    }
+    triggerToast('Node changes saved (preview).');
+  };
+
   // --- RENDER HELPERS: PREVIEW CÂY (COMPACT COLLAPSIBLE) ---
   const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
     const toggleCollapse = (id) => setPreviewCollapsed(prev => ({...prev, [id]: !prev[id]}));
@@ -1263,7 +1303,7 @@ const App = () => {
             <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
           </button>
           <Box size={11} className="text-blue-500 shrink-0" />
-          <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-[11px] font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective?.name}</div>
+          <div onClick={() => openNodeDetail(treeData.objective, 'edit', [], makePreviewSave(treeData))} className="text-[11px] font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective?.name}</div>
         </div>
         <div className="flex items-center gap-1.5 ml-1">
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1279,7 +1319,7 @@ const App = () => {
           <div key={kr.id} className="flex items-center border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors">
             <div className="flex items-center gap-1 shrink-0" style={{ width: '140px', paddingLeft: '14px' }}>
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
-              <div onClick={() => openNodeDetail(kr, 'view')} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.name}</div>
+              <div onClick={() => openNodeDetail(kr, 'edit', [], makePreviewSave(treeData))} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.name}</div>
             </div>
             <div className="flex items-center gap-1.5 ml-1">
               {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1296,10 +1336,10 @@ const App = () => {
         <div className="flex-1 overflow-auto min-h-0 custom-scrollbar">
           <div className="min-w-[500px]">
             <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
-              <div className="shrink-0" style={{ width: '140px', paddingLeft: '2px' }}>Node</div>
+              <div className="shrink-0 bg-gray-50" style={{ width: '140px', paddingLeft: '2px' }}>Node</div>
               <div className="flex items-center gap-1.5 ml-1">
                 {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                  <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+                  <div key={col.id} className={`${col.width} text-center shrink-0 bg-gray-50`}>{col.label}</div>
                 ))}
               </div>
               <div className="ml-auto shrink-0 flex items-center gap-0.5">
@@ -1384,7 +1424,7 @@ const App = () => {
       <div className="flex flex-col h-full min-h-0">
         <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
           <div className="flex items-center bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
-            <div className="shrink-0" style={{ width: '130px', paddingLeft: '2px' }}>Node</div>
+            <div className="shrink-0 bg-gray-50" style={{ width: '140px', paddingLeft: '2px' }}>Node</div>
             <div className="flex items-center gap-1 ml-1">
               {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
                 <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
@@ -1408,7 +1448,7 @@ const App = () => {
                       <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
                     </button>
                     <Box size={11} className="text-blue-500 shrink-0" />
-                    <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="text-[11px] font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
+                    <div onClick={() => openNodeDetail(treeData.objective, 'edit', [], makePreviewSave(treeData))} className="text-[11px] font-medium text-blue-600 truncate cursor-pointer hover:underline">{treeData.objective.id}: {treeData.objective.name}</div>
                   </div>
                   <div className="flex items-center gap-1 ml-1">
                     {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1421,7 +1461,7 @@ const App = () => {
                 <div key={kr.id} className="flex items-center border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors" style={{ paddingLeft: '16px' }}>
                   <div className="flex items-center gap-1 shrink-0" style={{ width: '115px' }}>
                     <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
-                    <div onClick={() => openNodeDetail(kr, 'view')} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
+                    <div onClick={() => openNodeDetail(kr, 'edit', [], makePreviewSave(treeData))} className={`text-[11px] font-medium truncate cursor-pointer hover:underline ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</div>
                   </div>
                   <div className="flex items-center gap-1 ml-1">
                     {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1438,18 +1478,9 @@ const App = () => {
 
     if (maximized) {
       return (
-        <div className="fixed inset-0 z-[90] bg-black/40 flex items-center justify-center p-6">
-          <div className="bg-white rounded-xl shadow-2xl w-[80vw] h-[80vh] flex flex-col overflow-hidden relative">
-            <div className="absolute top-3 right-3 z-20">
-              <button onClick={() => onMaximize(false)} className="p-2 bg-white border border-gray-200 rounded-full shadow-md hover:bg-gray-100 text-gray-600 transition-colors" title="Close">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex-1 p-4 pt-12 overflow-hidden">
-              {treeContent}
-            </div>
-          </div>
-        </div>
+        <FullScreenWindow onClose={() => onMaximize(false)}>
+          {treeContent}
+        </FullScreenWindow>
       );
     }
 
@@ -1752,14 +1783,17 @@ const App = () => {
                   <div className="overflow-x-auto">
                     <div className="min-w-[500px]">
                       <div className="flex items-center bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                        <div className="shrink-0" style={{ width: '180px', paddingLeft: '4px' }}>Node</div>
-                        <div className="flex items-center gap-3 ml-2">
+                        <div className="shrink-0 bg-gray-50" style={{ width: '140px', paddingLeft: '4px' }}>Node</div>
+                        <div className="flex items-center gap-1.5 ml-1">
                           {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
-                            <div key={col.id} className={`${col.width} text-center shrink-0`}>{col.label}</div>
+                            <div key={col.id} className={`${col.width} text-center shrink-0 bg-gray-50`}>{col.label}</div>
                           ))}
                         </div>
-                        <div className="ml-auto shrink-0">
+                        <div className="ml-auto shrink-0 flex items-center gap-0.5">
                           <ColumnToggle visibleColumns={viewTreeVisibleColumns} onToggle={toggleViewTreeColumn} />
+                          <button onClick={() => setViewTreeMaximized(!viewTreeMaximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={viewTreeMaximized ? 'Minimize' : 'Maximize'}>
+                            {viewTreeMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                          </button>
                         </div>
                       </div>
                       <div className="divide-y divide-gray-100">
@@ -1779,27 +1813,27 @@ const App = () => {
                           };
                           return (
                             <div key={obj.id}>
-                              <div className="flex items-center py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'view')}>
-                                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '180px' }}>
+                              <div className="flex items-center py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'edit')}>
+                                <div className="flex items-center gap-1.5 shrink-0" style={{ width: '140px' }}>
                                   <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
                                     <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
                                   </button>
                                   <Box size={13} className="text-blue-500 shrink-0" />
                                   <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
                                 </div>
-                                <div className="flex items-center gap-3 ml-2">
+                                <div className="flex items-center gap-1.5 ml-1">
                                   {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
                                     <div key={col.id} className={`${col.width} text-center shrink-0`}>{renderCell(obj, col.id, false)}</div>
                                   ))}
                                 </div>
                               </div>
                               {!objCollapsed && obj.children && obj.children.map(kr => (
-                                <div key={kr.id} className="flex items-center py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')} style={{ paddingLeft: '28px' }}>
-                                  <div className="flex items-center gap-1.5 shrink-0" style={{ width: '170px' }}>
+                                <div key={kr.id} className="flex items-center py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'edit', [], makePreviewSave(treeData))} style={{ paddingLeft: '28px' }}>
+                                  <div className="flex items-center gap-1.5 shrink-0" style={{ width: '130px' }}>
                                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
                                     <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
                                   </div>
-                                  <div className="flex items-center gap-3 ml-2">
+                                  <div className="flex items-center gap-1.5 ml-1">
                                     {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
                                       <div key={col.id} className={`${col.width} text-center shrink-0`}>{renderCell(kr, col.id, true)}</div>
                                     ))}
@@ -1887,13 +1921,23 @@ const App = () => {
                     </div>
                  </div>
 
-                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm min-h-[400px] overflow-x-auto">
-                    <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 bg-gray-50/50">
+                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
+                    <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
                       <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
                     </div>
+                    <div className="overflow-x-auto flex-1 min-h-0">
                     <div className="min-w-[900px]">
-                      <div className="flex items-center border-b border-gray-200 bg-gray-50 py-2 px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                        <div className="w-72">OKR</div><div className="w-28">User</div><div className="w-28">Team</div><div className="w-24">Metric</div><div className="w-20">Agg.Type</div><div className="w-20 text-center">Progress</div><div className="w-24 text-center">Actions</div>
+                      <div className="flex items-center border-b border-gray-200 bg-gray-50 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                        <div className="shrink-0 bg-gray-50" style={{ width: '288px', paddingLeft: '2px' }}>OKR</div>
+                        {editTreeVisibleColumns.includes('user') && <div className="w-28 text-center shrink-0 bg-gray-50">User</div>}
+                        {editTreeVisibleColumns.includes('team') && <div className="w-28 text-center shrink-0 bg-gray-50">Team</div>}
+                        {editTreeVisibleColumns.includes('metric') && <div className="w-24 text-center shrink-0 bg-gray-50">Metric</div>}
+                        {editTreeVisibleColumns.includes('agg') && <div className="w-20 text-center shrink-0 bg-gray-50">Agg.Type</div>}
+                        {editTreeVisibleColumns.includes('progress') && <div className="w-20 text-center shrink-0 bg-gray-50">Progress</div>}
+                        <div className="ml-auto shrink-0 flex items-center gap-0.5">
+                          <ColumnToggle visibleColumns={editTreeVisibleColumns} onToggle={toggleEditTreeColumn} />
+                        </div>
+                        <div className="w-24 text-center shrink-0">Actions</div>
                       </div>
                       <div className="divide-y divide-gray-100">
                          {editTreeData.map((obj, oIdx) => {
@@ -1937,6 +1981,7 @@ const App = () => {
                            </div>
                          )}
                       </div>
+                    </div>
                     </div>
                     <div className="px-5 pb-4">
                       <DisclaimerNote />
@@ -2003,11 +2048,11 @@ const App = () => {
             <Stepper currentStep={importStep} />
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto bg-slate-50">
+            <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
               
               {/* STEP 1: UPLOAD & REVIEW */}
               {importStep === 1 && (
-                <div className="p-6 h-full flex flex-col">
+                <div className="p-6 flex-1 min-h-0 overflow-auto flex flex-col">
                   {importFileStatus === 'idle' && (
                     <div className="max-w-xl w-full mx-auto my-auto animate-fade-in flex flex-col justify-center h-full pb-10">
                       <div className="text-center mb-4 mt-6">
@@ -2127,7 +2172,7 @@ const App = () => {
                         </div>
 
                         {/* Right Column: Validation */}
-                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-[600px]">
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0">
                           <div className="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
                             <div>
                               <h3 className="text-sm font-bold text-gray-800">Validation Results</h3>
@@ -2157,9 +2202,9 @@ const App = () => {
 
               {/* STEP 2: SELECTION */}
               {importStep === 2 && (
-                <div className="flex h-full animate-fade-in">
+                <div className="flex flex-1 min-h-0 animate-fade-in">
                   {/* Left Column */}
-                  <div className="w-[45%] bg-white border-r border-gray-200 p-6 flex flex-col h-full overflow-y-auto custom-scrollbar">
+                  <div className="w-[45%] bg-white border-r border-gray-200 p-6 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
                     <h3 className="text-lg font-bold text-gray-800 mb-1">Field Selection</h3>
                     <p className="text-xs text-gray-500 mb-6">Uncheck to skip import — system default value will be used instead</p>
                     
@@ -2209,7 +2254,7 @@ const App = () => {
                   </div>
 
                   {/* Right Column (OKR Tree Preview) */}
-                  <div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden">
+                  <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden">
                     <div className="flex justify-between items-center mb-4 shrink-0">
                       <div>
                         <h3 className="text-base font-bold text-gray-800">OKR Tree Preview</h3>
@@ -2242,9 +2287,9 @@ const App = () => {
 
               {/* STEP 3: REVIEW */}
               {importStep === 3 && (
-                <div className="flex h-full animate-fade-in">
+                <div className="flex flex-1 min-h-0 animate-fade-in">
                   {/* Left Column */}
-                  <div className="w-[35%] bg-white border-r border-gray-200 p-6 flex flex-col h-full overflow-y-auto custom-scrollbar">
+                  <div className="w-[35%] bg-white border-r border-gray-200 p-6 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6 text-center">
                       <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-3 shadow-md">
                         <Check size={24} strokeWidth={3} />
@@ -2302,7 +2347,7 @@ const App = () => {
                   </div>
 
                   {/* Right Column (OKR Tree Preview) */}
-                  <div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden">
+                  <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden">
                     <div className="flex justify-between items-center mb-4 shrink-0">
                       <div>
                         <h3 className="text-base font-bold text-gray-800">Final OKR Preview</h3>
@@ -2670,7 +2715,7 @@ ${exportSelectedFields.includes('progress_percent') ? `\n    // - selected field
                             const t = templateList.find(x => x.id === tId);
                             if (!t) return null;
                             return (
-                              <div key={tId} onClick={() => { const previewNode = { id: t.id.toString(), name: t.title, description: t.desc, type: 'objective', user: t.creator, timeline: t.date }; openNodeDetail(previewNode, 'view'); }} className="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors">
+                              <div key={tId} onClick={() => { const previewNode = { id: t.id.toString(), name: t.title, description: t.desc, type: 'objective', user: t.creator, timeline: t.date }; openNodeDetail(previewNode, 'edit'); }} className="flex items-center gap-2 p-2 rounded border border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors">
                                 <FileText size={14} className="text-blue-500 shrink-0" />
                                 <span className="text-sm font-medium text-gray-700 hover:text-blue-600 hover:underline truncate">{t.title}</span>
                               </div>
@@ -3358,7 +3403,7 @@ ${exportSelectedTemplates.map(tId => {
                               {row.level === 3 && <Box size={14} className="mr-1.5 text-green-400 shrink-0 mt-0.5" />}
                               {row.level === 4 && <User size={14} className="mr-1.5 text-purple-500 shrink-0 mt-0.5" />}
                               <div className="flex flex-col">
-                                <span onClick={() => openNodeDetail({ ...row, id: row.id.toString(), description: row.subtitle, timeline: selectedPeriod, type: row.level === 0 ? 'objective' : 'kr', progress: row.progress, mName: row.mName, mKey: row.mKey, mUnit: row.mUnit }, 'view')}
+                                <span onClick={() => openNodeDetail({ ...row, id: row.id.toString(), description: row.subtitle, timeline: selectedPeriod, type: row.level === 0 ? 'objective' : 'kr', progress: row.progress, mName: row.mName, mKey: row.mKey, mUnit: row.mUnit }, 'edit')}
                                   className={`font-medium cursor-pointer hover:text-blue-600 hover:underline ${row.level === 0 ? 'text-blue-600' : 'text-gray-700'} line-clamp-1`}>{row.name}</span>
                                 {row.subtitle && <span className="text-[10px] text-gray-400 mt-0.5">{row.subtitle}</span>}
                               </div>

@@ -1,0 +1,96 @@
+{
+  "title": "Sample OKR Template",
+  "tree": [
+    {
+      "id": "O1",
+      "type": "objective",
+      "name": "Increase Enterprise Revenue to $10M",
+      "description": "Drive Q3 revenue growth focusing on Tier 1 clients",
+      "user": "Duc Le",
+      "group": "Sales",
+      "team": "Global Sales",
+      "metric": "Revenue",
+      "agg": "SUM",
+      "children": [
+        {
+          "id": "KR1.1",
+          "type": "kr",
+          "name": "Achieve $5M ARR in US Market",
+          "description": "Target top 100 Fortune companies",
+          "user": "Ngan Vu",
+          "group": "Sales",
+          "team": "US Sales",
+          "metric": "Revenue",
+          "agg": "SUM",
+          "progress": "75%",
+          "timeline": "Q3 2025"
+        },
+        {
+          "id": "KR1.2",
+          "type": "kr",
+          "name": "Close 50 Enterprise deals globally",
+          "description": "Avg deal size > $100k",
+          "user": "Duy Nguyen",
+          "group": "Sales",
+          "team": "Global Sales",
+          "metric": "Deals",
+          "agg": "COUNT",
+          "progress": "60%",
+          "timeline": "Q3 2025"
+        },
+        {
+          "id": "KR1.3",
+          "type": "kr",
+          "name": "Reduce enterprise churn rate to < 5%",
+          "description": "Proactive CS tracking",
+          "user": "Hoa Pham",
+          "group": "CS",
+          "team": "Retention",
+          "metric": "Churn",
+          "agg": "AVG",
+          "progress": "30%",
+          "timeline": "Q3 2025"
+        }
+      ]
+    },
+    {
+      "id": "O2",
+      "type": "objective",
+      "name": "Launch New V2 Platform Infrastructure",
+      "description": "Complete rebuild of core engine for 10x scalability",
+      "user": "Minh Nguyen",
+      "group": "Engineering",
+      "team": "Core Platform",
+      "metric": "Milestone",
+      "agg": "AVG",
+      "children": [
+        {
+          "id": "KR2.1",
+          "type": "kr",
+          "name": "Release Beta to 1000 users",
+          "description": "Ensure crash-free rate > 99%",
+          "user": "Dat Tran",
+          "group": "Product",
+          "team": "Alpha/Beta",
+          "metric": "Users",
+          "agg": "COUNT",
+          "progress": "100%",
+          "timeline": "Jul 2025"
+        },
+        {
+          "id": "KR2.2",
+          "type": "kr",
+          "name": "Achieve 99.99% system uptime",
+          "description": "Implement auto-scaling groups",
+          "user": "Huy Dinh",
+          "group": "Engineering",
+          "team": "DevOps",
+          "metric": "Uptime",
+          "agg": "AVG",
+          "progress": "99%",
+          "timeline": "Q3 2025"
+        }
+      ]
+    }
+  ]
+}

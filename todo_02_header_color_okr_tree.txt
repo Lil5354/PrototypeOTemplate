@@ -1,0 +1,30 @@
+===================================================================
+TODO 02 - Lỗi màu sắc Header OKR Tree khi thêm cột mới (nút +)
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại: Khi bấm nút "+" để thêm field hiển thị (thêm cột),
+    các cột header mới bị màu trắng hoặc highlight xám nhạt,
+    không đồng đều với các header cũ (màu xám toàn khung).
+  - Mong muốn: Tất cả header phải đồng đều màu xám toàn khung,
+    kể cả các cột được thêm sau. Chữ trong ô header vẫn nhìn rõ.
+
+HƯỚNG XỬ LÝ (STEP BY STEP):
+  Bước 1: Tìm component render header của OKR Tree table/grid.
+  Bước 2: Kiểm tra CSS/style đang được áp dụng cho header mặc định
+           (màu xám toàn khung - ví dụ: background-color: #XXXXXX).
+  Bước 3: Kiểm tra khi thêm column động (qua nút +), class/style
+           nào được gán cho header mới → thường bị thiếu class hoặc
+           bị override bởi style inline.
+  Bước 4: Đảm bảo tất cả header cell (cả cũ lẫn mới thêm) dùng
+           cùng 1 class CSS hoặc cùng style object.
+  Bước 5: Nếu dùng inline style, đồng bộ backgroundColor cho
+           tất cả header columns khi render.
+  Bước 6: Test thêm nhiều field → kiểm tra màu sắc đồng đều.
+
+RECHECK:
+  [ ] Header cột gốc màu xám toàn khung
+  [ ] Header cột mới thêm qua "+" cũng màu xám đồng đều
+  [ ] Chữ trong header vẫn nhìn rõ
+  [ ] Test thêm nhiều cột liên tiếp, màu không bị lệch
+===================================================================

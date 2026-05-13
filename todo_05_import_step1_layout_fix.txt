@@ -1,0 +1,36 @@
+===================================================================
+TODO 05 - Layout Import OKR Step 1 bị lệch và tràn ra ngoài khung
+===================================================================
+
+MÔ TẢ:
+  - Hiện tại: Giao diện Import OKR Step 1 (cả trước và sau khi
+    load file lên) bị lệch trái/phải, các phần tử trên/dưới không
+    căn thẳng nhau, và phần dưới bị tràn ra ngoài khung modal/container.
+  - Mong muốn: Layout Step 1 Import OKR gọn gàng, cân đối,
+    không lệch, không tràn ra ngoài khung (ở cả 2 trạng thái:
+    trước và sau khi upload file).
+
+HƯỚNG XỬ LÝ (STEP BY STEP):
+  Bước 1: Xác định component của Import OKR Step 1
+           (trước upload file và sau khi file được load lên).
+  Bước 2: Kiểm tra layout container: flex/grid/absolute positioning.
+  Bước 3: Tìm nguyên nhân lệch:
+           - Thường do các phần tử con có width cố định vượt quá
+             container (overflow không được xử lý).
+           - Hoặc dùng position: absolute sai offset.
+           - Hoặc padding/margin không nhất quán giữa 2 trạng thái
+             (trước và sau upload).
+  Bước 4: Thiết lập lại layout: đảm bảo container có
+           overflow: hidden hoặc auto; width: 100%;
+  Bước 5: Với phần tràn dưới: kiểm tra modal có max-height không,
+           thêm overflow-y: auto cho nội dung bên trong modal.
+  Bước 6: Đảm bảo layout nhất quán giữa 2 trạng thái (trước/sau upload).
+  Bước 7: Test resize window và test với file thực tế.
+
+RECHECK:
+  [ ] Layout Step 1 không lệch trái/phải (trước khi upload file)
+  [ ] Layout Step 1 không lệch trái/phải (sau khi upload file)
+  [ ] Phần dưới không tràn ra ngoài khung modal
+  [ ] Layout nhất quán giữa 2 trạng thái trước/sau upload
+  [ ] Test trên nhiều kích thước màn hình
+===================================================================
