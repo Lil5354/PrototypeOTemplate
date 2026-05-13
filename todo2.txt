@@ -1,12 +1,8 @@
-Sửa lỗi màu sắc header OKR tree khi thêm field hiển thị bằng nút +
+[ ] TASK 2: Tạo SỰ KIỆN CLICK BACKDROP (OVERLAY) ĐỂ tối ưu trải nghiệm người dùng
 
-Mô tả lỗi:
-Khi người dùng bấm nút "+" trong OKR tree để chọn thêm các cột/field hiển thị, phần header của các cột mới được thêm vào có màu nền trắng với highlight xám — không đồng nhất với màu của các header cột cũ (màu xám toàn khung).
+Vị trí: Vùng nền mờ phía sau các Modal popup
 
-Yêu cầu sửa:
-1. Tìm phần render header của các cột động (được thêm sau khi người dùng chọn thêm field qua nút +).
-2. Đảm bảo các cột mới được thêm vào áp dụng đúng class / style CSS giống với các cột header mặc định ban đầu (nền xám toàn khung, không có nền trắng).
-3. Nếu đang dùng class CSS: kiểm tra xem các cột mới có bị thiếu class header hay không, bổ sung đúng class.
-4. Nếu đang dùng inline style: đồng bộ lại backgroundColor, color cho tất cả các ô header — kể cả cột mới lẫn cột cũ.
-5. Mục tiêu cuối: toàn bộ hàng header có màu xám đồng đều, chỉ riêng chữ/text được select/highlight khi cần, không có ô header nào nền trắng.
-6. Kiểm tra lại sau khi thêm nhiều field liên tiếp để đảm bảo không tái phát lỗi.
+Vấn đề: Người dùng muốn cancel, hay out khỏi giao diện buộc phải bấm button rất bất tiện
+
+Cách khắc phục:
+- Thêm các sự kiện tương tự các nút cancel (bao gồm cả cảnh báo popup) khi người dùng click chuột vào các vùng mờ phía sau các popup

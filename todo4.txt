@@ -1,10 +1,17 @@
-Tại giao diện Edit OKR Template, View OKR Template và trong luồng Import file JSON, khi người dùng dùng nút "+" để select thêm field hiển thị, các cột mới được thêm vào khiến dữ liệu bị lệch cột — giá trị ở các hàng body không khớp đúng với tiêu đề cột tương ứng ở header.
-Yêu cầu sửa:
+[ ] TASK 4: ĐỒNG BỘ CẤU TRÚC LƯỚI (CSS GRID) VÀ PHỤC HỒI HIGHLIGHT CHO CỘT ĐỘNG
 
-Xác định nguyên nhân lệch cột xảy ra cụ thể khi thêm field động qua nút "+": kiểm tra xem danh sách cột được render ở header và danh sách cột được render ở từng hàng body có đang dùng cùng một source of truth (cùng một mảng columns) hay không — nếu không đồng bộ thì đây là nguyên nhân chính.
-Đảm bảo khi người dùng thêm hoặc bỏ field, thứ tự và số lượng cột ở header và ở body luôn được cập nhật từ cùng một state/config — không để header và body render từ hai nguồn dữ liệu khác nhau.
-Nếu dùng flexbox hoặc CSS grid để dựng layout bảng: đảm bảo grid-template-columns hoặc flex sizing được tính toán và áp dụng đồng nhất cho cả hàng header lẫn hàng data, kể cả sau khi thêm cột mới.
-Nếu cột có thể ẩn/hiện động: logic ẩn/hiện phải áp dụng đồng thời cho cả ô header lẫn toàn bộ ô body của cột đó — không để một bên ẩn còn bên kia vẫn chiếm không gian.
-Kiểm tra các cột có nội dung dài hoặc wrap text — đảm bảo chiều cao hàng không vỡ layout làm đẩy lệch alignment giữa header và data.
-Trong luồng Import JSON: kiểm tra từng step hiển thị preview dữ liệu — đảm bảo mapping key → column là chính xác và không bị shift thứ tự khi danh sách field thay đổi.
-Kiểm tra lại sau khi thêm nhiều field liên tiếp, xóa bớt rồi thêm lại — đảm bảo không có trường hợp cột bị desync giữa header và body.
+Vị trí: Bảng hiển thị OKR khi thao tác Thêm/Bớt các trường (Select Field), các field ở cuối và các field được select sau đó
+
+Vấn đề: Khi cột mới xuất hiện, do dữ liệu dài ngắn khác nhau, các ô bị lệch vỡ cấu trúc. Lớp màu nền (background) của các ô cũng đè lên và che mất màu highlight khi hover của hàng.
+
+Cách khắc phục:
+Tham khảo cấu trúc OKR tree có giao diện đúng khi select ví dụ cây okr tree ở step 1 chức năng import template (chỉ tham khảo cách xử lý dữ liệu khi select để tránh bị không đồng bộ cấu trúc)
+Chống lệch cột:
+- Ngừng sử dụng các flexbox độc lập cho từng hàng.
+- Áp dụng display: grid tại container bao ngoài cùng.
+- Tiếp theo, áp dụng display: contents; cho các thẻ bọc hàng (<div class="row">). Thuộc tính này sẽ hủy bỏ hộp bao ngoài, ném trực tiếp các thẻ <div class="cell"> vào tham gia chung một mạng lưới Grid duy nhất, giúp các ô gióng thẳng hàng 100% nhờ grid-template-columns.
+
+Phục hồi Highlight Hover:
+- Hủy bỏ màu nền cứng (background-color) trên các cell tĩnh.
+- Thay vào đó, thiết lập CSS pseudo-element .row:hover::after { position: absolute; inset: 0; background-color: rgba(x,x,x,0.1); pointer-events: none; } để tạo lớp phủ màu mờ bao trùm toàn bộ diện tích hàng.
+- Thuộc tính pointer-events: none là cốt lõi để không cản trở thao tác nhấp chuột của người dùng.

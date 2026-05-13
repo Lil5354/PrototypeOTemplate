@@ -1,0 +1,10 @@
+[ ] TASK 6: XỬ LÝ LỖI STATE MUTATION VÀ RENDER DỮ LIỆU ĐỘNG CỦA REACT TABLE
+
+Vị trí: Bảng hiển thị dữ liệu sau khi tick thêm Field ở chế độ Edit Template
+
+Vấn đề: Thêm field mới nhưng chỉ có Header xuất hiện, các hàng dưới bị trống hoặc dính cứng dữ liệu cũ.
+
+Cách khắc phục:
+- Tuyệt đối không thay đổi mảng columns bằng các hàm trực tiếp (.push()). Khi thêm cột, hãy khởi tạo mảng tham chiếu mới: setColumns([...prevColumns, newColumnObj]) để React Table / TanStack Table có thể phát hiện sự thay đổi thông qua useMemo và vẽ lại (re-render) dữ liệu Body.
+- Kiểm tra chuỗi định danh accessorKey của trường mới, đảm bảo khớp từng ký tự với thuộc tính trong Data JSON.
+- Xây dựng Fallback UI cho ô đó (ví dụ hiển thị -) nếu dữ liệu trong mảng trả về giá trị undefined để tránh sụp đổ giao diện.

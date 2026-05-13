@@ -1,0 +1,9 @@
+[ ] TASK 3: QUẢN LÝ SỰ KIỆN LAN TRUYỀN VÀ MỞ RỘNG VÙNG HIT-TARGET CHO NODE DETAILS
+
+Vị trí: Các danh sách dạng cây OKR Tree.
+
+Vấn đề: Phải trỏ chuột cực kỳ chính xác vào đoạn text Title mới mở được bảng Node Details.
+
+Cách khắc phục:
+- Đưa sự kiện onClick={() => openDetails()} ra cấp độ thẻ bọc toàn bộ hàng (Ví dụ <tr onClick={...}> hoặc <div className="okr-row" onClick={...}>).
+- BẮT BUỘC CHÚ Ý: Gắn hàm event.stopPropagation() vào TẤT CẢ các nút tương tác nhỏ nằm trên hàng đó (như nút [+], nút Edit, nút Delete, Checkbox). Nếu bỏ sót, việc bấm nút Delete sẽ vô tình kích hoạt luôn hành vi trượt bảng Details của hàng đó do Event Bubbling.
