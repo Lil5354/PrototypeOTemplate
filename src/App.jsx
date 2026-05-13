@@ -339,8 +339,8 @@ const Stepper = ({ currentStep }) => {
   ];
 
   return (
-    <div className="flex items-center justify-center w-full py-6 bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between w-[60%] max-w-2xl relative">
+    <div className="flex items-center justify-center w-full py-3 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between w-[50%] max-w-xl relative">
         {/* Background Lines */}
         <div className="absolute top-1/2 left-0 w-full h-[2px] bg-gray-200 -z-0 -translate-y-1/2"></div>
         <div 
@@ -664,6 +664,7 @@ const App = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
   const [viewTreeMaximized, setViewTreeMaximized] = useState(false);
+  const [editTreeMaximized, setEditTreeMaximized] = useState(false);
   const [viewTreeVisibleColumns, setViewTreeVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
   const [viewCollapsedObjs, setViewCollapsedObjs] = useState({});
   const [nodeDetailConfig, setNodeDetailConfig] = useState({ isOpen: false, mode: 'view', data: null, path: [] }); 
@@ -1744,9 +1745,9 @@ const App = () => {
 
       {/* --- C1: VIEW TEMPLATE MODAL --- */}
       {viewTarget && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-gray-500/75 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden relative">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden relative">
+            <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div className="flex items-center">
                 <div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center mr-3"><Eye size={18}/></div>
                 <div>
@@ -1862,10 +1863,10 @@ const App = () => {
 
       {/* --- C2: EDIT TEMPLATE MODAL --- */}
       {editTargetId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-gray-500/75 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden relative">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden relative">
             
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+            <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div className="flex items-center">
                 <div className="w-8 h-8 rounded bg-orange-100 text-orange-600 flex items-center justify-center mr-3"><Edit size={18}/></div>
                 <div>
@@ -1919,74 +1920,106 @@ const App = () => {
                          <li><strong>Level indicator (L2, L3, L4)</strong> shows node depth in the tree.</li>
                       </ul>
                     </div>
-                 </div>
+                  </div>
 
-                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
-                    <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
-                      <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
-                    </div>
-                    <div className="overflow-x-auto flex-1 min-h-0">
-                    <div className="min-w-[900px]">
-                      <div className="flex items-center border-b border-gray-200 bg-gray-50 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        <div className="shrink-0 bg-gray-50" style={{ width: '288px', paddingLeft: '2px' }}>OKR</div>
-                        {editTreeVisibleColumns.includes('user') && <div className="w-28 text-center shrink-0 bg-gray-50">User</div>}
-                        {editTreeVisibleColumns.includes('team') && <div className="w-28 text-center shrink-0 bg-gray-50">Team</div>}
-                        {editTreeVisibleColumns.includes('metric') && <div className="w-24 text-center shrink-0 bg-gray-50">Metric</div>}
-                        {editTreeVisibleColumns.includes('agg') && <div className="w-20 text-center shrink-0 bg-gray-50">Agg.Type</div>}
-                        {editTreeVisibleColumns.includes('progress') && <div className="w-20 text-center shrink-0 bg-gray-50">Progress</div>}
-                        <div className="ml-auto shrink-0 flex items-center gap-0.5">
+                   {(() => {
+                     const editTreeHeader = (
+                       <div className="flex items-center border-b border-gray-200 bg-gray-50 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
+                         <div className="shrink-0 bg-gray-50" style={{ width: '288px' }}>OKR</div>
+                         {editTreeVisibleColumns.includes('user') && <div className="w-28 text-center shrink-0 bg-gray-50">User</div>}
+                         {editTreeVisibleColumns.includes('team') && <div className="w-28 text-center shrink-0 bg-gray-50">Team</div>}
+                         {editTreeVisibleColumns.includes('metric') && <div className="w-24 text-center shrink-0 bg-gray-50">Metric</div>}
+                         {editTreeVisibleColumns.includes('agg') && <div className="w-20 text-center shrink-0 bg-gray-50">Agg.Type</div>}
+                         {editTreeVisibleColumns.includes('progress') && <div className="w-20 text-center shrink-0 bg-gray-50">Progress</div>}
+                         <div className="ml-auto shrink-0"></div>
+                         <div className="w-24 text-center shrink-0">Actions</div>
+                       </div>
+                     );
+                     const editTreeRows = (
+                       <div className="divide-y divide-gray-100">
+                          {editTreeData.map((obj, oIdx) => {
+                            const renderNode = (node, path, level = 1) => {
+                              const isObjective = level === 1;
+                              const canAddChild = level < 4;
+                              const paddingLeft = 16 + (level - 1) * 24;
+                              return (
+                                <React.Fragment key={node.id}>
+                                  <div className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors relative" style={{ paddingLeft: `${paddingLeft}px` }}>
+                                    <div className="w-72 flex items-center gap-2 shrink-0">
+                                      {isObjective ? <Box size={14} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
+                                      <span onClick={() => openNodeDetail(node, 'edit', path)} className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] hover:underline cursor-pointer line-clamp-1`}>{node.id} - {node.name}</span>
+                                      {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
+                                    </div>
+                                    {editTreeVisibleColumns.includes('user') && <div className="w-28 text-[12px] text-gray-600 text-center shrink-0 truncate">{node.user || '-'}</div>}
+                                    {editTreeVisibleColumns.includes('team') && <div className="w-28 text-[12px] text-gray-600 text-center shrink-0 truncate">{node.team || '-'}</div>}
+                                    {editTreeVisibleColumns.includes('metric') && <div className="w-24 text-[12px] text-gray-600 text-center shrink-0 truncate">{node.metric || '-'}</div>}
+                                    {editTreeVisibleColumns.includes('agg') && <div className="w-20 text-[12px] shrink-0"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg}</span></div>}
+                                    {editTreeVisibleColumns.includes('progress') && <div className="w-20 text-center text-[12px] shrink-0">{node.progress ? <span className="font-medium text-green-600">{node.progress}</span> : <span className="text-gray-400">-</span>}</div>}
+                                    <div className="ml-auto shrink-0"></div>
+                                    <div className="w-24 text-center flex items-center justify-center gap-1 shrink-0">
+                                      {isObjective && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
+                                      {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>}
+                                      <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
+                                      {isObjective ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
+                                        : level === 2 ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
+                                        : <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>}
+                                    </div>
+                                  </div>
+                                  {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
+                                </React.Fragment>
+                              );
+                            };
+                            return renderNode(obj, [oIdx], 1);
+                          })}
+                          {editTreeData.length === 0 && (
+                            <div className="py-10 text-center text-gray-400">
+                               <FolderTree size={32} className="mx-auto mb-2 opacity-50" />
+                               <p className="text-sm font-medium">Chưa có Objectives</p>
+                               <p className="text-xs mt-1">Template này chưa có dữ liệu OKR tree.</p>
+                            </div>
+                          )}
+                       </div>
+                     );
+                     return (
+                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
+                      <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
                           <ColumnToggle visibleColumns={editTreeVisibleColumns} onToggle={toggleEditTreeColumn} />
                         </div>
-                        <div className="w-24 text-center shrink-0">Actions</div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => handleEditTreeAction('add-obj')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 transition-colors" title="Add Objective">
+                            <Plus size={16} />
+                          </button>
+                          <button onClick={() => setEditTreeMaximized(!editTreeMaximized)} className="p-1.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={editTreeMaximized ? 'Minimize' : 'Maximize'}>
+                            {editTreeMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                          </button>
+                        </div>
                       </div>
-                      <div className="divide-y divide-gray-100">
-                         {editTreeData.map((obj, oIdx) => {
-                           const renderNode = (node, path, level = 1) => {
-                             const isObjective = level === 1;
-                             const canAddChild = level < 4;
-                             const paddingLeft = 16 + (level - 1) * 24;
-                             return (
-                               <React.Fragment key={node.id}>
-                                 <div className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors relative" style={{ paddingLeft: `${paddingLeft}px` }}>
-                                   <div className="w-72 flex items-center gap-2">
-                                     {isObjective ? <Box size={14} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
-                                     <span onClick={() => openNodeDetail(node, 'edit', path)} className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] hover:underline cursor-pointer line-clamp-1`}>{node.id} - {node.name}</span>
-                                     {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded">L{level}</span>}
-                                   </div>
-                                   <div className="w-28 text-[12px] text-gray-600">{node.user || '-'}</div>
-                                   <div className="w-28 text-[12px] text-gray-600">{node.team || '-'}</div>
-                                   <div className="w-24 text-[12px] text-gray-600">{node.metric || '-'}</div>
-                                   <div className="w-20 text-[12px]"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg}</span></div>
-                                   <div className="w-20 text-center text-[12px]">{node.progress ? <span className="font-medium text-green-600">{node.progress}</span> : <span className="text-gray-400">-</span>}</div>
-                                   <div className="w-24 text-center flex items-center justify-center gap-1">
-                                     {isObjective && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
-                                     {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>}
-                                     <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
-                                     {isObjective ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
-                                       : level === 2 ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
-                                       : <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>}
-                                   </div>
-                                 </div>
-                                 {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
-                               </React.Fragment>
-                             );
-                           };
-                           return renderNode(obj, [oIdx], 1);
-                         })}
-                         {editTreeData.length === 0 && (
-                           <div className="py-10 text-center text-gray-400">
-                              <FolderTree size={32} className="mx-auto mb-2 opacity-50" />
-                              <p className="text-sm font-medium">Chưa có Objectives</p>
-                              <p className="text-xs mt-1">Template này chưa có dữ liệu OKR tree.</p>
-                           </div>
-                         )}
+                      {editTreeMaximized ? (
+                        <FullScreenWindow onClose={() => setEditTreeMaximized(false)}>
+                          <div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>
+                            {editTreeHeader}
+                            <div className="min-w-[900px]">
+                              {editTreeRows}
+                            </div>
+                            <div className="text-[10px] text-gray-400 italic px-2 py-0.5 bg-gray-50/50 border-t border-gray-100">OKR preview và node details chỉ mang tính minh họa</div>
+                          </div>
+                        </FullScreenWindow>
+                      ) : (
+                        <div className="overflow-x-auto flex-1 min-h-0">
+                          {editTreeHeader}
+                          <div className="min-w-[900px]">
+                            {editTreeRows}
+                          </div>
+                        </div>
+                      )}
+                      <div className="px-5 pb-4">
+                        <DisclaimerNote />
                       </div>
                     </div>
-                    </div>
-                    <div className="px-5 pb-4">
-                      <DisclaimerNote />
-                    </div>
-                  </div>
+                     );
+                   })()}
               </div>
             </div>
 
@@ -2032,10 +2065,10 @@ const App = () => {
       {/* --- MODAL D: IMPORT JSON TEMPLATE FLOW --- */}
       {/* ================================================================================================== */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <UploadCloud size={20} className="text-[#3B5998]" /> Import Template
               </h2>
@@ -2131,34 +2164,34 @@ const App = () => {
                           </div>
                           
                           {/* Form */}
-                          <div className="bg-white border border-blue-200 rounded-lg p-4 shadow-sm relative">
-                            <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">Template Info</div>
-                            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Imported Template Information</h4>
-                            <div className="space-y-3">
+                          <div className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm relative">
+                            <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">Template Info</div>
+                            <h4 className="text-[10px] font-bold text-gray-700 uppercase tracking-wide mb-2">Imported Template Information</h4>
+                            <div className="space-y-2">
                               <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
-                                <input type="text" maxLength={120} value={importFormData.title} onChange={(e) => { setImportFormData({...importFormData, title: e.target.value}); if(e.target.value) setImportFormErrors({...importFormErrors, title: null}); }} placeholder="Ex: Q4 Global Product Launch" className={`w-full p-2 border ${importFormErrors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded text-sm focus:outline-none focus:ring-1`} />
-                                {importFormErrors.title && <p className="text-[10px] text-red-500 mt-1 flex items-center"><AlertCircle size={10} className="mr-1"/>{importFormErrors.title}</p>}
+                                <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Title <span className="text-red-500">*</span></label>
+                                <input type="text" maxLength={120} value={importFormData.title} onChange={(e) => { setImportFormData({...importFormData, title: e.target.value}); if(e.target.value) setImportFormErrors({...importFormErrors, title: null}); }} placeholder="Ex: Q4 Global Product Launch" className={`w-full p-1.5 border ${importFormErrors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded text-xs focus:outline-none focus:ring-1`} />
+                                {importFormErrors.title && <p className="text-[10px] text-red-500 mt-0.5 flex items-center"><AlertCircle size={10} className="mr-1"/>{importFormErrors.title}</p>}
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
-                                <textarea value={importFormData.desc} onChange={(e) => setImportFormData({...importFormData, desc: e.target.value})} placeholder="Leave empty to use default..." className="w-full p-2 border border-gray-300 rounded text-sm h-16 focus:outline-none focus:ring-1 focus:ring-blue-500 custom-scrollbar" />
+                                <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Description (Optional)</label>
+                                <textarea value={importFormData.desc} onChange={(e) => setImportFormData({...importFormData, desc: e.target.value})} placeholder="Leave empty to use default..." className="w-full p-1.5 border border-gray-300 rounded text-xs h-12 focus:outline-none focus:ring-1 focus:ring-blue-500 custom-scrollbar" />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Domain/Tags (Optional)</label>
-                                <input type="text" value={importFormData.tags} onChange={(e) => setImportFormData({...importFormData, tags: e.target.value})} placeholder="Separate by comma (,)" className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Domain/Tags (Optional)</label>
+                                <input type="text" value={importFormData.tags} onChange={(e) => setImportFormData({...importFormData, tags: e.target.value})} placeholder="Separate by comma (,)" className="w-full p-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
                               </div>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
-                              <p className="text-lg font-bold text-gray-800">{mockImportParsedTree.stats.total}</p>
-                              <p className="text-[10px] text-gray-500 mt-1">Total Nodes</p>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div className="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm">
+                              <p className="text-sm font-bold text-gray-800">{mockImportParsedTree.stats.total}</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">Total Nodes</p>
                             </div>
-                            <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
-                              <p className="text-lg font-bold text-gray-800">{mockImportParsedTree.stats.obj}</p>
-                              <p className="text-[10px] text-gray-500 mt-1">Objectives</p>
+                            <div className="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm">
+                              <p className="text-sm font-bold text-gray-800">{mockImportParsedTree.stats.obj}</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">Objectives</p>
                             </div>
                             <div className="bg-red-50 border border-red-100 rounded-lg p-2 text-center">
                               <p className="text-base font-bold text-red-600">{mockImportParsedTree.stats.error}</p>
@@ -2204,25 +2237,25 @@ const App = () => {
               {importStep === 2 && (
                 <div className="flex flex-1 min-h-0 animate-fade-in">
                   {/* Left Column */}
-                  <div className="w-[45%] bg-white border-r border-gray-200 p-6 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">Field Selection</h3>
-                    <p className="text-xs text-gray-500 mb-6">Uncheck to skip import — system default value will be used instead</p>
+                  <div className="w-[45%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                    <h3 className="text-base font-bold text-gray-800 mb-0.5">Field Selection</h3>
+                    <p className="text-[11px] text-gray-500 mb-3">Uncheck to skip import — system default will be used instead</p>
                     
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 mb-4 shrink-0">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2 shrink-0">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
                           checked={importSelectedFields.length === availableFields.length}
                           onChange={(e) => { 
                             if(e.target.checked) setImportSelectedFields(availableFields.map(f => f.id));
                             else setImportSelectedFields(['name']);
                           }}
                         />
-                        <span className="font-semibold text-sm text-gray-800">Select All Fields</span>
+                        <span className="font-semibold text-xs text-gray-800">Select All Fields</span>
                       </label>
-                      <span className="text-xs text-gray-500">{availableFields.length} fields · {importSelectedFields.length} selected</span>
+                      <span className="text-[10px] text-gray-500">{availableFields.length} fields · {importSelectedFields.length} selected</span>
                     </div>
 
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2 flex shrink-0">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-2 flex shrink-0">
                       <span className="w-[140px]">FIELD NAME</span>
                       <span>DESCRIPTION</span>
                     </div>
@@ -2231,7 +2264,7 @@ const App = () => {
                       {availableFields.map(field => {
                         const isChecked = importSelectedFields.includes(field.id);
                         return (
-                          <div key={field.id} className="py-4 px-2 border-b border-gray-100 flex gap-4 hover:bg-gray-50 transition">
+                          <div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50 transition">
                             <div className="w-[140px] flex items-start gap-2">
                               <input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 cursor-pointer" 
                                 checked={isChecked} disabled={field.locked} onChange={() => toggleImportField(field.id)} />
@@ -2279,6 +2312,7 @@ const App = () => {
                         visibleColumns={importTreeVisibleColumns}
                         onToggleColumn={toggleImportTreeColumn}
                         maximizable={true}
+                        onNodeClick={(node) => openNodeDetail(node, 'edit')}
                       />
                     </div>
                   </div>
@@ -2289,40 +2323,38 @@ const App = () => {
               {importStep === 3 && (
                 <div className="flex flex-1 min-h-0 animate-fade-in">
                   {/* Left Column */}
-                  <div className="w-[35%] bg-white border-r border-gray-200 p-6 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6 text-center">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-3 shadow-md">
-                        <Check size={24} strokeWidth={3} />
+                  <div className="w-[35%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3 text-center">
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-2 shadow-md">
+                        <Check size={20} strokeWidth={3} />
                       </div>
-                      <h3 className="text-lg font-bold text-gray-800 mb-1">Ready to Import</h3>
-                      <p className="text-sm text-gray-600">{mockImportParsedTree.stats.valid} of {mockImportParsedTree.stats.total} nodes will be imported</p>
+                      <h3 className="text-base font-bold text-gray-800 mb-0.5">Ready to Import</h3>
+                      <p className="text-xs text-gray-600">{mockImportParsedTree.stats.valid} of {mockImportParsedTree.stats.total} nodes will be imported</p>
                       {mockImportParsedTree.stats.error > 0 && (
-                        <p className="text-xs text-red-500 font-medium mt-1">{mockImportParsedTree.stats.error} nodes skipped due to errors.</p>
+                        <p className="text-[11px] text-red-500 font-medium mt-0.5">{mockImportParsedTree.stats.error} nodes skipped due to errors.</p>
                       )}
-                      <p className="text-[10px] text-gray-400 mt-3 truncate">{mockImportParsedTree.fileName}</p>
-                      <p className="text-[10px] text-gray-400">{mockImportParsedTree.size}</p>
                     </div>
 
-                    <h4 className="text-sm font-bold text-gray-800 mb-4">Import Summary</h4>
+                    <h4 className="text-xs font-bold text-gray-800 mb-2">Import Summary</h4>
                     
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 border-b border-gray-100">
-                        <span className="text-sm font-semibold text-gray-600">Total Nodes in File</span>
-                        <span className="text-lg font-bold text-gray-800">{mockImportParsedTree.stats.total}</span>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center p-2 border-b border-gray-100">
+                        <span className="text-xs font-semibold text-gray-600">Total Nodes in File</span>
+                        <span className="text-base font-bold text-gray-800">{mockImportParsedTree.stats.total}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100">
-                        <span className="text-sm font-semibold text-green-700">Nodes Ready</span>
-                        <span className="text-lg font-bold text-green-700">{mockImportParsedTree.stats.valid}</span>
+                      <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-100">
+                        <span className="text-xs font-semibold text-green-700">Nodes Ready</span>
+                        <span className="text-base font-bold text-green-700">{mockImportParsedTree.stats.valid}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
-                        <span className="text-sm font-semibold text-red-700">Nodes Skipped</span>
-                        <span className="text-lg font-bold text-red-700">{mockImportParsedTree.stats.error}</span>
+                      <div className="flex justify-between items-center p-2 bg-red-50 rounded-lg border border-red-100">
+                        <span className="text-xs font-semibold text-red-700">Nodes Skipped</span>
+                        <span className="text-base font-bold text-red-700">{mockImportParsedTree.stats.error}</span>
                       </div>
                     </div>
 
-                    <div className="mt-5">
-                      <h4 className="text-sm font-bold text-gray-800 mb-3">Field Selection Summary</h4>
-                      <div className="space-y-2">
+                    <div className="mt-3">
+                      <h4 className="text-xs font-bold text-gray-800 mb-2">Field Selection Summary</h4>
+                      <div className="space-y-1.5">
                         <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
                           <span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({importSelectedFields.length}):</span>
                           <div className="flex flex-wrap gap-1">
@@ -2367,6 +2399,7 @@ const App = () => {
                         visibleColumns={importTreeVisibleColumns}
                         onToggleColumn={toggleImportTreeColumn}
                         maximizable={true}
+                        onNodeClick={(node) => openNodeDetail(node, 'edit')}
                       />
                     </div>
                   </div>
@@ -2426,10 +2459,10 @@ const App = () => {
       {/* --- MODAL E: EXPORT JSON TEMPLATE FLOW --- */}
       {/* ================================================================================================== */}
       {isExportModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-fade-in">
+        <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-2">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden animate-fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50 shrink-0">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
               <div>
                 <h2 className="text-xl flex items-center gap-2 font-bold text-[#1e3a8a]">
                   <Download size={20} className="text-[#3B5998]" /> Export OKR Template
@@ -2803,8 +2836,8 @@ ${exportSelectedTemplates.map(tId => {
       {/* --- MODAL B: ADD TEMPLATE FLOW (APPLY) --- */}
       {/* ================================================================================================== */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-500/75 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
             
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div>
@@ -3088,7 +3121,7 @@ ${exportSelectedTemplates.map(tId => {
       {/* ================================================================================================== */}
       {isSaveModalOpen && (
         <div className="fixed inset-0 z-[40] flex items-center justify-center p-4 sm:p-6 bg-gray-500/75 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-[#1e3a8a]">Save as Template</h2>
@@ -3480,6 +3513,7 @@ ${exportSelectedTemplates.map(tId => {
         </div>
       </div>
       
+      {renderNodeDetailSidePanel()}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
