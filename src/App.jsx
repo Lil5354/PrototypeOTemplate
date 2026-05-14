@@ -734,6 +734,7 @@ const App = () => {
   const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
   const [selectedSpaceForUse, setSelectedSpaceForUse] = useState('Engineering');
   const [selectedTimelineForUse, setSelectedTimelineForUse] = useState('Quarter 3, 2025');
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
 
   const [editTargetId, setEditTargetId] = useState(null);
   const [editFormData, setEditFormData] = useState({ title: '', desc: '', tags: '' });
@@ -985,6 +986,7 @@ const App = () => {
        return;
     }
     executeApplyToBoard(viewTarget.tree, selectedTimelineForUse, selectedSpaceForUse);
+    setShowOverrideConfirm(false);
     setIsTimelineModalOpen(false);
     closeViewModal();
   };
@@ -1293,29 +1295,6 @@ const App = () => {
     setConfirmCloseTarget(null);
   };
 
-  const makePreviewSave = (treeData) => (nodeData, path) => {
-    if (Array.isArray(treeData)) {
-      treeData.forEach(obj => {
-        if (obj.id === nodeData.id) Object.assign(obj, nodeData);
-        (obj.children || []).forEach(kr => {
-          if (kr.id === nodeData.id) Object.assign(kr, nodeData);
-        });
-      });
-    } else {
-      if (treeData.objective) {
-        if (path.length === 0 || path[0] === treeData.objective.id) {
-          treeData.objective = {...treeData.objective, ...nodeData};
-        }
-      }
-      if (treeData.krs) {
-        treeData.krs = treeData.krs.map(kr => 
-          kr.id === nodeData.id ? {...kr, ...nodeData} : kr
-        );
-      }
-    }
-    triggerToast('Node changes saved (preview).');
-  };
-
   // --- RENDER HELPERS: PREVIEW CÂY (COMPACT COLLAPSIBLE) ---
   const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
     const gridCols = getGridTemplate(visibleColumns);
@@ -1377,7 +1356,7 @@ const App = () => {
       const isTopLevel = level === 1;
       const s = getStatus(node);
       rows.push(
-        <div key={nodeId} onClick={() => openNodeDetail(node, 'edit', [], makePreviewSave(treeData))} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer ${s === 'error' ? 'bg-red-50/40' : s === 'warning' ? 'bg-amber-50/40' : ''}`}
+        <div key={nodeId} onClick={() => openNodeDetail(node, 'view')} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer ${s === 'error' ? 'bg-red-50/40' : s === 'warning' ? 'bg-amber-50/40' : ''}`}
              style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
           <div className="flex items-center gap-1 truncate" style={{ paddingLeft: `${indent}px` }}>
             {isTopLevel && (
@@ -1513,7 +1492,7 @@ const App = () => {
           <div className="flex-1 overflow-auto custom-scrollbar">
             <div className="min-w-[400px]">
               {objVisible && (
-                <div onClick={() => openNodeDetail(treeData.objective, 'edit', [], makePreviewSave(treeData))} className="border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer"
                      style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
                   <div className="flex items-center gap-1 truncate">
                     <button onClick={(e) => { e.stopPropagation(); toggleCollapse(objId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
@@ -1528,7 +1507,7 @@ const App = () => {
                 </div>
               )}
               {!isCollapsed && visibleKRs.map(kr => (
-                <div onClick={() => openNodeDetail(kr, 'edit', [], makePreviewSave(treeData))} key={kr.id} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${kr.status === 'error' ? 'bg-red-50/40' : kr.status === 'warning' ? 'bg-amber-50/40' : ''}`}
+                <div onClick={() => openNodeDetail(kr, 'view')} key={kr.id} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${kr.status === 'error' ? 'bg-red-50/40' : kr.status === 'warning' ? 'bg-amber-50/40' : ''}`}
                      style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
                   <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '16px' }}>
                     <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
@@ -1803,10 +1782,41 @@ const App = () => {
                     <TimelineTreeDropdown selected={selectedTimelineForUse} onSelect={setSelectedTimelineForUse} space={selectedSpaceForUse} />
                 </div>
              </div>
-             <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 rounded-b-lg">
-                <button onClick={() => setIsTimelineModalOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
-                <button onClick={handleConfirmUseTemplate} className="px-4 py-1.5 text-sm text-white bg-green-600 rounded hover:bg-green-700 font-medium">Apply Template</button>
-             </div>
+              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                {showOverrideConfirm ? (
+                  <div className="space-y-3">
+                    <div className="bg-red-50 border border-red-200 p-3 rounded shadow-sm">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                        <div>
+                          <h4 className="text-sm font-bold text-red-800">Override Existing OKR?</h4>
+                          <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                            This timeline already has OKR data. Override will create and overwrite OKR data immediately on the selected Timeline.
+                            <strong> This action cannot be undone after confirmation.</strong>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setShowOverrideConfirm(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Back</button>
+                      <button onClick={handleConfirmUseTemplate} className="px-4 py-1.5 text-sm text-white bg-red-600 rounded hover:bg-red-700 font-medium flex items-center gap-1"><AlertTriangle size={14} /> Confirm Override</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setIsTimelineModalOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                    {(() => {
+                      const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
+                      const hasData = selectedSpaceForUse && selectedTimelineForUse && (okrDataMap[targetKey]?.length > 0);
+                      return hasData ? (
+                        <button onClick={() => setShowOverrideConfirm(true)} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium flex items-center gap-1 ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}><AlertTriangle size={14} /> Override Template</button>
+                      ) : (
+                        <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>Apply Template</button>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
           </div>
         </div>
       )}
@@ -2370,6 +2380,23 @@ const App = () => {
                         )
                       })}
                     </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({importSelectedFields.length}):</span>
+                        {importSelectedFields.map(fId => {
+                          const f = availableFields.find(x => x.id === fId);
+                          return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null;
+                        })}
+                      </div>
+                      {importSelectedFields.length < availableFields.length && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - importSelectedFields.length}):</span>
+                          {availableFields.filter(f => !importSelectedFields.includes(f.id)).map(f => (
+                            <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Right Column (OKR Tree Preview) */}
@@ -2729,6 +2756,22 @@ const App = () => {
                         </div>
                       </div>
                     </div>
+                    <div className="mt-4 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({exportSelectedFields.length}):</span>
+                        {availableFields.filter(f => exportSelectedFields.includes(f.id)).map(f => (
+                          <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span>
+                        ))}
+                      </div>
+                      {exportSelectedFields.length < availableFields.length && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Excluded ({availableFields.length - exportSelectedFields.length}):</span>
+                          {availableFields.filter(f => !exportSelectedFields.includes(f.id)).map(f => (
+                            <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1 p-6 bg-slate-50 flex flex-col h-full animate-fade-in border-l border-gray-200">
@@ -3058,6 +3101,23 @@ ${exportSelectedTemplates.map(tId => {
                         )
                       })}
                     </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({addSelectedFields.length}):</span>
+                        {addSelectedFields.map(fId => {
+                          const f = availableFields.find(x => x.id === fId);
+                          return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null;
+                        })}
+                      </div>
+                      {addSelectedFields.length < availableFields.length && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - addSelectedFields.length}):</span>
+                          {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => (
+                            <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -3129,6 +3189,11 @@ ${exportSelectedTemplates.map(tId => {
                       <>
                         <div className="mb-4 flex items-center justify-between shrink-0">
                           <span className="text-sm font-medium text-gray-700">Template OKR Structure</span>
+                          {selectedTemplateData?.tree && (
+                            <span className="text-xs text-gray-500">
+                              {(() => { const tree = selectedTemplateData.tree; const objCount = tree.length; const krCount = tree.reduce((s, o) => s + (o.children?.length || 0), 0); return `${objCount + krCount} nodes · ${objCount} Objectives · ${krCount} KRs`; })()}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1 min-h-0">
                            {renderPreviewTree(false, availableFields.map(f=>f.id), false, selectedTemplateData?.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}
@@ -3249,6 +3314,22 @@ ${exportSelectedTemplates.map(tId => {
                           </div>
                         )
                       })}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({selectedFields.length}):</span>
+                        {availableFields.filter(f => selectedFields.includes(f.id)).map(f => (
+                          <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span>
+                        ))}
+                      </div>
+                      {selectedFields.length < availableFields.length && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - selectedFields.length}):</span>
+                          {availableFields.filter(f => !selectedFields.includes(f.id)).map(f => (
+                            <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
