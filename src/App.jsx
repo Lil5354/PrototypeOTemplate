@@ -1462,6 +1462,7 @@ const App = () => {
           return <div className="flex justify-center">
             {node.status === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}
             {node.status === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}
+            {node.status === 'duplicate' && <AlertTriangle size={14} className="inline text-orange-600" />}
             {node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}
           </div>;
         case 'team': return <span className="truncate">{node.team || '-'}</span>;
@@ -1497,7 +1498,7 @@ const App = () => {
           <div className="flex-1 overflow-auto custom-scrollbar">
             <div className="min-w-[400px]">
               {objVisible && (
-                <div onClick={() => openNodeDetail(treeData.objective, 'view')} className="border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                <div onClick={() => openNodeDetail(treeData.objective, 'view')} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${treeData.objective.status === 'error' ? 'bg-red-50/40' : treeData.objective.status === 'duplicate' ? 'bg-orange-50/40' : treeData.objective.status === 'warning' ? 'bg-amber-50/40' : ''}`}
                      style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
                   <div className="flex items-center gap-1 truncate">
                     <button onClick={(e) => { e.stopPropagation(); toggleCollapse(objId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
@@ -1505,6 +1506,7 @@ const App = () => {
                     </button>
                     <Box size={11} className="text-blue-500 shrink-0" />
                     <span className="text-[11px] font-medium text-blue-600 truncate">{treeData.objective.id}: {treeData.objective.name}</span>
+                    {(treeData.objective.warnMsg || treeData.objective.errorMsg) && <p className={`text-[10px] italic truncate ml-1 ${treeData.objective.status === 'error' ? 'text-red-600' : treeData.objective.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{treeData.objective.warnMsg || treeData.objective.errorMsg}</p>}
                   </div>
                   {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
                     <div key={col.id} className={`px-1.5 text-[10px] text-gray-500 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(treeData.objective, col.id)}</div>
@@ -1512,11 +1514,12 @@ const App = () => {
                 </div>
               )}
               {!isCollapsed && visibleKRs.map(kr => (
-                <div onClick={() => openNodeDetail(kr, 'view')} key={kr.id} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${kr.status === 'error' ? 'bg-red-50/40' : kr.status === 'warning' ? 'bg-amber-50/40' : ''}`}
+                <div onClick={() => openNodeDetail(kr, 'view')} key={kr.id} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${kr.status === 'error' ? 'bg-red-50/40' : kr.status === 'duplicate' ? 'bg-orange-50/40' : kr.status === 'warning' ? 'bg-amber-50/40' : ''}`}
                      style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
                   <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '16px' }}>
                     <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
-                    <span className={`text-[11px] font-medium truncate ${kr.status === 'error' ? 'text-red-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</span>
+                    <span className={`text-[11px] font-medium truncate ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</span>
+                    {(kr.warnMsg || kr.errorMsg) && <p className={`text-[10px] italic truncate ml-1 ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{kr.warnMsg || kr.errorMsg}</p>}
                   </div>
                   {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
                     <div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(kr, col.id)}</div>
