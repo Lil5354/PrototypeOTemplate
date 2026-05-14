@@ -993,8 +993,8 @@ const App = () => {
 
   const handleEditClick = (template) => {
     setEditTargetId(template.id);
-    setEditFormData({ title: template.title, desc: template.desc, tags: template.tags.join(', ') });
-    setEditTreeData(JSON.parse(JSON.stringify(template.tree))); 
+    setEditFormData({ title: template.title || '', desc: template.desc || '', tags: (template.tags || []).join(', ') });
+    setEditTreeData(JSON.parse(JSON.stringify(template.tree)) || []); 
     setEditFormErrors({});
   };
   const closeEditModal = () => {
@@ -1034,6 +1034,7 @@ const App = () => {
         }]
       });
       setEditTreeData(newTree);
+      setEditFormErrors(prev => ({...prev, general: null}));
     }
     else if (action === 'add-kr') {
       newTree[objIndex].children.push({ 
@@ -1104,6 +1105,9 @@ const App = () => {
       }
       newTree.splice(objIndex, 1);
       setEditTreeData(newTree);
+      if (newTree.length === 0) {
+        setEditFormErrors(prev => ({...prev, general: 'Template must have at least 1 Objective.'}));
+      }
     }
     else if (action === 'delete-kr') {
       newTree[objIndex].children.splice(krIndex, 1);
@@ -1140,7 +1144,7 @@ const App = () => {
   };
 
   const handleSaveTemplateChanges = () => {
-    if (!editFormData.title.trim()) { setEditFormErrors({ title: 'Template name cannot be empty.' }); return; }
+    if (!editFormData.title.trim()) { setEditFormErrors({ title: 'Template name must not be empty.' }); return; }
     if (editTreeData.length === 0) { setEditFormErrors({ general: 'Template must have at least 1 Objective.' }); return; }
     const newTags = editFormData.tags.split(',').map(t => t.trim()).filter(Boolean);
     const updatedList = templateList.map(t => {
