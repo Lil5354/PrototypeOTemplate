@@ -1386,7 +1386,11 @@ const App = () => {
               </button>
             )}
             {!isTopLevel && <div className="w-3 shrink-0"></div>}
-            {isTopLevel ? <Box size={11} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
+            {level === 1 && <Box size={11} className="text-blue-500 shrink-0" />}
+            {level === 2 && <span className="text-gray-400 shrink-0 leading-none">↳</span>}
+            {level === 3 && <Box size={11} className="text-green-500 shrink-0" />}
+            {level === 4 && <Box size={11} className="text-green-400 shrink-0" />}
+            {level >= 5 && <User size={11} className="text-purple-500 shrink-0" />}
             <span className={`text-[11px] font-medium truncate ${isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
           </div>
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1883,30 +1887,30 @@ const App = () => {
                                 <div className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'view')}
                                      style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
                                   <div className="flex items-center gap-1.5 truncate">
-                                    <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-                                      <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
-                                    </button>
-                                    <Box size={13} className="text-blue-500 shrink-0" />
-                                    <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
-                                  </div>
-                                  {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
-                                     <div key={col.id} className={`px-1.5 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(obj, col.id, false)}</div>
-                                   ))}
-                                 </div>
-                                 {!objCollapsed && obj.children && obj.children.map(kr => (
-                                    <div key={kr.id} className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')}
-                                         style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
-                                      <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: '28px' }}>
-                                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                                       <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
-                                     </div>
-                                     {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
-                                       <div key={col.id} className={`px-1.5 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(kr, col.id, true)}</div>
+                                     <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                                       <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
+                                     </button>
+                                     <Box size={13} className="text-blue-500 shrink-0" />
+                                     <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
+                                   </div>
+                                   {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
+                                      <div key={col.id} className={`px-1.5 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(obj, col.id, false)}</div>
                                     ))}
-                                  </div>
-                               ))}
-                             </div>
-                           );
+                                   </div>
+                                  {!objCollapsed && obj.children && obj.children.map(kr => (
+                                     <div key={kr.id} className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')}
+                                          style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
+                                       <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: '28px' }}>
+                                         <span className="text-gray-400 shrink-0 leading-none">↳</span>
+                                        <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
+                                      </div>
+                                      {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
+                                        <div key={col.id} className={`px-1.5 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(kr, col.id, true)}</div>
+                                     ))}
+                                   </div>
+                                ))}
+                              </div>
+                            );
                          })}
                        </div>
                      );
