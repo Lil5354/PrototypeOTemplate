@@ -12,31 +12,21 @@ import {
 } from 'lucide-react';
 
 const TREE_COLUMNS = [
-  { id: 'description', label: 'Description', width: 'w-44' },
   { id: 'user', label: 'User', width: 'w-32' },
-  { id: 'group', label: 'Group', width: 'w-28' },
-  { id: 'team', label: 'Team', width: 'w-32' },
-  { id: 'assign_to', label: 'Assign To', width: 'w-28' },
   { id: 'metric', label: 'Metric', width: 'w-28' },
-  { id: 'metric_name', label: 'Metric Name', width: 'w-28' },
-  { id: 'metric_key', label: 'Metric Key', width: 'w-28' },
-  { id: 'metric_unit', label: 'Metric Unit', width: 'w-28' },
-  { id: 'agg', label: 'Aggregation Type', width: 'w-28' },
-  { id: 'result', label: 'Result', width: 'w-28' },
   { id: 'progress', label: 'Progress', width: 'w-36' },
-  { id: 'risk_level', label: 'Risk Level', width: 'w-28' },
-  { id: 'timeline', label: 'Timeline', width: 'w-28' },
-  { id: 'timeline_view_metric', label: 'TL - Metric', width: 'w-28' },
   { id: 'status', label: 'Status', width: 'w-16' },
+  { id: 'team', label: 'Team', width: 'w-32' },
+  { id: 'timeline', label: 'Timeline', width: 'w-28' },
+  { id: 'agg', label: 'Agg', width: 'w-24' },
+  { id: 'description', label: 'Description', width: 'w-40' },
 ];
 
-const DEFAULT_VISIBLE_COLUMNS = ['description', 'user', 'metric', 'progress', 'status'];
+const DEFAULT_VISIBLE_COLUMNS = ['user', 'metric', 'progress', 'status'];
 
 const COL_WIDTH_MAP = {
-  description: '176px', user: '128px', group: '112px', team: '128px', assign_to: '112px',
-  metric: '112px', metric_name: '112px', metric_key: '112px', metric_unit: '112px',
-  agg: '112px', result: '112px', progress: '144px', risk_level: '112px',
-  timeline: '112px', timeline_view_metric: '112px', status: '64px'
+  user: '128px', metric: '112px', progress: '144px', status: '64px',
+  team: '128px', timeline: '112px', agg: '96px', description: '160px'
 };
 
 const getGridTemplate = (visibleColumns) => {
@@ -223,31 +213,25 @@ const OKRTreePreview = ({
   const setMaximized = onMaximizeChange || setLocalMaximized;
 
   const getFieldValue = (node, fieldId) => {
-    if (fieldId === 'progress') fieldId = 'progress_percent';
-    if (!selectedFields.includes(fieldId) && !selectedFields.includes('progress')) {
+    if (!selectedFields.includes(fieldId)) {
       const defaults = {
-        'description': 'Default description', 'user': 'Unassigned',
-        'team': 'Default Team', 'group': 'Default Group',
-        'assign_to': 'Unassigned', 'metric': 'Default Metric',
-        'metric_name': '-', 'metric_key': '-', 'metric_unit': '-',
-        'agg': 'SUM', 'result': '-', 'progress_percent': '0%',
-        'risk_level': 'Low', 'timeline_view_metric': '--'
+        'description': 'Default description',
+        'user': 'Unassigned',
+        'team': 'Default Team',
+        'metric': 'Default Metric',
+        'progress_percent': '0%',
+        'group': 'Default Group'
       };
       return defaults[fieldId] || '-';
     }
     
     const fieldMap = {
-      'description': node.description, 'user': node.assign || node.user,
-      'team': node.team, 'group': node.group,
-      'assign_to': node.assign || node.user,
+      'description': node.description,
+      'user': node.assign || node.user,
+      'team': node.team,
       'metric': node.metric,
-      'metric_name': node.mName || node.metricName,
-      'metric_key': node.mKey || node.metricKey,
-      'metric_unit': node.mUnit || node.metricUnit,
-      'agg': node.agg, 'result': node.result,
       'progress_percent': node.progress,
-      'risk_level': node.risk,
-      'timeline_view_metric': '--'
+      'group': node.group
     };
     
     return fieldMap[fieldId] || '-';
@@ -259,34 +243,16 @@ const OKRTreePreview = ({
 
   const renderCell = (node, colId) => {
     switch (colId) {
-      case 'description':
-        return <span className="truncate">{node.description || '-'}</span>;
       case 'user':
         return <span className="truncate">{getFieldValue(node, 'user')}</span>;
-      case 'group':
-        return <span className="truncate">{node.group || '-'}</span>;
-      case 'team':
-        return <span className="truncate">{getFieldValue(node, 'team')}</span>;
-      case 'assign_to':
-        return <span className="truncate">{node.assign || node.user || '-'}</span>;
       case 'metric':
         return (
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${selectedFields.includes('metric') ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 italic'}`}>
             {getFieldValue(node, 'metric')}
           </span>
         );
-      case 'metric_name':
-        return <span className="truncate">{node.mName || node.metricName || '-'}</span>;
-      case 'metric_key':
-        return <span className="truncate">{node.mKey || node.metricKey || '-'}</span>;
-      case 'metric_unit':
-        return <span className="truncate">{node.mUnit || node.metricUnit || '-'}</span>;
-      case 'agg':
-        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'SUM'}</span>;
-      case 'result':
-        return <span className="truncate">{node.result ?? '-'}</span>;
       case 'progress': {
-        const pct = selectedFields.includes('progress_percent') || selectedFields.includes('progress') ? getFieldValue(node, 'progress_percent') : '0%';
+        const pct = selectedFields.includes('progress_percent') ? getFieldValue(node, 'progress_percent') : '0%';
         return (
           <div className="flex items-center justify-center gap-1">
             <div className="w-10 bg-gray-200 h-1.5 rounded-full overflow-hidden">
@@ -296,12 +262,6 @@ const OKRTreePreview = ({
           </div>
         );
       }
-      case 'risk_level':
-        return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
-      case 'timeline':
-        return <span className="truncate">{node.timeline || '-'}</span>;
-      case 'timeline_view_metric':
-        return <span className="text-[10px] text-gray-500 italic">--</span>;
       case 'status':
         return (
           <div className="flex justify-center">
@@ -310,6 +270,14 @@ const OKRTreePreview = ({
             {node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}
           </div>
         );
+      case 'team':
+        return <span className="truncate">{getFieldValue(node, 'team')}</span>;
+      case 'timeline':
+        return <span className="truncate">{node.timeline || '-'}</span>;
+      case 'agg':
+        return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'SUM'}</span>;
+      case 'description':
+        return <span className="truncate">{node.description || '-'}</span>;
       default:
         return null;
     }
@@ -714,21 +682,13 @@ const App = () => {
   };
 
   const availableFields = [
-    { id: 'name', label: 'Name (Title)', type: 'string', desc: 'OKR title / name shown in dashboard', locked: true },
-    { id: 'description', label: 'Description', type: 'string', desc: 'Optional text description for the OKR node' },
-    { id: 'user', label: 'User', type: 'string', desc: 'Owner of this OKR node' },
-    { id: 'group', label: 'Group', type: 'string', desc: 'Organizational group for this OKR' },
-    { id: 'team', label: 'Team', type: 'string', desc: 'Assigned team' },
-    { id: 'assign_to', label: 'Assign To', type: 'string', desc: 'Person assigned to this OKR' },
-    { id: 'metric', label: 'Metric', type: 'string', desc: 'Measurement metric' },
-    { id: 'metric_name', label: 'Metric Name', type: 'string', desc: 'Name of the metric' },
-    { id: 'metric_key', label: 'Metric Key', type: 'string', desc: 'Key identifier for the metric' },
-    { id: 'metric_unit', label: 'Metric Unit', type: 'string', desc: 'Unit of measurement' },
-    { id: 'agg', label: 'Aggregation Type', type: 'string', desc: 'SUM / AVG aggregation' },
-    { id: 'result', label: 'Result', type: 'number', desc: 'Result value of the metric' },
-    { id: 'progress', label: 'Progress', type: 'number', desc: 'Completion percentage, computed by system' },
-    { id: 'risk_level', label: 'Risk Level', type: 'string', desc: 'Risk level indicator, read-only' },
-    { id: 'timeline_view_metric', label: 'Timeline - View Metric', type: 'string', desc: 'View metric timeline data' },
+    { id: 'name', label: 'name', type: 'string', desc: 'OKR title / name shown in dashboard', locked: true }, 
+    { id: 'description', label: 'description', type: 'string', desc: 'Optional text description for the OKR node' },
+    { id: 'user', label: 'user', type: 'string', desc: 'Owner of this OKR node' },
+    { id: 'group', label: 'group', type: 'string', desc: 'Organizational group for this OKR' },
+    { id: 'team', label: 'team', type: 'string', desc: 'Assigned team' },
+    { id: 'metric', label: 'metric', type: 'string', desc: 'Measurement metric' },
+    { id: 'progress_percent', label: 'progress_percent', type: 'number', desc: 'Completion percentage, computed by system' },
   ];
 
   // --- STATES CHUNG ---
@@ -1346,12 +1306,11 @@ const App = () => {
     const toggleCollapse = (id) => setPreviewCollapsed(prev => ({...prev, [id]: !prev[id]}));
 
     const getFieldValue = (node, fieldId) => {
-      if (fieldId === 'progress') fieldId = 'progress_percent';
       if (isStep2 && !currentFields.includes(fieldId)) {
-        const defaults = { 'description': 'Default description', 'user': 'Unassigned', 'team': 'Default Team', 'group': 'Default Group', 'assign_to': 'Unassigned', 'metric': 'Default Metric', 'metric_name': '-', 'metric_key': '-', 'metric_unit': '-', 'agg': 'SUM', 'result': '-', 'progress_percent': '0%', 'risk_level': 'Low', 'timeline_view_metric': '--' };
+        const defaults = { 'description': 'Default description', 'user': 'Unassigned', 'team': 'Default Team', 'metric': 'Default Metric', 'progress_percent': '0%' };
         return defaults[fieldId] || '-';
       }
-      const map = { 'description': node.description, 'user': node.assign || node.user, 'team': node.team, 'group': node.group, 'assign_to': node.assign || node.user, 'metric': node.metric, 'metric_name': node.mName, 'metric_key': node.mKey, 'metric_unit': node.mUnit, 'agg': node.agg, 'result': node.result, 'progress_percent': node.progress, 'risk_level': node.risk, 'timeline_view_metric': '--' };
+      const map = { 'description': node.description, 'user': node.assign || node.user, 'team': node.team, 'metric': node.metric, 'progress_percent': node.progress };
       return map[fieldId] || '-';
     };
 
@@ -1363,17 +1322,8 @@ const App = () => {
         return <span className="text-gray-300">-</span>;
       }
       switch (colId) {
-        case 'description': return <span className="truncate">{node.description || '-'}</span>;
         case 'user': return <span className="truncate">{getFieldValue(node, 'user')}</span>;
-        case 'group': return <span className="truncate">{node.group || '-'}</span>;
-        case 'team': return <span className="truncate">{getFieldValue(node, 'team')}</span>;
-        case 'assign_to': return <span className="truncate">{node.assign || node.user || '-'}</span>;
         case 'metric': return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{getFieldValue(node, 'metric')}</span>;
-        case 'metric_name': return <span className="truncate">{node.mName || '-'}</span>;
-        case 'metric_key': return <span className="truncate">{node.mKey || '-'}</span>;
-        case 'metric_unit': return <span className="truncate">{node.mUnit || '-'}</span>;
-        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'SUM'}</span>;
-        case 'result': return <span className="truncate">{node.result ?? '-'}</span>;
         case 'progress': {
           const p = getFieldValue(node, 'progress_percent');
           return (
@@ -1383,9 +1333,6 @@ const App = () => {
             </div>
           );
         }
-        case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
-        case 'timeline': return <span className="truncate">{node.timeline || '-'}</span>;
-        case 'timeline_view_metric': return <span className="text-[10px] text-gray-500 italic">--</span>;
         case 'status':
           const s = getStatus(node);
           return <div className="flex justify-center">
@@ -1393,6 +1340,10 @@ const App = () => {
             {s === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}
             {s === 'error' && <XOctagon size={14} className="inline text-red-600" />}
           </div>;
+        case 'team': return <span className="truncate">{getFieldValue(node, 'team')}</span>;
+        case 'timeline': return <span className="truncate">{node.timeline || '-'}</span>;
+        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'SUM'}</span>;
+        case 'description': return <span className="truncate">{node.description || '-'}</span>;
         default: return null;
       }
     };
@@ -1496,17 +1447,8 @@ const App = () => {
 
     const renderValidationCell = (node, colId) => {
       switch (colId) {
-        case 'description': return <span className="truncate">{node.description || '-'}</span>;
         case 'user': return <span className="truncate">{node.assign || node.user || '-'}</span>;
-        case 'group': return <span className="truncate">{node.group || '-'}</span>;
-        case 'team': return <span className="truncate">{node.team || '-'}</span>;
-        case 'assign_to': return <span className="truncate">{node.assign || node.user || '-'}</span>;
         case 'metric': return <span className="truncate">{node.metric || '-'}</span>;
-        case 'metric_name': return <span className="truncate">{node.mName || '-'}</span>;
-        case 'metric_key': return <span className="truncate">{node.mKey || '-'}</span>;
-        case 'metric_unit': return <span className="truncate">{node.mUnit || '-'}</span>;
-        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || '-'}</span>;
-        case 'result': return <span className="truncate">{node.result ?? '-'}</span>;
         case 'progress': {
           const p = node.progress || '0%';
           return (
@@ -1516,9 +1458,6 @@ const App = () => {
             </div>
           );
         }
-        case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
-        case 'timeline': return <span className="truncate">{node.timeline || '-'}</span>;
-        case 'timeline_view_metric': return <span className="text-[10px] text-gray-500 italic">--</span>;
         case 'status':
           return <div className="flex justify-center">
             {node.status === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}
@@ -1526,6 +1465,10 @@ const App = () => {
             {node.status === 'duplicate' && <AlertTriangle size={14} className="inline text-orange-600" />}
             {node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}
           </div>;
+        case 'team': return <span className="truncate">{node.team || '-'}</span>;
+        case 'timeline': return <span className="truncate">{node.timeline || '-'}</span>;
+        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || '-'}</span>;
+        case 'description': return <span className="truncate">{node.description || '-'}</span>;
         default: return null;
       }
     };
@@ -1640,202 +1583,136 @@ const App = () => {
           
           <div className="p-5 space-y-5">
             
-            {/* Section 1: Details */}
+            {/* Basic Information */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><FileText size={13} /> Details</h4>
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><FileText size={13} /> Basic Information</h4>
               <div className="space-y-3">
                 <FieldRow label="Title" required>
                   {isEdit ? <input type="text" value={editingNodeData?.name || ''} onChange={(e) => setEditingNodeData({...editingNodeData, name: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500" /> : <div className="text-sm font-semibold text-gray-900">{data.name}</div>}
                 </FieldRow>
-                <div className="grid grid-cols-2 gap-3">
-                  <FieldRow label="Level">
-                    {isEdit ? (
-                      <select value={editingNodeData?.level || 'PERSONAL'} onChange={(e) => setEditingNodeData({...editingNodeData, level: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option value="PERSONAL">PERSONAL</option><option value="GROUP">GROUP</option><option value="TEAM">TEAM</option><option value="COMPANY">COMPANY</option>
-                      </select>
-                    ) : <div className="text-sm text-gray-800">{data.level || 'PERSONAL'}</div>}
-                  </FieldRow>
-                  <FieldRow label="Category">
-                    {isEdit ? (
-                      <select value={editingNodeData?.category || (isObj ? 'Objective' : 'KPI')} onChange={(e) => setEditingNodeData({...editingNodeData, category: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option value="Objective">Objective</option><option value="KPI">KPI</option>
-                      </select>
-                    ) : <div className="text-sm text-gray-800">{data.category || (isObj ? 'Objective' : 'KPI')}</div>}
-                  </FieldRow>
-                </div>
+                <FieldRow label="Description">
+                  {isEdit ? <textarea value={editingNodeData?.description || ''} onChange={(e) => setEditingNodeData({...editingNodeData, description: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md h-16 custom-scrollbar focus:ring-1 focus:ring-blue-500" /> : <div className="text-sm text-gray-600">{data.description || <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
                 <div className="grid grid-cols-2 gap-3">
                   <FieldRow label="Code">
                     <div className="text-sm font-mono text-gray-500 bg-gray-50 px-2 py-1.5 rounded border border-gray-200">{data.id || 'AUTO-GEN'}</div>
                   </FieldRow>
-                  <FieldRow label="Indicator">
+                  <FieldRow label="Category">
                     {isEdit ? (
-                      <select value={editingNodeData?.indicator || ''} onChange={(e) => setEditingNodeData({...editingNodeData, indicator: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option value="">None</option><option value="KPI">KPI</option><option value="OKR">OKR</option><option value="KRA">KRA</option>
+                      <select value={isObj ? 'objective' : 'kr'} onChange={(e) => setEditingNodeData({...editingNodeData, type: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
+                        <option value="objective">Objective</option><option value="kr">Key Result</option>
                       </select>
-                    ) : <div className="text-sm text-gray-800">{data.indicator || <span className="italic text-gray-400">None</span>}</div>}
+                    ) : <div className="text-sm text-gray-800">{isObj ? 'Objective' : 'Key Result'}</div>}
                   </FieldRow>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
+                  <FieldRow label="Level">
+                    {isEdit ? (
+                      <select value={editingNodeData?.levelName || 'Company'} onChange={(e) => setEditingNodeData({...editingNodeData, levelName: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
+                        <option>Personal</option><option>Team</option><option>Company</option>
+                      </select>
+                    ) : <div className="text-sm text-gray-800">{data.levelName || 'Company'}</div>}
+                  </FieldRow>
+                  <FieldRow label="Space">
+                    {isEdit ? <input type="text" value={editingNodeData?.space || selectedSpace} onChange={(e) => setEditingNodeData({...editingNodeData, space: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.space || selectedSpace}</div>}
+                  </FieldRow>
+                </div>
+                {!isObj && (
+                  <FieldRow label="Timeline" required>
+                    {isEdit ? <input type="text" value={editingNodeData?.timeline || ''} onChange={(e) => setEditingNodeData({...editingNodeData, timeline: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.timeline || 'Not set'}</div>}
+                  </FieldRow>
+                )}
+              </div>
+            </div>
+
+            {/* Assignment & Tracking */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Users size={13} /> Assignment & Tracking</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <FieldRow label="Assignee">
+                  {isEdit ? <input type="text" placeholder="Select user..." value={editingNodeData?.user || ''} onChange={(e) => setEditingNodeData({...editingNodeData, user: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm flex items-center gap-1.5">{data.user ? <><div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.user}`} alt="u"/></div><span className="font-medium">{data.user}</span></> : <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
+                <FieldRow label="Team">
+                  {isEdit ? <input type="text" value={editingNodeData?.team || ''} onChange={(e) => setEditingNodeData({...editingNodeData, team: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.team || <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
+                <FieldRow label="Group">
+                  {isEdit ? <input type="text" value={editingNodeData?.group || ''} onChange={(e) => setEditingNodeData({...editingNodeData, group: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.group || <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
+                <FieldRow label="Stakeholders">
+                  {isEdit ? <input type="text" placeholder="User1, User2" value={editingNodeData?.stakeholders || ''} onChange={(e) => setEditingNodeData({...editingNodeData, stakeholders: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.stakeholders || <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
+              </div>
+            </div>
+
+            {/* Additional Attributes */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Package size={13} /> Additional Attributes</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <FieldRow label="Indicator">
+                  {isEdit ? <input type="text" value={editingNodeData?.indicator || ''} onChange={(e) => setEditingNodeData({...editingNodeData, indicator: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.indicator || <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
+                <FieldRow label="Due Date">
+                  {isEdit ? <input type="text" placeholder="dd/mm/yyyy" value={editingNodeData?.dueDate || ''} onChange={(e) => setEditingNodeData({...editingNodeData, dueDate: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.dueDate || <span className="italic text-gray-400">Not set</span>}</div>}
+                </FieldRow>
+                <div className="col-span-2">
+                  <FieldRow label="Labels">
+                    {isEdit ? <input type="text" placeholder="label1, label2" value={editingNodeData?.labels || ''} onChange={(e) => setEditingNodeData({...editingNodeData, labels: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.labels || <span className="italic text-gray-400">Not set</span>}</div>}
+                  </FieldRow>
+                </div>
+                <div className="col-span-2">
                   <FieldRow label="Policies">
-                    {isEdit ? (
-                      <select value={editingNodeData?.policies || ''} onChange={(e) => setEditingNodeData({...editingNodeData, policies: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option value="">None</option><option value="Policy A">Policy A</option><option value="Policy B">Policy B</option><option value="Policy C">Policy C</option>
-                      </select>
-                    ) : <div className="text-sm text-gray-800">{data.policies || <span className="italic text-gray-400">None</span>}</div>}
-                  </FieldRow>
-                  <FieldRow label="Due Date">
-                    {isEdit ? <input type="text" placeholder="dd/mm/yyyy" value={editingNodeData?.dueDate || ''} onChange={(e) => setEditingNodeData({...editingNodeData, dueDate: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.dueDate || <span className="italic text-gray-400">None</span>}</div>}
-                  </FieldRow>
-                </div>
-                <FieldRow label="Labels">
-                  {isEdit ? <input type="text" placeholder="label1, label2" value={editingNodeData?.labels || ''} onChange={(e) => setEditingNodeData({...editingNodeData, labels: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.labels || <span className="italic text-gray-400">None</span>}</div>}
-                </FieldRow>
-                <div className="grid grid-cols-2 gap-3">
-                  <FieldRow label="Assignee">
-                    {isEdit ? <input type="text" placeholder="Select user..." value={editingNodeData?.user || ''} onChange={(e) => setEditingNodeData({...editingNodeData, user: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm flex items-center gap-1.5">{data.user ? <><div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.user}`} alt="u"/></div><span className="font-medium">{data.user}</span></> : <span className="italic text-gray-400">Unassigned</span>}</div>}
-                  </FieldRow>
-                  <FieldRow label="Groups">
-                    {isEdit ? <input type="text" value={editingNodeData?.group || ''} onChange={(e) => setEditingNodeData({...editingNodeData, group: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.group || <span className="italic text-gray-400">None</span>}</div>}
-                  </FieldRow>
-                  <FieldRow label="Teams">
-                    {isEdit ? <input type="text" value={editingNodeData?.team || ''} onChange={(e) => setEditingNodeData({...editingNodeData, team: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.team || <span className="italic text-gray-400">None</span>}</div>}
-                  </FieldRow>
-                  <FieldRow label="Stakeholders">
-                    {isEdit ? <input type="text" placeholder="User1, User2" value={editingNodeData?.stakeholders || ''} onChange={(e) => setEditingNodeData({...editingNodeData, stakeholders: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.stakeholders || <span className="italic text-gray-400">None</span>}</div>}
-                  </FieldRow>
-                </div>
-                <FieldRow label="Timeline (TL)" required>
-                  {isEdit ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <select value={editingNodeData?.tlYear || '2025'} onChange={(e) => setEditingNodeData({...editingNodeData, tlYear: e.target.value})} className="text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option>2024</option><option>2025</option><option>2026</option>
-                      </select>
-                      <select value={editingNodeData?.tlQuarter || 'Q3'} onChange={(e) => setEditingNodeData({...editingNodeData, tlQuarter: e.target.value})} className="text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
-                      </select>
-                    </div>
-                  ) : <div className="text-sm text-gray-800">{data.tlYear && data.tlQuarter ? `${data.tlYear} ${data.tlQuarter}` : data.timeline || <span className="italic text-gray-400">Not set</span>}</div>}
-                </FieldRow>
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <FieldRow label="Progress Formula">
-                    {isEdit ? (
-                      <select value={editingNodeData?.progressFormula || 'Default'} onChange={(e) => setEditingNodeData({...editingNodeData, progressFormula: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"><option>Default</option><option>Custom</option></select>
-                    ) : <div className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded w-fit font-medium">{data.progressFormula || 'Default'}</div>}
-                  </FieldRow>
-                  <FieldRow label="Risk Formula">
-                    {isEdit ? (
-                      <select value={editingNodeData?.riskFormula || 'Default'} onChange={(e) => setEditingNodeData({...editingNodeData, riskFormula: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"><option>Default</option><option>Custom</option></select>
-                    ) : <div className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded w-fit font-medium">{data.riskFormula || 'Default'}</div>}
+                    {isEdit ? <textarea value={editingNodeData?.policies || ''} onChange={(e) => setEditingNodeData({...editingNodeData, policies: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md h-14 custom-scrollbar" /> : <div className="text-sm text-gray-600">{data.policies || <span className="italic text-gray-400">Not set</span>}</div>}
                   </FieldRow>
                 </div>
               </div>
             </div>
 
-            {/* Section 2: Parent Objective (only for KR / sub-Objective) */}
-            {!isObj && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-                <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><ArrowUpCircle size={13} /> Parent Objective</h4>
-                <div className="space-y-3">
-                  <FieldRow label="Objective">
-                    <div className="text-sm font-medium text-blue-600 cursor-pointer hover:underline">{data.parentName || 'Product Launch'} <span className="text-xs text-gray-400 font-mono ml-1">{data.parentCode || 'OBJ-01'}</span></div>
-                  </FieldRow>
-                  <div className="grid grid-cols-2 gap-3">
-                    <FieldRow label="Assignee">
-                      <div className="text-sm flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.parentAssignee || 'parent'}`} alt=""/></div>
-                        <span className="font-medium">{data.parentAssignee || 'Tuan Ha'}</span>
-                      </div>
-                    </FieldRow>
-                    <FieldRow label="Percent">
-                      <div className="text-sm font-semibold text-gray-800">{data.parentPercent || 50}%</div>
-                    </FieldRow>
-                  </div>
-                  <FieldRow label="Timeline (TL)">
-                    <div className="text-sm text-gray-800">{data.parentTimeline || '2025 Q3'}</div>
-                  </FieldRow>
-                </div>
-              </div>
-            )}
-
-            {/* Section 3: Nested Items (no Weight field) */}
-            {(data.children?.length > 0) && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-                <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><List size={13} /> Nested Items</h4>
-                <div className="space-y-2">
-                  {data.children.map((child, idx) => (
-                    <div key={child.id || idx} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                        <span className="text-xs font-medium text-gray-800 truncate">{child.name || child.id} <span className="text-gray-400 font-mono">{child.id}</span></span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-full bg-gray-200 overflow-hidden"><img src={`https://i.pravatar.cc/100?u=${child.user || child.id}`} alt=""/></div>
-                          <span className="text-[10px] text-gray-600">{child.user || 'Unassigned'}</span>
-                        </div>
-                        <span className="text-[10px] font-semibold text-blue-600">{child.percent || 0}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Section 4: Timeline (TL) Detail */}
+            {/* Metrics & Results */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><Calendar size={13} /> Timeline (TL) Detail</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-600">Planning Timeline</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={editingNodeData?.planningActive !== false} onChange={(e) => isEdit && setEditingNodeData({...editingNodeData, planningActive: e.target.checked})} />
-                    <div className="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all"></div>
-                  </label>
-                </div>
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
-                  <div className="px-3 py-2 bg-gray-50 flex items-center justify-between cursor-pointer hover:bg-gray-100">
-                    <div className="flex items-center gap-1.5">
-                      <ChevronRight size={12} className="text-gray-400" />
-                      <span className="text-xs font-semibold text-gray-700">{data.tlYear || '2025'} {data.tlQuarter || 'Q3'}</span>
-                    </div>
-                  </div>
-                  <div className="px-3 py-2">
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <label className="text-[10px] text-gray-500 block">Start</label>
-                        {isEdit ? <input type="number" className="w-full text-xs bg-white border border-gray-300 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.start ?? data.start ?? 0} onChange={(e) => setEditingNodeData({...editingNodeData, start: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-gray-700">{data.start || 0}</span>}
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 block">Current</label>
-                        {isEdit ? <input type="number" className="w-full text-xs bg-white border border-blue-300 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.current ?? data.current ?? 0} onChange={(e) => setEditingNodeData({...editingNodeData, current: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-blue-700">{data.current || 0}</span>}
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 block">Expected / Target</label>
-                        {isEdit ? <input type="number" className="w-full text-xs bg-white border border-green-300 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.expected ?? data.expected ?? 100} onChange={(e) => setEditingNodeData({...editingNodeData, expected: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-green-700">{data.expected || 100}</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 5: Metric & Results */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><BarChart2 size={13} /> Metric & Results</h4>
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><BarChart2 size={13} /> Metrics & Results</h4>
               <div className="space-y-3">
                 <FieldRow label="Metric">
                   {isEdit ? <input type="text" value={editingNodeData?.metric || ''} onChange={(e) => setEditingNodeData({...editingNodeData, metric: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm font-medium text-gray-900 bg-gray-50 px-3 py-1.5 rounded border border-gray-200">{data.metric || <span className="italic text-gray-400">Not set</span>}</div>}
                 </FieldRow>
-                <div className="grid grid-cols-2 gap-3">
-                  <FieldRow label="Aggregation Type">
+                <div className="grid grid-cols-3 gap-3">
+                  <FieldRow label="Name">
+                    {isEdit ? <input type="text" value={editingNodeData?.mName || ''} onChange={(e) => setEditingNodeData({...editingNodeData, mName: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.mName || <span className="italic text-gray-400">-</span>}</div>}
+                  </FieldRow>
+                  <FieldRow label="Unit">
+                    {isEdit ? <input type="text" value={editingNodeData?.mUnit || ''} onChange={(e) => setEditingNodeData({...editingNodeData, mUnit: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.mUnit || <span className="italic text-gray-400">-</span>}</div>}
+                  </FieldRow>
+                  <FieldRow label="Agg">
                     {isEdit ? (
                       <select value={editingNodeData?.agg || 'SUM'} onChange={(e) => setEditingNodeData({...editingNodeData, agg: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md">
-                        <option>SUM</option><option>AVG</option>
+                        <option>SUM</option><option>AVG</option><option>COUNT</option><option>MAX</option><option>MIN</option>
                       </select>
-                    ) : <div className="text-sm text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded font-bold border border-blue-100">{data.agg || 'SUM'}</div>}
+                    ) : <div className="text-sm text-blue-600 bg-blue-50 w-fit px-2 py-0.5 rounded font-bold border border-blue-100">{data.agg || <span className="italic text-gray-400">-</span>}</div>}
                   </FieldRow>
-                  <FieldRow label="Result">
-                    {isEdit ? <input type="text" value={editingNodeData?.result ?? ''} onChange={(e) => setEditingNodeData({...editingNodeData, result: e.target.value})} className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md" /> : <div className="text-sm text-gray-800">{data.result ?? '-'}</div>}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                    <label className="text-[10px] text-gray-500 font-medium block mb-0.5">Start</label>
+                    {isEdit ? <input type="number" className="w-full text-sm bg-white border border-gray-300 px-2 py-1 rounded" defaultValue={0}/> : <span className="text-sm font-semibold text-gray-700">{data.start || 0}</span>}
+                  </div>
+                  <div className="bg-blue-50/50 p-2.5 rounded-lg border border-blue-200">
+                    <label className="text-[10px] text-gray-500 font-medium block mb-0.5">Current</label>
+                    {isEdit ? <input type="number" className="w-full text-sm bg-white border border-blue-300 px-2 py-1 rounded" defaultValue={0}/> : <span className="text-sm font-semibold text-blue-700">{data.current || 0}</span>}
+                  </div>
+                  <div className="bg-green-50/50 p-2.5 rounded-lg border border-green-200">
+                    <label className="text-[10px] text-gray-500 font-medium block mb-0.5">Expected</label>
+                    {isEdit ? <input type="number" className="w-full text-sm bg-white border border-green-300 px-2 py-1 rounded" defaultValue={100}/> : <span className="text-sm font-semibold text-green-700">{data.expected || 100}</span>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <FieldRow label="Progress Formula">
+                    {isEdit ? (
+                      <select className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"><option>Default</option><option>Custom</option></select>
+                    ) : <div className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded w-fit font-medium">Default</div>}
+                  </FieldRow>
+                  <FieldRow label="Risk Formula">
+                    {isEdit ? (
+                      <select className="w-full text-sm px-2 py-1.5 border border-gray-300 rounded-md"><option>Default</option><option>Custom</option></select>
+                    ) : <div className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded w-fit font-medium">Default</div>}
                   </FieldRow>
                 </div>
               </div>
@@ -2935,7 +2812,7 @@ ${exportSelectedFields.includes('name') ? `\n    // - selected field -\n    "nam
 ${exportSelectedFields.includes('description') ? `\n    // - selected field -\n    "description": "Custom Description...",` : ''}
 ${exportSelectedFields.includes('user') ? `\n    // - selected field -\n    "user": "Owner Name",` : ''}
 ${exportSelectedFields.includes('metric') ? `\n    // - selected field -\n    "metric": "Revenue",` : ''}
-${exportSelectedFields.includes('progress') ? `\n    // - selected field -\n    "progress_percent": 75,` : ''}
+${exportSelectedFields.includes('progress_percent') ? `\n    // - selected field -\n    "progress_percent": 75,` : ''}
     
     // - excluded keys: ${exportSelectedFields.length < availableFields.length ? availableFields.filter(f => !exportSelectedFields.includes(f.id)).map(f => f.label).join(', ') : 'None'}
   }
@@ -3042,7 +2919,7 @@ ${exportSelectedTemplates.map(tId => {
     "okr_key": "OBJ-${tId}",
     ${exportSelectedFields.includes('name') ? `"name": "${t.title}",` : ''}
     ${exportSelectedFields.includes('description') ? `"description": "${t.desc || 'Default description'}",` : ''}
-    ${exportSelectedFields.includes('progress') ? `"progress_percent": 0,` : ''}
+    ${exportSelectedFields.includes('progress_percent') ? `"progress_percent": 0,` : ''}
     "type": "objective",
     "children": [
       // ... nested KRs will be mapped here
