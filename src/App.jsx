@@ -2016,51 +2016,60 @@ const App = () => {
                     </div>
                   </div>
 
-                   {(() => {
-                      const editTreeHeader = (
-                        <div className="flex items-center border-b border-gray-200 bg-gray-50 py-1 px-4 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0">
-                         <div className="shrink-0 bg-gray-50" style={{ width: '432px' }}>OKR</div>
-                         {editTreeVisibleColumns.includes('user') && <div className="w-28 text-left shrink-0 bg-gray-50">User</div>}
-                         {editTreeVisibleColumns.includes('team') && <div className="w-28 text-left shrink-0 bg-gray-50">Team</div>}
-                         {editTreeVisibleColumns.includes('metric') && <div className="w-24 text-left shrink-0 bg-gray-50">Metric</div>}
-                         {editTreeVisibleColumns.includes('agg') && <div className="w-20 text-left shrink-0 bg-gray-50">Agg.Type</div>}
-                         {editTreeVisibleColumns.includes('progress') && <div className="w-20 text-center shrink-0 bg-gray-50">Progress</div>}
-                         <div className="ml-auto shrink-0"></div>
-                         <div className="w-24 text-center shrink-0">Actions</div>
-                       </div>
-                     );
-                     const editTreeRows = (
-                       <div className="divide-y divide-gray-100">
-                          {editTreeData.map((obj, oIdx) => {
-                            const renderNode = (node, path, level = 1) => {
-                              const isObjective = level === 1;
-                              const canAddChild = level < 4;
-                              const paddingLeft = 16 + (level - 1) * 24;
-                              return (
-                                  <React.Fragment key={node.id}>
-                                    <div onClick={() => openNodeDetail(node, 'edit', path)} className="group flex items-center py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer relative" style={{ paddingLeft: `${paddingLeft}px` }}>
-                                      <div className="flex items-center gap-2 shrink-0" style={{ width: '432px' }}>
-                                        {isObjective ? <Box size={14} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
-                                        <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.id} - {node.name}</span>
-                                        {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
-                                      </div>
-                                    {editTreeVisibleColumns.includes('user') && <div className="w-28 text-[12px] text-gray-600 text-left shrink-0 truncate overflow-hidden">{node.user || '-'}</div>}
-                                    {editTreeVisibleColumns.includes('team') && <div className="w-28 text-[12px] text-gray-600 text-left shrink-0 truncate overflow-hidden">{node.team || '-'}</div>}
-                                    {editTreeVisibleColumns.includes('metric') && <div className="w-24 text-[12px] text-gray-600 text-left shrink-0 truncate overflow-hidden">{node.metric || '-'}</div>}
-                                    {editTreeVisibleColumns.includes('agg') && <div className="w-20 text-[12px] text-left shrink-0 overflow-hidden"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg}</span></div>}
-                                    {editTreeVisibleColumns.includes('progress') && <div className="w-20 text-center text-[12px] shrink-0 overflow-hidden">{node.progress ? <span className="font-medium text-green-600">{node.progress}</span> : <span className="text-gray-400">-</span>}</div>}
-                                    <div className="ml-auto shrink-0"></div>
-                                    <div className="w-24 text-center flex items-center justify-center gap-1 shrink-0">
-                                      {isObjective && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
-                                      {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>}
-                                      <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
-                                      {isObjective ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
-                                        : level === 2 ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
-                                        : <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>}
-                                    </div>
-                                  </div>
-                                  {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
-                                </React.Fragment>
+                    {(() => {
+                       const editGridCols = ['minmax(432px, 2.5fr)'];
+                       if (editTreeVisibleColumns.includes('user')) editGridCols.push('112px');
+                       if (editTreeVisibleColumns.includes('team')) editGridCols.push('112px');
+                       if (editTreeVisibleColumns.includes('metric')) editGridCols.push('96px');
+                       if (editTreeVisibleColumns.includes('agg')) editGridCols.push('80px');
+                       if (editTreeVisibleColumns.includes('progress')) editGridCols.push('80px');
+                       editGridCols.push('1fr', '96px');
+                       const editGridTemplate = editGridCols.join(' ');
+                       const editTreeHeader = (
+                         <div className="bg-gray-50 border-b border-gray-200 py-1 px-4 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
+                              style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
+                          <div className="bg-gray-50 truncate" style={{ paddingLeft: '2px' }}>OKR</div>
+                          {editTreeVisibleColumns.includes('user') && <div className="px-1.5 text-left bg-gray-50 truncate">User</div>}
+                          {editTreeVisibleColumns.includes('team') && <div className="px-1.5 text-left bg-gray-50 truncate">Team</div>}
+                          {editTreeVisibleColumns.includes('metric') && <div className="px-1.5 text-left bg-gray-50 truncate">Metric</div>}
+                          {editTreeVisibleColumns.includes('agg') && <div className="px-1.5 text-left bg-gray-50 truncate">Agg.Type</div>}
+                          {editTreeVisibleColumns.includes('progress') && <div className="px-1.5 text-center bg-gray-50 truncate">Progress</div>}
+                          <div></div>
+                          <div className="px-1.5 text-center bg-gray-50 truncate">Actions</div>
+                        </div>
+                      );
+                      const editTreeRows = (
+                        <div className="divide-y divide-gray-100">
+                           {editTreeData.map((obj, oIdx) => {
+                             const renderNode = (node, path, level = 1) => {
+                               const isObjective = level === 1;
+                               const canAddChild = level < 4;
+                               return (
+                                   <React.Fragment key={node.id}>
+                                     <div onClick={() => openNodeDetail(node, 'edit', path)} className="group py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                                          style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
+                                       <div className="flex items-center gap-2 truncate" style={{ paddingLeft: `${16 + (level - 1) * 24}px` }}>
+                                         {isObjective ? <Box size={14} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
+                                         <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.id} - {node.name}</span>
+                                         {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
+                                       </div>
+                                     {editTreeVisibleColumns.includes('user') && <div className="px-1.5 text-[12px] text-gray-600 text-left truncate overflow-hidden">{node.user || '-'}</div>}
+                                     {editTreeVisibleColumns.includes('team') && <div className="px-1.5 text-[12px] text-gray-600 text-left truncate overflow-hidden">{node.team || '-'}</div>}
+                                     {editTreeVisibleColumns.includes('metric') && <div className="px-1.5 text-[12px] text-gray-600 text-left truncate overflow-hidden">{node.metric || '-'}</div>}
+                                     {editTreeVisibleColumns.includes('agg') && <div className="px-1.5 text-[12px] text-left overflow-hidden truncate"><span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg}</span></div>}
+                                     {editTreeVisibleColumns.includes('progress') && <div className="px-1.5 text-center text-[12px] overflow-hidden truncate">{node.progress ? <span className="font-medium text-green-600">{node.progress}</span> : <span className="text-gray-400">-</span>}</div>}
+                                     <div></div>
+                                     <div className="px-1.5 text-center flex items-center justify-center gap-1">
+                                       {isObjective && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
+                                       {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>}
+                                       <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
+                                       {isObjective ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
+                                         : level === 2 ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
+                                         : <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>}
+                                     </div>
+                                   </div>
+                                   {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
+                                 </React.Fragment>
                               );
                             };
                             return renderNode(obj, [oIdx], 1);
@@ -2076,20 +2085,17 @@ const App = () => {
                      );
                      return (
                      <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
-                      <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
                           <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
-                          <ColumnToggle visibleColumns={editTreeVisibleColumns} onToggle={toggleEditTreeColumn} />
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => handleEditTreeAction('add-obj')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600 hover:text-gray-800 transition-colors" title="Add Objective">
-                            <Plus size={16} />
+                          <button onClick={() => handleEditTreeAction('add-obj')} className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded transition-colors" title="Add Objective">
+                            Create Object
                           </button>
+                          <div className="ml-auto"></div>
+                          <ColumnToggle visibleColumns={editTreeVisibleColumns} onToggle={toggleEditTreeColumn} />
                           <button onClick={() => setEditTreeMaximized(!editTreeMaximized)} className="p-1.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={editTreeMaximized ? 'Minimize' : 'Maximize'}>
                             {editTreeMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                           </button>
                         </div>
-                      </div>
                       {editTreeMaximized ? (
                         <FullScreenWindow onClose={() => setEditTreeMaximized(false)}>
                           <div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>
