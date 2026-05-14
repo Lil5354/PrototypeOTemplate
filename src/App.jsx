@@ -39,28 +39,25 @@ const getGridTemplate = (visibleColumns) => {
 
 const tableToTreeArray = (tableData) => {
   const treeArray = [];
-  let currentObj = null;
+  const stack = [];
   tableData.forEach(row => {
+    while (stack.length > row.level) stack.pop();
+    const node = {
+      id: row.id?.toString() || `N${Date.now()}`,
+      type: row.level === 0 ? 'objective' : 'kr',
+      name: row.name || '', description: row.subtitle || '',
+      user: row.user || '', group: row.group || '', team: row.team || '',
+      metric: row.metric || '', agg: row.agg || 'SUM',
+      progress: row.progress?.toString() || '0%',
+      timeline: row.tl?.toString() || '',
+      children: []
+    };
     if (row.level === 0) {
-      currentObj = {
-        id: row.id?.toString() || `O${treeArray.length + 1}`,
-        type: 'objective', name: row.name || '',
-        description: row.subtitle || '', user: row.user || '',
-        group: row.group || '', team: row.team || '',
-        metric: row.metric || '', agg: row.agg || 'SUM',
-        children: []
-      };
-      treeArray.push(currentObj);
-    } else if (currentObj && (row.level === 1 || row.level > 0)) {
-      currentObj.children.push({
-        id: row.id?.toString() || `KR${currentObj.children.length + 1}`,
-        type: 'kr', name: row.name || '',
-        description: row.subtitle || '', user: row.user || '',
-        group: row.group || '', team: row.team || '',
-        metric: row.metric || '', agg: row.agg || 'SUM',
-        progress: row.progress?.toString() || '0%',
-        timeline: row.tl?.toString() || ''
-      });
+      treeArray.push(node);
+      stack[0] = node;
+    } else {
+      const parent = stack[row.level - 1];
+      if (parent) { parent.children.push(node); stack[row.level] = node; }
     }
   });
   return treeArray;
@@ -1373,42 +1370,35 @@ const App = () => {
       : treeData.objective
         ? [{ ...treeData.objective, children: treeData.krs || [] }]
         : [];
-    objectives.forEach((obj) => {
-      const objId = obj.id || 'root';
-      const isCollapsed = previewCollapsed[objId];
+    const renderNode = (node, level) => {
+      const nodeId = node.id || `n${rows.length}`;
+      const isCollapsed = previewCollapsed[nodeId];
+      const indent = (level - 1) * 14;
+      const isTopLevel = level === 1;
+      const s = getStatus(node);
       rows.push(
-        <div key={objId} onClick={() => openNodeDetail(obj, 'edit', [], makePreviewSave(treeData))} className="border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer"
+        <div key={nodeId} onClick={() => openNodeDetail(node, 'edit', [], makePreviewSave(treeData))} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer ${s === 'error' ? 'bg-red-50/40' : s === 'warning' ? 'bg-amber-50/40' : ''}`}
              style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
-          <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '0' }}>
-            <button onClick={(e) => { e.stopPropagation(); toggleCollapse(objId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-              <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-            </button>
-            <Box size={11} className="text-blue-500 shrink-0" />
-            <span className="text-[11px] font-medium text-blue-600 truncate">{obj.name}</span>
+          <div className="flex items-center gap-1 truncate" style={{ paddingLeft: `${indent}px` }}>
+            {isTopLevel && (
+              <button onClick={(e) => { e.stopPropagation(); toggleCollapse(nodeId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
+              </button>
+            )}
+            {!isTopLevel && <div className="w-3 shrink-0"></div>}
+            {isTopLevel ? <Box size={11} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
+            <span className={`text-[11px] font-medium truncate ${isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
           </div>
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-            <div key={col.id} className={`px-1.5 text-[10px] text-gray-500 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(obj, col.id, true)}</div>
+            <div key={col.id} className={`px-1.5 text-[10px] ${isTopLevel ? 'text-gray-500' : 'text-gray-600'} ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(node, col.id, isTopLevel)}</div>
           ))}
         </div>
       );
-      if (!isCollapsed) {
-        (obj.children || []).forEach(kr => {
-          const s = getStatus(kr);
-          rows.push(
-            <div key={kr.id} onClick={() => openNodeDetail(kr, 'edit', [], makePreviewSave(treeData))} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer ${s === 'error' ? 'bg-red-50/40' : s === 'warning' ? 'bg-amber-50/40' : ''}`}
-                 style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
-              <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '14px' }}>
-                <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
-                <span className={`text-[11px] font-medium truncate ${s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.name}</span>
-              </div>
-              {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                <div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${col.id === 'metric' || col.id === 'progress' || col.id === 'status' || col.id === 'timeline' || col.id === 'agg' ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(kr, col.id, false)}</div>
-              ))}
-            </div>
-          );
-        });
+      if (!isCollapsed && node.children) {
+        node.children.forEach(child => renderNode(child, level + 1));
       }
-    });
+    };
+    objectives.forEach(obj => renderNode(obj, 1));
 
     const treeContent = (
       <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex flex-col h-full">
@@ -2188,10 +2178,6 @@ const App = () => {
                 <div className="p-6 flex-1 min-h-0 overflow-auto flex flex-col">
                   {importFileStatus === 'idle' && (
                     <div className="max-w-xl w-full mx-auto my-auto animate-fade-in flex flex-col justify-center h-full pb-10">
-                      <div className="text-center mb-4 mt-6">
-                        <h3 className="text-lg font-semibold text-gray-800">Upload File</h3>
-                        <p className="text-sm text-gray-500">Supported format: <strong>.json only</strong> - UTF-8 encoding</p>
-                      </div>
                       <div className="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 py-8 px-6 flex flex-col items-center justify-center hover:bg-gray-50 transition cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
                         <UploadCloud size={40} className="text-indigo-300 mb-3" />
@@ -2244,10 +2230,7 @@ const App = () => {
                       <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6 animate-fade-in">
                         {/* Left Column: Stats & Form */}
                         <div className="flex flex-col space-y-6">
-                          <div className="mt-6">
-                            <h3 className="text-sm font-bold text-gray-800 mb-1">Upload File</h3>
-                            <p className="text-xs text-gray-500 mb-4">Supported format: <strong>.json only</strong></p>
-                            
+                          <div>
                             <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between relative overflow-hidden">
                               <div className="absolute top-0 bottom-0 left-0 w-1 bg-green-500"></div>
                               <div className="flex items-center gap-3">
