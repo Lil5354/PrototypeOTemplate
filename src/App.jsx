@@ -2326,7 +2326,6 @@ const App = () => {
                   {/* Left Column */}
                   <div className="w-[45%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
                     <h3 className="text-base font-bold text-gray-800 mb-0.5">Field Selection</h3>
-                    <p className="text-[11px] text-gray-500 mb-3">Uncheck to skip import — system default will be used instead</p>
                     
                     <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2 shrink-0">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -2361,7 +2360,7 @@ const App = () => {
                                   <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span>
                                 </div>
                                 {field.locked && <div className="text-[10px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><AlertTriangle size={10}/> Required field</div>}
-                                {!isChecked && !field.locked && <p className="text-[10px] text-gray-400 italic mt-1">Using default</p>}
+                                
                               </div>
                             </div>
                             <div className="flex-1 text-xs text-gray-500">
@@ -3008,9 +3007,6 @@ ${exportSelectedTemplates.map(tId => {
                   <div className="animate-fade-in flex flex-col h-full">
                     <div className="mb-4 shrink-0">
                       <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Field Import Selection</h3>
-                      <p className="text-sm text-blue-700 bg-blue-50 px-3 py-3 rounded border border-blue-100 mt-2">
-                        Select fields to take from template. <strong>Unselected fields will use system default values.</strong>
-                      </p>
                     </div>
 
                     <div className="bg-gray-50 p-4 rounded border border-gray-200 flex justify-between items-center mb-4 shrink-0">
@@ -3057,24 +3053,10 @@ ${exportSelectedTemplates.map(tId => {
                             </div>
                             <div className="w-2/3 flex flex-col justify-center">
                               <span className={`text-sm ${isChecked ? 'text-gray-600' : 'text-gray-400 line-through'}`}>{field.desc}</span>
-                              {!isChecked && <span className="text-[11px] text-orange-500 mt-0.5 italic flex items-center"><Info size={10} className="mr-1"/> Will use system default</span>}
                             </div>
                           </div>
                         )
                       })}
-                    </div>
-                    
-                    <div className="mt-4 pt-3 border-t border-gray-200 shrink-0">
-                      <p className="text-sm text-gray-600 leading-relaxed space-y-2">
-                        <span className="font-semibold text-green-600 flex items-center mb-1"><Check size={16} className="mr-1"/> Fields selected:</span>
-                        <span className="inline-flex flex-wrap gap-1">{availableFields.filter(f => addSelectedFields.includes(f.id)).map(f => <strong key={f.id} className="text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 text-xs">{f.label}</strong>)}</span>
-                      </p>
-                      {addSelectedFields.length < availableFields.length && (
-                      <p className="text-sm text-gray-600 leading-relaxed mt-2">
-                        <span className="font-semibold text-orange-600 flex items-center mb-1"><AlertTriangle size={16} className="mr-1"/> Fields not selected (will use defaults):</span>
-                        <span className="inline-flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <strong key={f.id} className="text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200 text-xs">{f.label}</strong>)}</span>
-                      </p>
-                      )}
                     </div>
                   </div>
                 )}
@@ -3245,7 +3227,6 @@ ${exportSelectedTemplates.map(tId => {
                   <div className="animate-fade-in flex flex-col h-full">
                     <div className="mb-4 shrink-0">
                       <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Field Selection</h3>
-                      <p className="text-xs text-gray-500 mt-1">Uncheck to skip field — system default value will be used instead.</p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center mb-4 shrink-0">
                       <label className="flex items-center font-medium text-sm text-gray-800 cursor-pointer">
@@ -3264,7 +3245,7 @@ ${exportSelectedTemplates.map(tId => {
                         return (
                           <div key={field.id} className="flex px-2 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
                             <div className="w-1/3 flex items-start"><input type="checkbox" checked={isChecked} disabled={field.locked} onChange={() => toggleSaveField(field.id)} className={`mt-1 mr-3 w-4 h-4 rounded border-gray-300 ${field.locked ? 'text-gray-400' : 'text-blue-600 focus:ring-blue-500 cursor-pointer'}`} /><div><span className="font-medium text-sm text-gray-800">{field.label}</span></div></div>
-                            <div className="w-2/3 flex flex-col justify-center"><span className={`text-sm ${isChecked ? 'text-gray-600' : 'text-gray-400 line-through'}`}>{field.desc}</span>{!isChecked && <span className="text-[11px] text-orange-500 mt-0.5 italic flex items-center"><Info size={10} className="mr-1"/>Using default</span>}</div>
+                            <div className="w-2/3 flex flex-col justify-center"><span className={`text-sm ${isChecked ? 'text-gray-600' : 'text-gray-400 line-through'}`}>{field.desc}</span></div>
                           </div>
                         )
                       })}
