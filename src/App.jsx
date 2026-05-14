@@ -286,12 +286,13 @@ const OKRTreePreview = ({
   const renderNode = (node, level = 0, objId = null) => {
     const isObjective = node.type === 'objective';
     const hasWarning = node.status === 'warning';
+    const hasDuplicate = node.status === 'duplicate';
     const hasError = node.status === 'error';
     const isCollapsed = objId && collapsedObjectives[objId];
 
     return (
       <React.Fragment key={node.id}>
-        <div onClick={() => onNodeClick && onNodeClick(node)} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors ${onNodeClick ? 'cursor-pointer' : ''} ${hasWarning ? 'bg-amber-50/40' : hasError ? 'bg-red-50/40' : ''}`}
+        <div onClick={() => onNodeClick && onNodeClick(node)} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors ${onNodeClick ? 'cursor-pointer' : ''} ${hasError ? 'bg-red-50/40' : hasDuplicate ? 'bg-orange-50/40' : hasWarning ? 'bg-amber-50/40' : ''}`}
           style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}
         >
           <div className="flex items-center gap-1 truncate" style={{ paddingLeft: `${6 + level * 16}px` }}>
@@ -306,10 +307,10 @@ const OKRTreePreview = ({
             ) : (
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
             )}
-            <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : 'text-gray-700'}`}>
+            <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : hasWarning ? 'text-amber-600' : 'text-gray-700'}`}>
               {node.name}
             </span>
-            {(node.warnMsg || node.errorMsg) && <p className="text-[10px] text-amber-600 italic truncate">{node.warnMsg || node.errorMsg}</p>}
+            {(node.warnMsg || node.errorMsg) && <p className={`text-[10px] italic truncate ${hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : 'text-amber-600'}`}>{node.warnMsg || node.errorMsg}</p>}
           </div>
 
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
