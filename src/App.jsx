@@ -44,7 +44,7 @@ const getGridTemplate = (visibleColumns) => {
     .filter(c => visibleColumns.includes(c.id))
     .map(c => COL_WIDTH_MAP[c.id] || '120px')
     .join(' ');
-  return `minmax(450px, 2.5fr) ${cols}`;
+  return `minmax(200px, 360px) ${cols}`;
 };
 
 const isCenteredCol = (id) => ['metric', 'agg', 'result', 'progress', 'risk_level', 'status', 'timeline_view_metric'].includes(id);
@@ -340,14 +340,7 @@ const OKRTreePreview = ({
                 ))}
               </div>
               
-              {/* General / Template / Auto Link: placeholder only */}
-              {['general', 'template', 'auto link'].includes(nodeDetailTab) && (
-                <div className="p-8 text-center">
-                  <div className="text-xs text-gray-400 italic">Giao diện chỉ mang tính chất minh họa, chức năng thực tế sẽ bám sát giao diện của hệ thống gốc XCORP</div>
-                </div>
-              )}
-              
-              {/* Detail Tab Content */}
+              {/* Detail Tab Content (all node details content) */}
               {nodeDetailTab === 'detail' && (
                 <div>
                   {/* Detail Form Wrapper: fields + circle progress */}
@@ -686,7 +679,7 @@ const OKRTreePreview = ({
             <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : hasWarning ? 'text-amber-600' : 'text-gray-700'}`}>
               {node.name}
             </span>
-            {(node.warnMsg || node.errorMsg) && <p className={`text-[10px] italic truncate ${hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : 'text-amber-600'}`}>{node.warnMsg || node.errorMsg}</p>}
+            {(node.warnMsg || node.errorMsg) && <span className="relative group inline-flex" onDoubleClick={() => alert(node.warnMsg || node.errorMsg)} title={node.warnMsg || node.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ${hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : 'text-amber-600'}`}>{node.warnMsg || node.errorMsg}</p><div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 pointer-events-none"><div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-normal break-words max-w-[260px] max-h-[120px] overflow-y-auto">{node.warnMsg || node.errorMsg}</div></div></span>}
           </div>
 
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1115,6 +1108,7 @@ const App = () => {
   const [viewCollapsedObjs, setViewCollapsedObjs] = useState({});
   const [nodeDetailConfig, setNodeDetailConfig] = useState({ isOpen: false, mode: 'view', data: null, path: [] });
   const [nodeDetailTab, setNodeDetailTab] = useState('detail');
+  const [nodeDetailTopTab, setNodeDetailTopTab] = useState('general');
   const [nodeDetailBottomTab, setNodeDetailBottomTab] = useState('comment'); 
   const [editingNodeData, setEditingNodeData] = useState(null);
   
@@ -1294,15 +1288,28 @@ const App = () => {
     } catch (err) { triggerToast('Apply failed. Please try again.', 'error'); }
   };
 
-  const executeApplyToBoard = (treeArray, targetPeriod, targetSpace) => {
+  const executeApplyToBoard = (treeArray, targetPeriod, targetSpace, overrideMode = false) => {
     const newData = mapTreeToTable(treeArray);
     const targetKey = `${targetSpace}|2025|${targetPeriod}`;
+    const cleanNode = (node) => ({
+      ...node,
+      progress: '0%',
+      risk: 'low',
+      result: 0,
+      status: 'valid',
+      warnMsg: null,
+      errorMsg: null,
+    });
+    const cleanData = newData.map(cleanNode);
 
     setOkrDataMap(prev => {
+      if (overrideMode) {
+        return { ...prev, [targetKey]: cleanData.map(r => ({ ...r, id: Date.now() + Math.random() })) };
+      }
       const existing = prev[targetKey] || [];
       const merged = [...existing];
       const existingNames = new Set(existing.map(r => r.name));
-      newData.forEach(row => {
+      cleanData.forEach(row => {
         if (!existingNames.has(row.name)) {
           merged.push({ ...row, id: Date.now() + Math.random() });
         }
@@ -1314,8 +1321,8 @@ const App = () => {
     setSelectedYear('2025');
     setSelectedPeriod(targetPeriod);
     setActiveView('okr-dashboard');
-    const added = newData.length;
-    triggerToast(`Template applied to ${targetSpace} - ${targetPeriod}. ${added} nodes added.`);
+    const added = cleanData.length;
+    triggerToast(`Template ${overrideMode ? 'overridden' : 'applied'} to ${targetSpace} - ${targetPeriod}. ${added} nodes ${overrideMode ? 'replaced' : 'added'}.`);
   }
 
   const filteredTemplates = templateList.filter(t => 
@@ -1374,7 +1381,7 @@ const App = () => {
        triggerToast('Please select Timeline to continue.', 'warning');
        return;
     }
-    executeApplyToBoard(viewTarget.tree, selectedTimelineForUse, selectedSpaceForUse);
+    executeApplyToBoard(viewTarget.tree, selectedTimelineForUse, selectedSpaceForUse, showOverrideConfirm);
     setShowOverrideConfirm(false);
     setIsTimelineModalOpen(false);
     closeViewModal();
@@ -1659,6 +1666,7 @@ const App = () => {
     setExportSelectedTemplates(prev => prev.includes(templateId) ? prev.filter(id => id !== templateId) : [...prev, templateId]);
   };
   const toggleExportField = (fieldId) => {
+    if (fieldId === 'name') return;
     setExportSelectedFields(prev => prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]);
   };
   const handleConfirmExport = () => {
@@ -1911,7 +1919,7 @@ const App = () => {
                     </button>
                     <Box size={11} className="text-blue-500 shrink-0" />
                     <span className="text-[11px] font-medium text-blue-600 truncate">{treeData.objective.id}: {treeData.objective.name}</span>
-                    {(treeData.objective.warnMsg || treeData.objective.errorMsg) && <p className={`text-[10px] italic truncate ml-1 ${treeData.objective.status === 'error' ? 'text-red-600' : treeData.objective.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{treeData.objective.warnMsg || treeData.objective.errorMsg}</p>}
+                    {(treeData.objective.warnMsg || treeData.objective.errorMsg) && <span className="relative group inline-flex" onDoubleClick={() => alert(treeData.objective.warnMsg || treeData.objective.errorMsg)} title={treeData.objective.warnMsg || treeData.objective.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ml-1 ${treeData.objective.status === 'error' ? 'text-red-600' : treeData.objective.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{treeData.objective.warnMsg || treeData.objective.errorMsg}</p><div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 pointer-events-none"><div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-normal break-words max-w-[260px] max-h-[120px] overflow-y-auto">{treeData.objective.warnMsg || treeData.objective.errorMsg}</div></div></span>}
                   </div>
                   {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
                     <div key={col.id} className={`px-1.5 text-[10px] text-gray-500 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(treeData.objective, col.id)}</div>
@@ -1924,7 +1932,7 @@ const App = () => {
                   <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '16px' }}>
                     <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
                     <span className={`text-[11px] font-medium truncate ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</span>
-                    {(kr.warnMsg || kr.errorMsg) && <p className={`text-[10px] italic truncate ml-1 ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{kr.warnMsg || kr.errorMsg}</p>}
+                    {(kr.warnMsg || kr.errorMsg) && <span className="relative group inline-flex" onDoubleClick={() => alert(kr.warnMsg || kr.errorMsg)} title={kr.warnMsg || kr.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ml-1 ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{kr.warnMsg || kr.errorMsg}</p><div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 pointer-events-none"><div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-normal break-words max-w-[260px] max-h-[120px] overflow-y-auto">{kr.warnMsg || kr.errorMsg}</div></div></span>}
                   </div>
                   {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
                     <div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(kr, col.id)}</div>
@@ -1994,279 +2002,283 @@ const App = () => {
           
           <div className="p-5 space-y-5">
             
-            {/* General Overview (compact header section) */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-              <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-2"><Info size={12} className="text-gray-400" /> General</h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Level</span>
-                  <span className="font-semibold text-gray-800">{data.level || 'PERSONAL'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Category</span>
-                  <span className="font-semibold text-gray-800">{data.category || (isObj ? 'Objective' : 'KPI')}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Assignee</span>
-                  <span className="font-semibold text-gray-800 flex items-center gap-1">{data.user ? <><div className="w-4 h-4 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.user}`} alt="" className="w-full h-full object-cover" /></div><span>{data.user}</span></> : <span className="italic text-gray-400">Unassigned</span>}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Progress</span>
-                  <span className={`font-semibold ${data.progress && parseInt(data.progress) >= 100 ? 'text-green-600' : data.progress && parseInt(data.progress) >= 50 ? 'text-blue-600' : 'text-gray-800'}`}>{data.progress || '0%'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Timeline</span>
-                  <span className="font-semibold text-gray-800">{data.timeline || (data.tlYear ? `${data.tlYear} ${data.tlQuarter || 'Q3'}` : '2025 Q3')}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Status</span>
-                  <span className="flex items-center gap-1">
-                    {data.status === 'valid' && <CheckCircle2 size={12} className="text-green-600" />}
-                    {data.status === 'warning' && <AlertTriangle size={12} className="text-amber-600" />}
-                    {data.status === 'error' && <XOctagon size={12} className="text-red-600" />}
-                    {!data.status && <CheckCircle2 size={12} className="text-green-600" />}
-                    <span className="font-semibold text-gray-800">{data.status === 'valid' || !data.status ? 'On Track' : data.status === 'warning' ? 'At Risk' : 'Behind'}</span>
-                  </span>
-                </div>
+            {/* Tabs: General | Detail | Template | Auto Link */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex border-b border-gray-200">
+                {['General', 'Detail', 'Template', 'Auto Link'].map(tab => (
+                  <button key={tab} onClick={() => setNodeDetailTopTab(tab.toLowerCase())}
+                    className={`px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${nodeDetailTopTab === tab.toLowerCase() ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                    {tab}
+                  </button>
+                ))}
               </div>
-            </div>
-            
-            {/* Section 1: Details */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-              <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-1"><FileText size={12} className="text-gray-400" /> Details</h4>
-              <FieldRow label="Title" required>
-                {isEdit ? <input type="text" value={editingNodeData?.name || ''} onChange={(e) => setEditingNodeData({...editingNodeData, name: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" /> : <div className="text-sm font-semibold text-gray-900">{data.name}</div>}
-              </FieldRow>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Level</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.level || 'PERSONAL'} onChange={(e) => setEditingNodeData({...editingNodeData, level: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option value="PERSONAL">PERSONAL</option><option value="GROUP">GROUP</option><option value="TEAM">TEAM</option><option value="COMPANY">COMPANY</option>
-                    </select>
-                  ) : <span className="text-sm text-gray-800">{data.level || 'PERSONAL'}</span>}
+              
+              {/* General Tab Content (empty - interface removed as requested) */}
+              {nodeDetailTopTab === 'general' && (
+                <div className="p-4 text-center">
+                  <Info size={28} className="mx-auto mb-2 text-gray-200" />
+                  <p className="text-xs text-gray-400 italic">General information is now organized in the Detail tab</p>
                 </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Category</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.category || (isObj ? 'Objective' : 'KPI')} onChange={(e) => setEditingNodeData({...editingNodeData, category: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option value="Objective">Objective</option><option value="KPI">KPI</option>
-                    </select>
-                  ) : <span className="text-sm text-gray-800">{data.category || (isObj ? 'Objective' : 'KPI')}</span>}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Code</label>
-                  <span className="text-sm font-mono text-gray-500 bg-gray-50 px-2 py-1.5 rounded border border-gray-200 block">{data.id || 'AUTO-GEN'}</span>
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Due Date</label>
-                  {isEdit ? <input type="text" placeholder="dd/mm/yyyy" value={editingNodeData?.dueDate || ''} onChange={(e) => setEditingNodeData({...editingNodeData, dueDate: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.dueDate || <span className="italic text-gray-400">None</span>}</span>}
-                </div>
-              </div>
-              <FieldRow label="Description">
-                {isEdit ? <textarea value={editingNodeData?.description || ''} onChange={(e) => setEditingNodeData({...editingNodeData, description: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded h-16 custom-scrollbar focus:ring-1 focus:ring-blue-500" /> : <div className="text-sm text-gray-600">{data.description || <span className="italic text-gray-400">Not set</span>}</div>}
-              </FieldRow>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Indicator</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.indicator || ''} onChange={(e) => setEditingNodeData({...editingNodeData, indicator: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option value="">None</option><option value="KPI">KPI</option><option value="OKR">OKR</option><option value="KRA">KRA</option>
-                    </select>
-                  ) : <span className="text-sm text-gray-800">{data.indicator || <span className="italic text-gray-400">None</span>}</span>}
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Policies</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.policies || ''} onChange={(e) => setEditingNodeData({...editingNodeData, policies: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option value="">None</option><option value="Policy A">Policy A</option><option value="Policy B">Policy B</option><option value="Policy C">Policy C</option>
-                    </select>
-                  ) : <span className="text-sm text-gray-800">{data.policies || <span className="italic text-gray-400">None</span>}</span>}
-                </div>
-              </div>
-              <FieldRow label="Labels">
-                {isEdit ? <input type="text" placeholder="label1, label2" value={editingNodeData?.labels || ''} onChange={(e) => setEditingNodeData({...editingNodeData, labels: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /> : <div className="flex flex-wrap gap-1">{typeof data.labels === 'string' ? data.labels.split(',').map((l,i) => <span key={i} className="px-1.5 py-0.5 text-xs bg-gray-100 border border-gray-200 rounded text-gray-600">{l.trim()}</span>) : <span className="italic text-gray-400 text-sm">None</span>}</div>}
-              </FieldRow>
-              <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Assignee</label>
-                  {isEdit ? <input type="text" placeholder="Select user..." value={editingNodeData?.user || ''} onChange={(e) => setEditingNodeData({...editingNodeData, user: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <div className="text-sm flex items-center gap-1.5">{data.user ? <><div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.user}`} alt="u"/></div><span className="font-medium">{data.user}</span></> : <span className="italic text-gray-400 text-sm">Unassigned</span>}</div>}
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Groups</label>
-                  {isEdit ? <input type="text" value={editingNodeData?.group || ''} onChange={(e) => setEditingNodeData({...editingNodeData, group: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.group || <span className="italic text-gray-400 text-sm">None</span>}</span>}
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Teams</label>
-                  {isEdit ? <input type="text" value={editingNodeData?.team || ''} onChange={(e) => setEditingNodeData({...editingNodeData, team: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.team || <span className="italic text-gray-400 text-sm">None</span>}</span>}
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Stakeholders</label>
-                  {isEdit ? <input type="text" placeholder="User1, User2" value={editingNodeData?.stakeholders || ''} onChange={(e) => setEditingNodeData({...editingNodeData, stakeholders: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.stakeholders || <span className="italic text-gray-400 text-sm">None</span>}</span>}
-                </div>
-              </div>
-              <div className="pt-1 border-t border-gray-100">
-                <label className="text-[10px] font-medium text-gray-500 mb-1 block">Timeline (TL) <span className="text-red-500">*</span></label>
-                {isEdit ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <select value={editingNodeData?.tlYear || '2025'} onChange={(e) => setEditingNodeData({...editingNodeData, tlYear: e.target.value})} className="text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option>2024</option><option>2025</option><option>2026</option>
-                    </select>
-                    <select value={editingNodeData?.tlQuarter || 'Q3'} onChange={(e) => setEditingNodeData({...editingNodeData, tlQuarter: e.target.value})} className="text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
-                    </select>
-                  </div>
-                ) : <span className="text-sm text-gray-800">{data.tlYear && data.tlQuarter ? `${data.tlYear} ${data.tlQuarter}` : data.timeline || <span className="italic text-gray-400">Not set</span>}</span>}
-              </div>
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Progress Formula</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.progressFormula || 'Default'} onChange={(e) => setEditingNodeData({...editingNodeData, progressFormula: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded"><option>Default</option><option>Custom</option></select>
-                  ) : <span className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded font-medium inline-block">{data.progressFormula || 'Default'}</span>}
-                </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Risk Formula</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.riskFormula || 'Default'} onChange={(e) => setEditingNodeData({...editingNodeData, riskFormula: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded"><option>Default</option><option>Custom</option></select>
-                  ) : <span className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded font-medium inline-block">{data.riskFormula || 'Default'}</span>}
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Parent Objective (only for KR / sub-Objective) */}
-            {!isObj && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-                <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-1"><ArrowUpCircle size={12} className="text-gray-400" /> Parent Objective</h4>
-                <div className="space-y-2.5">
+              )}
+              
+              {/* Detail Tab - all node details content */}
+              {nodeDetailTopTab === 'detail' && (
+                <div className="space-y-4 p-4">
+                  {/* Details section */}
                   <div>
-                    <label className="text-[10px] font-medium text-gray-500 mb-1 block">Objective</label>
-                    <div className="text-sm font-medium text-blue-600 cursor-pointer hover:underline">{data.parentName || 'Product Launch'} <span className="text-xs text-gray-400 font-mono ml-1">{data.parentCode || 'OBJ-01'}</span></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-500 mb-1 block">Assignee</label>
-                      <div className="text-sm flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.parentAssignee || 'parent'}`} alt=""/></div>
-                        <span className="font-medium">{data.parentAssignee || 'Tuan Ha'}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-500 mb-1 block">Percent</label>
-                      <span className="text-sm font-semibold text-gray-800">{data.parentPercent || 50}%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-medium text-gray-500 mb-1 block">Timeline (TL)</label>
-                    <span className="text-sm text-gray-800">{data.parentTimeline || '2025 Q3'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Section 3: Nested Items (no Weight field) */}
-            {(data.children?.length > 0) && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-                <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-1"><List size={12} className="text-gray-400" /> Nested Items</h4>
-                <div className="space-y-1.5">
-                  {data.children.map((child, idx) => (
-                    <div key={child.id || idx} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded border border-gray-100">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
-                        <span className="text-xs font-medium text-gray-800 truncate">{child.name || child.id} <span className="text-gray-400 font-mono">{child.id}</span></span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-full bg-gray-200 overflow-hidden"><img src={`https://i.pravatar.cc/100?u=${child.user || child.id}`} alt=""/></div>
-                          <span className="text-[10px] text-gray-600">{child.user || 'Unassigned'}</span>
+                    <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-2"><FileText size={12} className="text-gray-400" /> Details</h4>
+                    <div className="space-y-3">
+                      <FieldRow label="Title" required>
+                        {isEdit ? <input type="text" value={editingNodeData?.name || ''} onChange={(e) => setEditingNodeData({...editingNodeData, name: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" /> : <div className="text-sm font-semibold text-gray-900">{data.name}</div>}
+                      </FieldRow>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Level</label>
+                          {isEdit ? (
+                            <select value={editingNodeData?.level || 'PERSONAL'} onChange={(e) => setEditingNodeData({...editingNodeData, level: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
+                              <option value="PERSONAL">PERSONAL</option><option value="GROUP">GROUP</option><option value="TEAM">TEAM</option><option value="COMPANY">COMPANY</option>
+                            </select>
+                          ) : <span className="text-sm text-gray-800">{data.level || 'PERSONAL'}</span>}
                         </div>
-                        <span className="text-[10px] font-semibold text-blue-600">{child.percent || 0}%</span>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Category</label>
+                          {isEdit ? (
+                            <select value={editingNodeData?.category || (isObj ? 'Objective' : 'KPI')} onChange={(e) => setEditingNodeData({...editingNodeData, category: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
+                              <option value="Objective">Objective</option><option value="KPI">KPI</option>
+                            </select>
+                          ) : <span className="text-sm text-gray-800">{data.category || (isObj ? 'Objective' : 'KPI')}</span>}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Code</label>
+                          <span className="text-sm font-mono text-gray-500 bg-gray-50 px-2 py-1.5 rounded border border-gray-200 block">{data.id || 'AUTO-GEN'}</span>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Due Date</label>
+                          {isEdit ? <input type="text" placeholder="dd/mm/yyyy" value={editingNodeData?.dueDate || ''} onChange={(e) => setEditingNodeData({...editingNodeData, dueDate: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.dueDate || <span className="italic text-gray-400">None</span>}</span>}
+                        </div>
+                      </div>
+                      <FieldRow label="Description">
+                        {isEdit ? <textarea value={editingNodeData?.description || ''} onChange={(e) => setEditingNodeData({...editingNodeData, description: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded h-16 custom-scrollbar focus:ring-1 focus:ring-blue-500" /> : <div className="text-sm text-gray-600">{data.description || <span className="italic text-gray-400">Not set</span>}</div>}
+                      </FieldRow>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Indicator</label>
+                          {isEdit ? (
+                            <select value={editingNodeData?.indicator || ''} onChange={(e) => setEditingNodeData({...editingNodeData, indicator: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
+                              <option value="">None</option><option value="KPI">KPI</option><option value="OKR">OKR</option><option value="KRA">KRA</option>
+                            </select>
+                          ) : <span className="text-sm text-gray-800">{data.indicator || <span className="italic text-gray-400">None</span>}</span>}
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Policies</label>
+                          {isEdit ? (
+                            <select value={editingNodeData?.policies || ''} onChange={(e) => setEditingNodeData({...editingNodeData, policies: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
+                              <option value="">None</option><option value="Policy A">Policy A</option><option value="Policy B">Policy B</option><option value="Policy C">Policy C</option>
+                            </select>
+                          ) : <span className="text-sm text-gray-800">{data.policies || <span className="italic text-gray-400">None</span>}</span>}
+                        </div>
+                      </div>
+                      <FieldRow label="Labels">
+                        {isEdit ? <input type="text" placeholder="label1, label2" value={editingNodeData?.labels || ''} onChange={(e) => setEditingNodeData({...editingNodeData, labels: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /> : <div className="flex flex-wrap gap-1">{typeof data.labels === 'string' ? data.labels.split(',').map((l,i) => <span key={i} className="px-1.5 py-0.5 text-xs bg-gray-100 border border-gray-200 rounded text-gray-600">{l.trim()}</span>) : <span className="italic text-gray-400 text-sm">None</span>}</div>}
+                      </FieldRow>
+                      <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Assignee</label>
+                          {isEdit ? <input type="text" placeholder="Select user..." value={editingNodeData?.user || ''} onChange={(e) => setEditingNodeData({...editingNodeData, user: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <div className="text-sm flex items-center gap-1.5">{data.user ? <><div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.user}`} alt="u"/></div><span className="font-medium">{data.user}</span></> : <span className="italic text-gray-400 text-sm">Unassigned</span>}</div>}
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Groups</label>
+                          {isEdit ? <input type="text" value={editingNodeData?.group || ''} onChange={(e) => setEditingNodeData({...editingNodeData, group: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.group || <span className="italic text-gray-400 text-sm">None</span>}</span>}
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Teams</label>
+                          {isEdit ? <input type="text" value={editingNodeData?.team || ''} onChange={(e) => setEditingNodeData({...editingNodeData, team: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.team || <span className="italic text-gray-400 text-sm">None</span>}</span>}
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Stakeholders</label>
+                          {isEdit ? <input type="text" placeholder="User1, User2" value={editingNodeData?.stakeholders || ''} onChange={(e) => setEditingNodeData({...editingNodeData, stakeholders: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.stakeholders || <span className="italic text-gray-400 text-sm">None</span>}</span>}
+                        </div>
+                      </div>
+                      <div className="pt-1 border-t border-gray-100">
+                        <label className="text-[10px] font-medium text-gray-500 mb-1 block">Timeline (TL) <span className="text-red-500">*</span></label>
+                        {isEdit ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <select value={editingNodeData?.tlYear || '2025'} onChange={(e) => setEditingNodeData({...editingNodeData, tlYear: e.target.value})} className="text-xs px-2 py-1.5 border border-gray-300 rounded">
+                              <option>2024</option><option>2025</option><option>2026</option>
+                            </select>
+                            <select value={editingNodeData?.tlQuarter || 'Q3'} onChange={(e) => setEditingNodeData({...editingNodeData, tlQuarter: e.target.value})} className="text-xs px-2 py-1.5 border border-gray-300 rounded">
+                              <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+                            </select>
+                          </div>
+                        ) : <span className="text-sm text-gray-800">{data.tlYear && data.tlQuarter ? `${data.tlYear} ${data.tlQuarter}` : data.timeline || <span className="italic text-gray-400">Not set</span>}</span>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Progress Formula</label>
+                          {isEdit ? (
+                            <select value={editingNodeData?.progressFormula || 'Default'} onChange={(e) => setEditingNodeData({...editingNodeData, progressFormula: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded"><option>Default</option><option>Custom</option></select>
+                          ) : <span className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded font-medium inline-block">{data.progressFormula || 'Default'}</span>}
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Risk Formula</label>
+                          {isEdit ? (
+                            <select value={editingNodeData?.riskFormula || 'Default'} onChange={(e) => setEditingNodeData({...editingNodeData, riskFormula: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded"><option>Default</option><option>Custom</option></select>
+                          ) : <span className="text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded font-medium inline-block">{data.riskFormula || 'Default'}</span>}
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Section 4: Timeline (TL) Detail */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-              <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-1"><Calendar size={12} className="text-gray-400" /> Timeline (TL) Detail</h4>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500">Planning Timeline</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={editingNodeData?.planningActive !== false} onChange={(e) => isEdit && setEditingNodeData({...editingNodeData, planningActive: e.target.checked})} />
-                  <div className="w-7 h-3.5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors" style={{ position: 'relative' }}>
-                    <div className="absolute top-[1px] left-[1px] w-3 h-3 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-[14px]"></div>
                   </div>
-                </label>
-              </div>
-              <div className="border border-gray-200 rounded divide-y divide-gray-100">
-                <div className="px-2.5 py-1.5 bg-gray-50 flex items-center gap-1.5">
-                  <ChevronRight size={10} className="text-gray-400" />
-                  <span className="text-xs font-semibold text-gray-700">{data.tlYear || '2025'} {data.tlQuarter || 'Q3'}</span>
-                </div>
-                <div className="px-2.5 py-2">
-                  <div className="grid grid-cols-3 gap-2 text-center">
+
+                  {/* Parent Objective */}
+                  {!isObj && (
                     <div>
-                      <label className="text-[9px] text-gray-500 block">Start</label>
-                      {isEdit ? <input type="number" className="w-full text-xs bg-white border border-gray-300 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.start ?? data.start ?? 0} onChange={(e) => setEditingNodeData({...editingNodeData, start: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-gray-700">{data.start || 0}</span>}
+                      <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-2"><ArrowUpCircle size={12} className="text-gray-400" /> Parent Objective</h4>
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Objective</label>
+                          <div className="text-sm font-medium text-blue-600 cursor-pointer hover:underline">{data.parentName || 'Product Launch'} <span className="text-xs text-gray-400 font-mono ml-1">{data.parentCode || 'OBJ-01'}</span></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-medium text-gray-500 mb-1 block">Assignee</label>
+                            <div className="text-sm flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://i.pravatar.cc/100?u=${data.parentAssignee || 'parent'}`} alt=""/></div>
+                              <span className="font-medium">{data.parentAssignee || 'Tuan Ha'}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-medium text-gray-500 mb-1 block">Percent</label>
+                            <span className="text-sm font-semibold text-gray-800">{data.parentPercent || 50}%</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-gray-500 mb-1 block">Timeline (TL)</label>
+                          <span className="text-sm text-gray-800">{data.parentTimeline || '2025 Q3'}</span>
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  {/* Nested Items */}
+                  {(data.children?.length > 0) && (
                     <div>
-                      <label className="text-[9px] text-gray-500 block">Current</label>
-                      {isEdit ? <input type="number" className="w-full text-xs bg-white border border-blue-200 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.current ?? data.current ?? 0} onChange={(e) => setEditingNodeData({...editingNodeData, current: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-blue-700">{data.current || 0}</span>}
+                      <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-2"><List size={12} className="text-gray-400" /> Nested Items</h4>
+                      <div className="space-y-1.5">
+                        {data.children.map((child, idx) => (
+                          <div key={child.id || idx} className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded border border-gray-100">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>
+                              <span className="text-xs font-medium text-gray-800 truncate">{child.name || child.id} <span className="text-gray-400 font-mono">{child.id}</span></span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 ml-2">
+                              <div className="flex items-center gap-1">
+                                <div className="w-4 h-4 rounded-full bg-gray-200 overflow-hidden"><img src={`https://i.pravatar.cc/100?u=${child.user || child.id}`} alt=""/></div>
+                                <span className="text-[10px] text-gray-600">{child.user || 'Unassigned'}</span>
+                              </div>
+                              <span className="text-[10px] font-semibold text-blue-600">{child.percent || 0}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[9px] text-gray-500 block">Expected / Target</label>
-                      {isEdit ? <input type="number" className="w-full text-xs bg-white border border-green-200 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.expected ?? data.expected ?? 100} onChange={(e) => setEditingNodeData({...editingNodeData, expected: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-green-700">{data.expected || 100}</span>}
+                  )}
+
+                  {/* Timeline (TL) Detail */}
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-2"><Calendar size={12} className="text-gray-400" /> Timeline (TL) Detail</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-500">Planning Timeline</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={editingNodeData?.planningActive !== false} onChange={(e) => isEdit && setEditingNodeData({...editingNodeData, planningActive: e.target.checked})} />
+                        <div className="w-7 h-3.5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 transition-colors" style={{ position: 'relative' }}>
+                          <div className="absolute top-[1px] left-[1px] w-3 h-3 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-[14px]"></div>
+                        </div>
+                      </label>
+                    </div>
+                    <div className="border border-gray-200 rounded divide-y divide-gray-100">
+                      <div className="px-2.5 py-1.5 bg-gray-50 flex items-center gap-1.5">
+                        <ChevronRight size={10} className="text-gray-400" />
+                        <span className="text-xs font-semibold text-gray-700">{data.tlYear || '2025'} {data.tlQuarter || 'Q3'}</span>
+                      </div>
+                      <div className="px-2.5 py-2">
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <label className="text-[9px] text-gray-500 block">Start</label>
+                            {isEdit ? <input type="number" className="w-full text-xs bg-white border border-gray-300 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.start ?? data.start ?? 0} onChange={(e) => setEditingNodeData({...editingNodeData, start: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-gray-700">{data.start || 0}</span>}
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-gray-500 block">Current</label>
+                            {isEdit ? <input type="number" className="w-full text-xs bg-white border border-blue-200 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.current ?? data.current ?? 0} onChange={(e) => setEditingNodeData({...editingNodeData, current: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-blue-700">{data.current || 0}</span>}
+                          </div>
+                          <div>
+                            <label className="text-[9px] text-gray-500 block">Expected / Target</label>
+                            {isEdit ? <input type="number" className="w-full text-xs bg-white border border-green-200 px-1.5 py-1 rounded mt-0.5 text-center" value={editingNodeData?.expected ?? data.expected ?? 100} onChange={(e) => setEditingNodeData({...editingNodeData, expected: Number(e.target.value)})} /> : <span className="text-xs font-semibold text-green-700">{data.expected || 100}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metric & Results */}
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-2"><BarChart2 size={12} className="text-gray-400" /> Metric & Results</h4>
+                    <FieldRow label="Metric">
+                      {isEdit ? <input type="text" value={editingNodeData?.metric || ''} onChange={(e) => setEditingNodeData({...editingNodeData, metric: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /> : <div className="text-sm font-mono font-semibold text-gray-900 bg-gray-50 px-3 py-1.5 rounded border border-gray-200">{data.metric || <span className="italic text-gray-400">Not set</span>}</div>}
+                    </FieldRow>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="text-[10px] font-medium text-gray-500 mb-1 block">Aggregation Type</label>
+                        {isEdit ? (
+                          <select value={editingNodeData?.agg || 'SUM'} onChange={(e) => setEditingNodeData({...editingNodeData, agg: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
+                            <option>SUM</option><option>AVG</option>
+                          </select>
+                        ) : <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold border border-blue-100 inline-block">{data.agg || 'SUM'}</span>}
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-gray-500 mb-1 block">Result</label>
+                        {isEdit ? <input type="text" value={editingNodeData?.result ?? ''} onChange={(e) => setEditingNodeData({...editingNodeData, result: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.result ?? 'Default'}</span>}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pt-2">
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200 text-center">
+                        <label className="text-[9px] text-gray-500 block">Start</label>
+                        <span className="text-sm font-semibold text-gray-700">{data.start || 0}</span>
+                      </div>
+                      <div className="bg-blue-50/50 p-2 rounded border border-blue-200 text-center">
+                        <label className="text-[9px] text-gray-500 block">Current</label>
+                        <span className="text-sm font-semibold text-blue-700">{data.current || 0}</span>
+                      </div>
+                      <div className="bg-green-50/50 p-2 rounded border border-green-200 text-center">
+                        <label className="text-[9px] text-gray-500 block">Expected</label>
+                        <span className="text-sm font-semibold text-green-700">{data.expected || 100}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* Section 5: Metric & Results */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3">
-              <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-gray-100 mb-1"><BarChart2 size={12} className="text-gray-400" /> Metric & Results</h4>
-              <FieldRow label="Metric">
-                {isEdit ? <input type="text" value={editingNodeData?.metric || ''} onChange={(e) => setEditingNodeData({...editingNodeData, metric: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /> : <div className="text-sm font-mono font-semibold text-gray-900 bg-gray-50 px-3 py-1.5 rounded border border-gray-200">{data.metric || <span className="italic text-gray-400">Not set</span>}</div>}
-              </FieldRow>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Aggregation Type</label>
-                  {isEdit ? (
-                    <select value={editingNodeData?.agg || 'SUM'} onChange={(e) => setEditingNodeData({...editingNodeData, agg: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded">
-                      <option>SUM</option><option>AVG</option>
-                    </select>
-                  ) : <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-bold border border-blue-100 inline-block">{data.agg || 'SUM'}</span>}
+              {/* Template Tab - placeholder */}
+              {nodeDetailTopTab === 'template' && (
+                <div className="p-8 text-center">
+                  <div className="text-xs text-gray-400 italic">Template configuration will be available here</div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-medium text-gray-500 mb-1 block">Result</label>
-                  {isEdit ? <input type="text" value={editingNodeData?.result ?? ''} onChange={(e) => setEditingNodeData({...editingNodeData, result: e.target.value})} className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded" /> : <span className="text-sm text-gray-800">{data.result ?? 'Default'}</span>}
+              )}
+              
+              {/* Auto Link Tab - placeholder */}
+              {nodeDetailTopTab === 'auto link' && (
+                <div className="p-8 text-center">
+                  <div className="text-xs text-gray-400 italic">Auto link configuration will be available here</div>
                 </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <div className="bg-gray-50 p-2 rounded border border-gray-200 text-center">
-                  <label className="text-[9px] text-gray-500 block">Start</label>
-                  <span className="text-sm font-semibold text-gray-700">{data.start || 0}</span>
-                </div>
-                <div className="bg-blue-50/50 p-2 rounded border border-blue-200 text-center">
-                  <label className="text-[9px] text-gray-500 block">Current</label>
-                  <span className="text-sm font-semibold text-blue-700">{data.current || 0}</span>
-                </div>
-                <div className="bg-green-50/50 p-2 rounded border border-green-200 text-center">
-                  <label className="text-[9px] text-gray-500 block">Expected</label>
-                  <span className="text-sm font-semibold text-green-700">{data.expected || 100}</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Comment / Check-in / History tabs */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               <div className="flex border-b border-gray-200 bg-gray-50/50">
                 {['Comment', 'Check-in', 'History'].map(tab => (
-                  <button key={tab} onClick={() => setNodeDetailTab(tab)} className={`px-4 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${nodeDetailTab === tab ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
+                  <button key={tab} onClick={() => setNodeDetailBottomTab(tab.toLowerCase())} className={`px-4 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${nodeDetailBottomTab === tab.toLowerCase() ? 'text-blue-600 border-b-2 border-blue-600 bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
                     {tab === 'Comment' && <MessageSquare size={11} className="inline mr-1" />}
                     {tab === 'Check-in' && <Clipboard size={11} className="inline mr-1" />}
                     {tab === 'History' && <Clock size={11} className="inline mr-1" />}
@@ -2275,7 +2287,7 @@ const App = () => {
                 ))}
               </div>
               <div className="p-4 min-h-[100px]">
-                {nodeDetailTab === 'Comment' && (
+                {nodeDetailBottomTab === 'comment' && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-2">
                       <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden shrink-0 mt-0.5"><img src="https://i.pravatar.cc/100?u=current" alt="" className="w-full h-full object-cover" /></div>
@@ -2306,14 +2318,14 @@ const App = () => {
                     </div>
                   </div>
                 )}
-                {nodeDetailTab === 'Check-in' && (
+                {nodeDetailBottomTab === 'check-in' && (
                   <div className="text-center py-6 text-gray-400">
                     <Clipboard size={24} className="mx-auto mb-2 opacity-50" />
                     <p className="text-xs font-medium">No check-ins yet</p>
                     <p className="text-[10px] mt-1">Check-ins help track progress regularly</p>
                   </div>
                 )}
-                {nodeDetailTab === 'History' && (
+                {nodeDetailBottomTab === 'history' && (
                   <div className="space-y-3">
                     {[
                       { action: 'Created', user: 'Duc Le', date: 'Jan 15, 2025', detail: 'Objective created with initial target' },
@@ -3348,7 +3360,7 @@ const App = () => {
                             checked={exportSelectedFields.length === availableFields.length}
                             onChange={(e) => {
                               if (e.target.checked) setExportSelectedFields(availableFields.map(f => f.id));
-                              else setExportSelectedFields([]);
+                              else setExportSelectedFields(['name']);
                             }}
                           />
                           <span className="font-bold text-sm text-gray-800">Select All Fields</span>
@@ -3388,7 +3400,7 @@ const App = () => {
                               <div key={field.id} className={`border rounded-lg p-3.5 flex gap-3 transition relative overflow-hidden ${isChecked ? 'bg-white border-blue-200 shadow-sm' : 'bg-gray-50/50 border-gray-200'}`}>
                                 {isChecked && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-400"></div>}
                                 <input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 cursor-pointer relative z-10" 
-                                  checked={isChecked} onChange={() => toggleExportField(field.id)} />
+                                  checked={isChecked} disabled={field.id === 'name'} onChange={() => toggleExportField(field.id)} />
                                 <div className="relative z-10">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className={`text-sm font-bold ${isChecked ? 'text-gray-800' : 'text-gray-500'}`}>{field.label}</span>
