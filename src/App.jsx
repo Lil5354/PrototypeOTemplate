@@ -57,7 +57,6 @@ const tableToTreeArray = (tableData) => {
     const node = {
       id: row.id?.toString() || `N${Date.now()}`,
       originalId: row.id,
-      level: row.level + 1,
       type: row.level === 0 ? 'objective' : 'kr',
       name: row.name || '', description: row.subtitle || '',
       user: row.user || '', group: row.group || '', team: row.team || '',
