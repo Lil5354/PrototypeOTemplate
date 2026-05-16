@@ -57,6 +57,7 @@ const tableToTreeArray = (tableData) => {
     const node = {
       id: row.id?.toString() || `N${Date.now()}`,
       originalId: row.id,
+      level: row.level,
       type: row.level === 0 ? 'objective' : 'kr',
       name: row.name || '', description: row.subtitle || '',
       user: row.user || '', group: row.group || '', team: row.team || '',
@@ -578,7 +579,8 @@ const TimelineTreeDropdown = ({ selected, onSelect, space }) => {
 
 const App = () => {
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
-  const [activeView, setActiveView] = useState('okr-dashboard');
+  const getInitialView = () => { try { const p = new URLSearchParams(window.location.search); const v = p.get('view'); if (v && ['okr-dashboard','okr-template'].includes(v)) { window.history.replaceState({}, '', window.location.pathname); return v; } } catch(e) {} return 'okr-dashboard'; };
+  const [activeView, setActiveView] = useState(getInitialView);
   
   // --- STATE DATA OKR BOARD ---
   const engData = [
@@ -648,8 +650,7 @@ const App = () => {
   const redirectClean = () => { window.location.href = window.location.origin + window.location.pathname; };
   const navigateView = (view) => {
     if (isBranchAddMode || isSaveAsMode) {
-      try { sessionStorage.setItem('redirectView', view); } catch(e) {}
-      redirectClean();
+      window.location.href = window.location.origin + window.location.pathname + '?view=' + view;
     } else {
       setActiveView(view);
     }
@@ -1013,8 +1014,8 @@ const App = () => {
         tree: filterTree(saveAsTreeData)
       };
       setTemplateList([newTemplate, ...templateList]);
-      try { sessionStorage.setItem('redirectView', 'okr-template'); } catch(e) {}
-      window.location.href = window.location.origin + window.location.pathname;
+      try { localStorage.setItem('templateList', JSON.stringify([newTemplate, ...templateList])); } catch(e) {}
+      window.location.href = window.location.origin + window.location.pathname + '?view=okr-template';
     } catch (err) {
       triggerToast('An error occurred while saving. Please try again.', 'error');
     }
