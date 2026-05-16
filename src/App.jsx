@@ -1004,7 +1004,11 @@ const App = () => {
         finalTitle = `${finalTitle}_(1)`;
       }
       const hasSelectedDesc = (node) => saveAsSelectedNodeIds.has(node.id) || (node.children && node.children.some(c => hasSelectedDesc(c)));
+      const countSelected = (nodes) => nodes.reduce((s, n) => s + 1 + (n.children ? countSelected(n.children) : 0), 0);
       const filterTree = (nodes) => nodes.filter(n => hasSelectedDesc(n)).map(n => ({ ...n, children: n.children ? filterTree(n.children) : [] }));
+      const savedTree = filterTree(saveAsTreeData);
+      const savedCount = countSelected(savedTree);
+      console.log('=== SAVE AS DEBUG ===', { selectedCount: saveAsSelectedNodeIds.size, savedCount, saveAsSelectedNodeIds: [...saveAsSelectedNodeIds], savedTree });
       const newTemplate = {
         id: Date.now(),
         title: finalTitle,
@@ -1012,7 +1016,7 @@ const App = () => {
         tags: newTags,
         creator: 'Current User',
         date: new Date().toISOString().split('T')[0],
-        tree: filterTree(saveAsTreeData)
+        tree: savedTree
       };
       setTemplateList([newTemplate, ...templateList]);
       try { localStorage.setItem('templateList', JSON.stringify([newTemplate, ...templateList])); } catch(e) {}
@@ -2208,6 +2212,7 @@ const App = () => {
       {/* --- C1: VIEW TEMPLATE MODAL --- */}
       {viewTarget && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
+          {(() => { console.log('=== VIEW TEMPLATE ===', { title: viewTarget.title, treeLength: viewTarget.tree?.length, treeData: JSON.parse(JSON.stringify(viewTarget.tree)) }); return null; })()}
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden relative">
             <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div className="flex items-center">
