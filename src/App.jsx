@@ -578,7 +578,7 @@ const TimelineTreeDropdown = ({ selected, onSelect, space }) => {
 
 const App = () => {
   const [activeView, setActiveView] = useState('okr-dashboard');
-  useEffect(() => { try { const p = new URLSearchParams(window.location.search); const v = p.get('view'); if (v && ['okr-dashboard','okr-template'].includes(v)) { setActiveView(v); window.history.replaceState({}, '', window.location.pathname); } } catch(e) {} }, []);
+  useEffect(() => { try { const p = new URLSearchParams(window.location.search); const v = p.get('view'); if (v && ['okr-dashboard','okr-template'].includes(v)) { setActiveView(v); } const sp = p.get('space'); if (sp) setSelectedSpace(sp); const pr = p.get('period'); if (pr) setSelectedPeriod(pr); if (v || sp || pr) window.history.replaceState({}, '', window.location.pathname); } catch(e) {} }, []);
   
   // --- STATE DATA OKR BOARD ---
   const engData = [
@@ -590,16 +590,7 @@ const App = () => {
     { id: 6, level: 4, name: 'WD-V2-6 Attendance Days - ...', user: 'Ngan Vu', assignTo: 'Ngan Vu', metric: 'Attendance Days\nSUM(day)', mName: 'Attendance Days', mKey: 'ATTENDANCE-D...', mUnit: 'day', agg: 'SUM', resultS: '0', resultC: '17.5', progress: 41.7, risk: 'high', tl: 1 },
     { id: 7, level: 4, name: 'WD-V2-7 Attendance Days - ...', user: 'Duy Nguyen', assignTo: 'Duy Nguyen', metric: 'Attendance Days\nSUM(day)', mName: 'Attendance Days', mKey: 'ATTENDANCE-D...', mUnit: 'day', agg: 'SUM', resultS: '0', resultC: '21.3', progress: 51.2, risk: 'high', tl: 1 },
   ];
-  const engQ3Data = [
-    { id: 101, level: 0, name: 'Platform Reliability Q3', subtitle: 'Improve system stability', user: null, metric: 'Uptime\nAVG(%)', mName: 'Uptime', mKey: 'UPTIME-Q3', mUnit: '%', agg: 'AVG', resultS: '0', resultC: '94.2', progress: 94.2, risk: 'low', tl: 3 },
-    { id: 102, level: 1, name: 'Reduce P1 Incidents', subtitle: 'Target <5 P1 per quarter', user: 'Minh Nguyen', metric: 'Incidents\nSUM(count)', mName: 'P1 Count', mKey: 'P1-Q3', mUnit: 'count', agg: 'SUM', resultS: '0', resultC: '3', progress: 70, risk: 'low', tl: 2 },
-    { id: 103, level: 2, name: 'Auto-scaling Implementation', subtitle: 'Deploy auto-scaling for all services', user: 'Huy Dinh', metric: 'Services\nSUM(count)', mName: 'Services', mKey: 'AUTO-SCALE', mUnit: 'count', agg: 'SUM', resultS: '0', resultC: '12', progress: 60, risk: 'medium', tl: 1 },
-  ];
-  const hrData = [
-    { id: 201, level: 0, name: 'HR-Q4 Talent Acquisition', subtitle: 'Hire top talent for Q4', user: null, metric: 'Hires\nSUM(count)', mName: 'Hires', mKey: 'HIRE-Q4', mUnit: 'count', agg: 'SUM', resultS: '0', resultC: '45', progress: 75, risk: 'low', tl: 3 },
-    { id: 202, level: 1, name: 'Engineering Recruitment', subtitle: 'Fill 20 engineering roles', user: 'Hoa Pham', metric: 'Roles filled\nSUM(count)', mName: 'Roles', mKey: 'ENG-REC', mUnit: 'count', agg: 'SUM', resultS: '0', resultC: '15', progress: 75, risk: 'low', tl: 2 },
-    { id: 203, level: 2, name: 'Senior Backend Engineers', subtitle: 'Hire 5 senior backend engineers', user: 'Lan Nguyen', metric: 'Hires\nSUM(count)', mName: 'Senior BE', mKey: 'SR-BE', mUnit: 'count', agg: 'SUM', resultS: '0', resultC: '3', progress: 60, risk: 'medium', tl: 1 },
-  ];
+
 
   const [selectedSpace, setSelectedSpace] = useState('Engineering');
   const [selectedYear, setSelectedYear] = useState('2025');
@@ -613,10 +604,7 @@ const App = () => {
         Object.keys(tree[year]).forEach(quarter => {
           tree[year][quarter].forEach(period => {
             const key = `${space}|${year}|${period}`;
-            if (space === 'Engineering' && period === 'Quarter 4, 2025') map[key] = engData;
-            else if (space === 'Engineering' && period === 'Quarter 3, 2025') map[key] = engQ3Data;
-            else if (space === 'HR' && period === 'Quarter 4, 2025') map[key] = hrData;
-            else map[key] = [];
+            map[key] = (space === 'Engineering' && period === 'Quarter 4, 2025') ? engData : [];
           });
         });
       });
@@ -624,15 +612,23 @@ const App = () => {
     return map;
   };
   const allSpaces = ['Engineering', 'Sales', 'HR', 'Product', 'Marketing', 'Finance', 'Operations'];
-  const loadPersistedOkrData = () => { try { const s = localStorage.getItem('okrDataMap'); if (s) return JSON.parse(s); } catch (e) {} return null; };
-  const initialOkrData = loadPersistedOkrData() || initOkrDataMap(allSpaces, timelineTreeBySpace);
+  const initialOkrData = (() => {
+    try {
+      const s = localStorage.getItem('okrDataMap');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length >= Object.keys(timelineTreeBySpace).length) return parsed;
+      }
+    } catch (e) {}
+    return initOkrDataMap(allSpaces, timelineTreeBySpace);
+  })();
   const [okrDataMap, setOkrDataMap] = useState(initialOkrData);
   useEffect(() => { try { localStorage.setItem('okrDataMap', JSON.stringify(okrDataMap)); } catch (e) {} }, [okrDataMap]);
 
   const getMaxLevel = (data) => data.reduce((max, r) => Math.max(max, r.level), 0);
   const isPersonalLevel = (level) => level >= 3;
   const getLevelCategory = (level) => { if (level === 0) return 'company'; if (level === 1) return 'team'; if (level === 2) return 'group'; return 'personal'; };
-  const mapTreeToTableDeep = (treeArray, baseLevel = 0) => { let result = []; let counter = Date.now(); const flatten = (nodes, level) => { nodes.forEach(node => { const el = (node.level !== undefined && node.level !== null) ? (node.level - 1) : level; result.push({ id: counter++, level: el, name: node.name, subtitle: node.description, user: node.user, group: node.group, team: node.team, assignTo: node.team, metric: node.metric, agg: node.agg, progress: parseInt(node.progress) || 0, risk: 'high', tl: 1, isExpanded: true }); if (node.children && node.children.length > 0) flatten(node.children, el + 1); }); }; flatten(treeArray, baseLevel); return result; };
+  const mapTreeToTableDeep = (treeArray, baseLevel = 0) => { let result = []; let counter = Date.now(); const flatten = (nodes, level) => { nodes.forEach(node => { const el = (node.level !== undefined && node.level !== null) ? (node.level - 1) : level; result.push({ id: counter++, level: el, name: node.name, subtitle: node.description, user: node.user, group: node.group, team: node.team, assignTo: node.assign || node.user, metric: node.metric, mName: node.mName, mKey: node.mKey, mUnit: node.mUnit, agg: node.agg, progress: parseInt(node.progress) || 0, resultS: node.resultS || '0', resultC: node.resultC || '0', result: node.result ?? 0, risk: node.risk || 'low', tl: parseInt(node.timeline) || 1, isExpanded: true }); if (node.children && node.children.length > 0) flatten(node.children, el + 1); }); }; flatten(treeArray, baseLevel); return result; };
 
   const urlParams = new URLSearchParams(window.location.search);
   const isBranchAddMode = urlParams.get('branchAddTemplate') === 'true';
@@ -1087,7 +1083,7 @@ const App = () => {
   };
 
   const executeApplyToBoard = (treeArray, targetPeriod, targetSpace, overrideMode = false) => {
-    const newData = mapTreeToTable(treeArray);
+    const newData = mapTreeToTableDeep(treeArray);
     const targetKey = `${targetSpace}|2025|${targetPeriod}`;
     const cleanNode = (node) => ({
       ...node,
@@ -1101,18 +1097,21 @@ const App = () => {
     const cleanData = newData.map(cleanNode);
 
     setOkrDataMap(prev => {
-      if (overrideMode) {
-        return { ...prev, [targetKey]: cleanData.map(r => ({ ...r, id: Date.now() + Math.random() })) };
-      }
-      const existing = prev[targetKey] || [];
-      const merged = [...existing];
-      const existingNames = new Set(existing.map(r => r.name));
-      cleanData.forEach(row => {
-        if (!existingNames.has(row.name)) {
-          merged.push({ ...row, id: Date.now() + Math.random() });
-        }
-      });
-      return { ...prev, [targetKey]: merged };
+      const updated = overrideMode
+        ? { ...prev, [targetKey]: cleanData.map(r => ({ ...r, id: Date.now() + Math.random() })) }
+        : (() => {
+            const existing = prev[targetKey] || [];
+            const merged = [...existing];
+            const existingNames = new Set(existing.map(r => r.name));
+            cleanData.forEach(row => {
+              if (!existingNames.has(row.name)) {
+                merged.push({ ...row, id: Date.now() + Math.random() });
+              }
+            });
+            return { ...prev, [targetKey]: merged };
+          })();
+      try { localStorage.setItem('okrDataMap', JSON.stringify(updated)); } catch (e) {}
+      return updated;
     });
 
     setSelectedSpace(targetSpace);
@@ -1522,12 +1521,12 @@ const App = () => {
       findAndInsertSiblings(treeArray);
       if (!targetFound) { if (currentData.length === 0) { setBranchError('No data found.'); return; } const ct = JSON.parse(JSON.stringify(t.tree)); treeArray.push(...ct); }
       const newTableData = mapTreeToTableDeep(treeArray);
-      setOkrDataMap(prev => ({ ...prev, [targetKey]: newTableData.map(r => ({ ...r, id: Date.now() + Math.random(), progress: r.progress || 0, risk: 'low', result: 0, status: 'valid', warnMsg: null, errorMsg: null })) }));
+      setOkrDataMap(prev => { const updated = { ...prev, [targetKey]: newTableData.map(r => ({ ...r, id: Date.now() + Math.random(), progress: r.progress || 0, risk: 'low', result: 0, status: 'valid', warnMsg: null, errorMsg: null })) }; try { localStorage.setItem('okrDataMap', JSON.stringify(updated)); } catch (e) {} return updated; });
       try { prevApplied[branchKey] = [...(prevApplied[branchKey] || []), t.id]; localStorage.setItem('branchAppliedTemplates', JSON.stringify(prevApplied)); } catch (e) {}
-      setBranchDuplicateConfirm(null); try { localStorage.removeItem('branchAddTemplate'); } catch (e) {} window.location.href = window.location.origin + window.location.pathname;
+      setBranchDuplicateConfirm(null); try { localStorage.removeItem('branchAddTemplate'); } catch (e) {} window.location.href = window.location.origin + window.location.pathname + `?space=${encodeURIComponent(branchInfo.space)}&period=${encodeURIComponent(branchInfo.period)}`;
     } catch (err) { setBranchError('Apply failed: ' + err.message); }
   };
-  const handleEmptyApplyTemplate = () => { try { const t = templateList.find(x => x.id === branchSelectedTemplateId); if (!t) { setBranchError('Template no longer exists.'); return; } if (!branchInfo) { setBranchError('Context info missing.'); return; } executeApplyToBoard(t.tree, branchInfo.period, branchInfo.space); setBranchDuplicateConfirm(null); try { localStorage.removeItem('branchAddTemplate'); } catch (e) {} window.location.href = window.location.origin + window.location.pathname; } catch (err) { setBranchError('Apply failed: ' + err.message); } };
+  const handleEmptyApplyTemplate = () => { try { const t = templateList.find(x => x.id === branchSelectedTemplateId); if (!t) { setBranchError('Template no longer exists.'); return; } if (!branchInfo) { setBranchError('Context info missing.'); return; } executeApplyToBoard(t.tree, branchInfo.period, branchInfo.space); setBranchDuplicateConfirm(null); try { localStorage.removeItem('branchAddTemplate'); } catch (e) {} window.location.href = window.location.origin + window.location.pathname + `?space=${encodeURIComponent(branchInfo.space)}&period=${encodeURIComponent(branchInfo.period)}`; } catch (err) { setBranchError('Apply failed: ' + err.message); } };
 
   
   
