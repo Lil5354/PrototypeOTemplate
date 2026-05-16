@@ -2305,11 +2305,11 @@ const App = () => {
                                 <div className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'view')}
                                      style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
                                   <div className="flex items-center gap-1.5 truncate">
-                                     <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-                                       <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
-                                     </button>
-                                      {(() => { const il = obj.level ?? 1; if (il === 1) return <Box size={13} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={13} className="text-green-500 shrink-0" />; return <User size={13} className="text-purple-500 shrink-0" />; })()}
-                                      <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
+                                      <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                                        <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
+                                      </button>
+                                       <Box size={13} className="text-blue-500 shrink-0" />
+                                       <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.name}</span>
                                    </div>
                                    {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
                                       <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(obj, col.id, false)}</div>
@@ -2318,9 +2318,9 @@ const App = () => {
                                   {!objCollapsed && obj.children && obj.children.map(kr => (
                                      <div key={kr.id} className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')}
                                           style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
-                                       <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: '28px' }}>
-                                          {(() => { const il = kr.level ?? 2; if (il === 1) return <Box size={13} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={13} className="text-green-500 shrink-0" />; return <User size={13} className="text-purple-500 shrink-0" />; })()}
-                                         <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
+                                        <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: '28px' }}>
+                                           <span className="text-gray-400 shrink-0 leading-none">↳</span>
+                                          <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.name}</span>
                                       </div>
                                       {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
                                         <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(kr, col.id, true)}</div>
