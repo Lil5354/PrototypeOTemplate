@@ -340,7 +340,7 @@ const OKRTreePreview = ({
               </button>
             )}
             {!isObjective && <div className="w-3 shrink-0"></div>}
-            {isObjective ? (() => { const il = 1; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; return null; })() : (
+            {isObjective ? (() => { if (level === 0) return <Box size={11} className="text-blue-500 shrink-0" />; if (level === 1) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (level === 2) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; })() : (
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
             )}
             <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : hasWarning ? 'text-amber-600' : 'text-gray-700'}`}>
@@ -1512,21 +1512,76 @@ const App = () => {
 
   
   
-  const renderImportValidationTree = (tab, visCol, onToggle, maxd, setMax) => {
-    const allNodes = [mockImportParsedTree.objective, ...mockImportParsedTree.krs];
-    const filtered = allNodes.filter(n => { if (tab === 'all') return true; if (tab === 'errors') return n.status === 'error'; if (tab === 'warnings') return n.status === 'warning'; if (tab === 'passed') return n.status === 'valid'; return true; });
-    return (
-      <div className="space-y-1">
-        {filtered.length === 0 && <div className="text-sm text-gray-400 p-4 text-center">No results.</div>}
-        {filtered.map(n => (
-          <div key={n.id} className={`flex items-center gap-2 p-2 rounded border text-xs ${n.status === 'error' ? 'bg-red-50 border-red-200 text-red-700' : n.status === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' : n.status === 'duplicate' ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
-            <div className="shrink-0">{n.status === 'valid' ? <CheckCircle2 size={14} /> : n.status === 'warning' ? <AlertTriangle size={14} /> : <XOctagon size={14} />}</div>
-            <div className="flex-1 min-w-0"><span className="font-medium truncate block">{n.name}</span></div>
-            <div className="text-right shrink-0 ml-2"><span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/80">{n.type?.toUpperCase() || 'NODE'}</span></div>
+  const renderImportValidationTree = (filterTab, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
+    const gridCols = getGridTemplate(visibleColumns);
+    const isNodeVisible = (n) => { if (filterTab === 'all') return true; if (filterTab === 'errors') return n.status === 'error'; if (filterTab === 'warnings') return n.status === 'warning'; if (filterTab === 'passed') return n.status === 'valid'; return true; };
+    const treeData = mockImportParsedTree;
+    const objVisible = isNodeVisible(treeData.objective);
+    const visibleKRs = treeData.krs.filter(kr => isNodeVisible(kr));
+    if (!objVisible && visibleKRs.length === 0) return <div className="p-8 text-center text-gray-500">No nodes match the current filter.</div>;
+    const renderValidationCell = (node, colId) => {
+      switch (colId) {
+        case 'description': return <span className="truncate">{node.description || 'Default'}</span>;
+        case 'user': return <span className="truncate">{node.assign || node.user || 'Default'}</span>;
+        case 'group': return <span className="truncate">{node.group || 'Default'}</span>;
+        case 'team': return <span className="truncate">{node.team || 'Default'}</span>;
+        case 'assign_to': return <span className="truncate">{node.assign || node.user || 'Default'}</span>;
+        case 'metric': return <span className="truncate">{node.metric || 'Default'}</span>;
+        case 'metric_name': return <span className="truncate">{node.mName || 'Default'}</span>;
+        case 'metric_key': return <span className="truncate">{node.mKey || 'Default'}</span>;
+        case 'metric_unit': return <span className="truncate">{node.mUnit || 'Default'}</span>;
+        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'Default'}</span>;
+        case 'result': return <span className="truncate">{node.result ?? 'Default'}</span>;
+        case 'progress': { const p = node.progress || '0%'; return (<div className="flex items-center justify-center gap-1"><div className="w-10 bg-gray-200 h-1.5 rounded-full overflow-hidden"><div className="bg-green-500 h-full" style={{ width: p }}></div></div><span className="text-[10px] text-green-600 font-medium">{p}</span></div>); }
+        case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
+        case 'timeline': return <span className="truncate">{node.timeline || 'Default'}</span>;
+        case 'timeline_view_metric': return <span className="text-[10px] text-gray-500 italic">Default</span>;
+        case 'status': return <div className="flex justify-center">{node.status === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}{node.status === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}{node.status === 'duplicate' && <AlertTriangle size={14} className="inline text-orange-600" />}{node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}</div>;
+        default: return null;
+      }
+    };
+    const toggleCollapse = (id) => setImportValidationCollapsed(prev => ({...prev, [id]: !prev[id]}));
+    const objId = treeData.objective?.id || 'val-root';
+    const isCollapsed = importValidationCollapsed[objId];
+    const treeContent = (
+      <div className="flex flex-col h-full min-h-0">
+        <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
+          <div className="bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
+               style={{ display: 'grid', gridTemplateColumns: gridCols + ' auto', alignItems: 'center' }}>
+            <div className="bg-gray-50 truncate" style={{ paddingLeft: '2px' }}>Node</div>
+            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (<div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} bg-gray-50 truncate`}>{col.label}</div>))}
+            <div className="flex items-center gap-0.5" style={{ justifySelf: 'end' }}>{onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}{onMaximize && (<button onClick={() => onMaximize(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>{maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}</button>)}</div>
           </div>
-        ))}
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            <div className="min-w-[400px]">
+              {objVisible && (
+                <div onClick={() => openNodeDetail(treeData.objective, 'view')} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${treeData.objective.status === 'error' ? 'bg-red-50/40' : treeData.objective.status === 'duplicate' ? 'bg-orange-50/40' : treeData.objective.status === 'warning' ? 'bg-amber-50/40' : ''}`} style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
+                  <div className="flex items-center gap-1 truncate">
+                    <button onClick={(e) => { e.stopPropagation(); toggleCollapse(objId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0"><ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} /></button>
+                    <Box size={11} className="text-blue-500 shrink-0" />
+                    <span className="text-[11px] font-medium text-blue-600 truncate">{treeData.objective.name}</span>
+                    {(treeData.objective.warnMsg || treeData.objective.errorMsg) && <span className="relative group inline-flex" title={treeData.objective.warnMsg || treeData.objective.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ml-1 ${treeData.objective.status === 'error' ? 'text-red-600' : treeData.objective.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{treeData.objective.warnMsg || treeData.objective.errorMsg}</p></span>}
+                  </div>
+                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (<div key={col.id} className={`px-1.5 text-[10px] text-gray-500 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(treeData.objective, col.id)}</div>))}
+                </div>
+              )}
+              {!isCollapsed && visibleKRs.map(kr => (
+                <div onClick={() => openNodeDetail(kr, 'view')} key={kr.id} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${kr.status === 'error' ? 'bg-red-50/40' : kr.status === 'duplicate' ? 'bg-orange-50/40' : kr.status === 'warning' ? 'bg-amber-50/40' : ''}`} style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
+                  <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '16px' }}>
+                    <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
+                    <span className={`text-[11px] font-medium truncate ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.name}</span>
+                    {(kr.warnMsg || kr.errorMsg) && <span className="relative group inline-flex" title={kr.warnMsg || kr.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ml-1 ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{kr.warnMsg || kr.errorMsg}</p></span>}
+                  </div>
+                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (<div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(kr, col.id)}</div>))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
+    if (maximized) return (<FullScreenWindow onClose={() => onMaximize(false)}>{treeContent}</FullScreenWindow>);
+    return treeContent;
   };
 
   const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null, showCheckboxes = false, selectedIds = new Set(), onToggleCheckbox = null) => {
@@ -4439,7 +4494,19 @@ ${exportSelectedTemplates.map(tId => {
                     <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" checked={importSelectedFields.length === availableFields.length} onChange={(e) => { if(e.target.checked) setImportSelectedFields(availableFields.map(f => f.id)); else setImportSelectedFields(['name']); }} /><span className="font-semibold text-xs text-gray-800">Select All</span></label>
                     <span className="text-[10px] text-gray-500">{availableFields.length} fields · {importSelectedFields.length} selected</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto border-t border-gray-100">{availableFields.map(field => { const c = importSelectedFields.includes(field.id); return (<div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50"><div className="w-[140px] flex items-start gap-2"><input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600" checked={c} disabled={field.locked} onChange={() => toggleImportField(field.id)} /><div><span className={`text-sm font-medium ${!c ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span><span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span></div></div><div className="flex-1 text-xs text-gray-500"><p className={!c ? 'line-through opacity-50' : ''}>{field.desc}</p></div></div>);})}</div>
+                   <div className="flex-1 overflow-y-auto border-t border-gray-100">{availableFields.map(field => { const c = importSelectedFields.includes(field.id); return (<div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50"><div className="w-[140px] flex items-start gap-2"><input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600" checked={c} disabled={field.locked} onChange={() => toggleImportField(field.id)} /><div><span className={`text-sm font-medium ${!c ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span><span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span></div></div><div className="flex-1 text-xs text-gray-500"><p className={!c ? 'line-through opacity-50' : ''}>{field.desc}</p></div></div>);})}</div>
+                   <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                     <div className="flex flex-wrap gap-1 text-xs">
+                       <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({importSelectedFields.length}):</span>
+                       {importSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null; })}
+                     </div>
+                     {importSelectedFields.length < availableFields.length && (
+                       <div className="flex flex-wrap gap-1 text-xs">
+                         <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - importSelectedFields.length}):</span>
+                         {availableFields.filter(f => !importSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>)}
+                       </div>
+                     )}
+                   </div>
                 </div>
                 <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden">
                   <div className="flex justify-between items-center mb-4 shrink-0"><div><h3 className="text-base font-bold text-gray-800">OKR Tree Preview</h3><p className="text-xs text-gray-500">Real-time preview</p></div></div>
