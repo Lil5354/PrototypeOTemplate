@@ -659,28 +659,6 @@ const App = () => {
   const tableData = okrDataMap[`${selectedSpace}|${selectedYear}|${selectedPeriod}`] || [];
 
   useEffect(() => {
-    const checkPending = () => {
-      try {
-        const raw = localStorage.getItem('pendingSavedTemplate');
-        if (raw) {
-          const t = JSON.parse(raw);
-          if (t) {
-            setTemplateList(prev => {
-              if (prev.some(x => x.id === t.id)) return prev;
-              return [t, ...prev];
-            });
-            setActiveView('okr-template');
-          }
-        }
-      } catch(e) {}
-      try { localStorage.removeItem('pendingSavedTemplate'); } catch(e) {}
-    };
-    checkPending();
-    window.addEventListener('storage', checkPending);
-    return () => window.removeEventListener('storage', checkPending);
-  }, []);
-
-  useEffect(() => {
     const spaceTree = timelineTreeBySpace[selectedSpace];
     if (spaceTree) {
       const years = Object.keys(spaceTree);
@@ -721,14 +699,18 @@ const App = () => {
   const arrowHighTreeData = [ { id: 'AR1', level: 2, type: 'objective', name: 'Optimize Team Productivity', children: [ { id: 'AR1.1', level: 3, type: 'kr', name: 'Reduce meeting time by 30%' }, { id: 'AR1.2', level: 3, type: 'kr', name: 'Achieve 90% tool adoption' } ] } ];
   const greenHighTreeData = [ { id: 'GR1', level: 3, type: 'objective', name: 'Enhance Personal Development', children: [ { id: 'GR1.1', level: 4, type: 'kr', name: 'Complete 20 training modules' }, { id: 'GR1.2', level: 4, type: 'kr', name: 'Conduct 3 cross-team workshops' } ] } ];
 
-  try { localStorage.removeItem('templateList'); localStorage.removeItem('branchAppliedTemplates'); } catch (e) {}
-  const [templateList, setTemplateList] = useState([
-    { id: 1, title: 'HR Performance Template', desc: 'Template with green cube and personal level nodes', tags: ['HR', 'Performance'], creator: 'Duc Le', date: '2025-05-08', tree: JSON.parse(JSON.stringify(sampleTreeData)) },
-    { id: 2, title: 'Engineering Sprint Template', desc: 'Template with blue cube and arrow level nodes', tags: ['Engineering'], creator: 'Minh Nguyen', date: '2025-05-07', tree: JSON.parse(JSON.stringify(engTreeData)) }, 
-    { id: 3, title: 'Product Quality Template', desc: 'Template with arrow and green cube level nodes', tags: ['Product', 'Quality', 'UX'], creator: 'Hoa Pham', date: '2025-05-06', tree: JSON.parse(JSON.stringify(productTreeData)) },
-    { id: 4, title: 'Team Productivity Template', desc: 'Team-level OKR template with arrow as highest level', tags: ['Team', 'Productivity'], creator: 'Lan Nguyen', date: '2025-05-15', tree: JSON.parse(JSON.stringify(arrowHighTreeData)) },
-    { id: 5, title: 'Personal Growth Template', desc: 'Personal/group-level OKR template with green cube as highest level', tags: ['Personal', 'Growth'], creator: 'Duc Le', date: '2025-05-15', tree: JSON.parse(JSON.stringify(greenHighTreeData)) },
-  ]);
+  const loadTemplateList = () => {
+    try { const s = localStorage.getItem('templateList'); if (s) { const d = JSON.parse(s); if (Array.isArray(d) && d.length > 0) return d; } } catch (e) {}
+    return [
+      { id: 1, title: 'HR Performance Template', desc: 'Template with green cube and personal level nodes', tags: ['HR', 'Performance'], creator: 'Duc Le', date: '2025-05-08', tree: JSON.parse(JSON.stringify(sampleTreeData)) },
+      { id: 2, title: 'Engineering Sprint Template', desc: 'Template with blue cube and arrow level nodes', tags: ['Engineering'], creator: 'Minh Nguyen', date: '2025-05-07', tree: JSON.parse(JSON.stringify(engTreeData)) }, 
+      { id: 3, title: 'Product Quality Template', desc: 'Template with arrow and green cube level nodes', tags: ['Product', 'Quality', 'UX'], creator: 'Hoa Pham', date: '2025-05-06', tree: JSON.parse(JSON.stringify(productTreeData)) },
+      { id: 4, title: 'Team Productivity Template', desc: 'Team-level OKR template with arrow as highest level', tags: ['Team', 'Productivity'], creator: 'Lan Nguyen', date: '2025-05-15', tree: JSON.parse(JSON.stringify(arrowHighTreeData)) },
+      { id: 5, title: 'Personal Growth Template', desc: 'Personal/group-level OKR template with green cube as highest level', tags: ['Personal', 'Growth'], creator: 'Duc Le', date: '2025-05-15', tree: JSON.parse(JSON.stringify(greenHighTreeData)) },
+    ];
+  };
+  const [templateList, setTemplateList] = useState(loadTemplateList);
+  useEffect(() => { try { localStorage.setItem('templateList', JSON.stringify(templateList)); } catch (e) {} }, [templateList]);
 
   const previewTreeData = {
     objective: { id: 'O1', type: 'objective', name: 'Increase Enterprise Revenue to $10M', description: 'Drive Q3 revenue growth focusing on Tier 1 clients', user: 'Duc Le', group: 'Sales', team: 'Global Sales', metric: 'Revenue', agg: 'SUM' },
@@ -1030,10 +1012,9 @@ const App = () => {
         date: new Date().toISOString().split('T')[0],
         tree: filterTree(saveAsTreeData)
       };
-      try { localStorage.setItem('pendingSavedTemplate', JSON.stringify(newTemplate)); } catch(e) {}
       setTemplateList([newTemplate, ...templateList]);
-      triggerToast('Template saved successfully from branch view.');
-      window.close();
+      try { sessionStorage.setItem('redirectView', 'okr-template'); } catch(e) {}
+      window.location.href = window.location.origin + window.location.pathname;
     } catch (err) {
       triggerToast('An error occurred while saving. Please try again.', 'error');
     }
