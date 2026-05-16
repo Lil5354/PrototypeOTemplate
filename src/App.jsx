@@ -1720,6 +1720,7 @@ const App = () => {
 
   }
 
+  const FieldRow = ({ label, required, children }) => (<div><label className="text-[11px] font-medium text-gray-500 mb-1 block">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>{children}</div>);
 
   const renderNodeDetailSidePanel = () => {
     if (!nodeDetailConfig.isOpen || !nodeDetailConfig.data) return null;
