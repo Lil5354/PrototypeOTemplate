@@ -1327,8 +1327,16 @@ const App = () => {
   };
 
   // --- HANDLERS: FLOW D (IMPORT) ---
+  const handleBackFromImport = () => {
+    if (importFileStatus === 'idle') { setActiveView('okr-template'); setImportStep(1); setImportFileStatus('idle'); }
+    else { setConfirmCloseTarget('import'); }
+  };
+  const handleBackFromExport = () => {
+    if (exportStep === 1 && exportSelectedTemplates.length === 0) { setActiveView('okr-template'); setExportStep(1); setExportSelectedTemplates([]); }
+    else { setConfirmCloseTarget('export'); }
+  };
   const handleOpenImportModal = () => {
-    setIsImportModalOpen(true);
+    setActiveView('import');
     setImportStep(1);
     setImportFileStatus('idle');
     setImportReviewTab('all');
@@ -1337,8 +1345,6 @@ const App = () => {
     setImportFormErrors({});
     setImportTreeVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
     setImportValidationVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
-    setImportFormData({ title: '', desc: '', tags: '' });
-    setImportFormErrors({});
   };
 
   const toggleImportValidationColumn = (colId) => {
@@ -1381,8 +1387,8 @@ const App = () => {
     const steps = { import: importStep, export: exportStep, add: addStep, save: saveStep };
     const canClose = { import: importFileStatus === 'idle', export: exportStep === 1 && exportSelectedTemplates.length === 0, add: addStep === 1 && !selectedTemplateId, save: saveStep === 1 && !formData.title.trim() };
     if (canClose[type]) {
-      if (type === 'import') { setIsImportModalOpen(false); setImportFileStatus('idle'); setImportStep(1); }
-      else if (type === 'export') { setIsExportModalOpen(false); setExportStep(1); setExportSelectedTemplates([]); }
+      if (type === 'import') { setActiveView('okr-template'); setImportFileStatus('idle'); setImportStep(1); }
+      else if (type === 'export') { setActiveView('okr-template'); setExportStep(1); setExportSelectedTemplates([]); }
       else if (type === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
       else if (type === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
     } else {
@@ -1391,8 +1397,8 @@ const App = () => {
   };
 
   const handleConfirmClose = () => {
-    if (confirmCloseTarget === 'import') { setIsImportModalOpen(false); setImportFileStatus('idle'); setImportStep(1); }
-    else if (confirmCloseTarget === 'export') { setIsExportModalOpen(false); setExportStep(1); setExportSelectedTemplates([]); }
+    if (confirmCloseTarget === 'import') { setActiveView('okr-template'); setImportFileStatus('idle'); setImportStep(1); }
+    else if (confirmCloseTarget === 'export') { setActiveView('okr-template'); setExportStep(1); setExportSelectedTemplates([]); }
     else if (confirmCloseTarget === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
     else if (confirmCloseTarget === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
     setConfirmCloseTarget(null);
@@ -1435,7 +1441,7 @@ const App = () => {
   };
 
   const handleConfirmImport = () => {
-    setIsImportModalOpen(false);
+    setActiveView('okr-template');
     setConfirmCloseTarget(null);
     const finalDesc = importFormData.desc.trim() ? importFormData.desc : '';
     const finalTags = importFormData.tags.trim() ? importFormData.tags.split(',').map(t=>t.trim()) : [];
@@ -1448,7 +1454,7 @@ const App = () => {
 
   // --- HANDLERS: FLOW E (EXPORT) ---
   const handleOpenExportModal = () => {
-    setIsExportModalOpen(true);
+    setActiveView('export');
     setExportStep(1);
     setExportSelectedTemplates(templateList.map(t => t.id));
     setExportSelectedFields(availableFields.map(f => f.id)); 
@@ -1465,7 +1471,7 @@ const App = () => {
     setExportSelectedFields(prev => prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]);
   };
   const handleConfirmExport = () => {
-    setIsExportModalOpen(false);
+    setActiveView('okr-template');
     triggerToast('JSON file downloaded successfully.');
   };
 
@@ -3841,7 +3847,7 @@ ${exportSelectedTemplates.map(tId => {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode ? 'hidden' : ''}`}>
+        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' ? 'hidden' : ''}`}>
           
           {/* --- OKR BOARD MAIN VIEW --- */}
           {!isBranchAddMode && !isSaveAsMode && activeView === 'okr-dashboard' && (
@@ -4260,6 +4266,187 @@ ${exportSelectedTemplates.map(tId => {
               ) : (
                 <button onClick={handleSaveAsSubmit} className="px-6 py-2 bg-[#16a34a] text-white rounded-md text-sm font-bold hover:bg-green-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Save Template</button>
               )}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {activeView === 'import' && (
+        <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
+            <button onClick={handleBackFromImport} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-100 rounded-md" title="Back"><ChevronRight size={20} className="rotate-180" /></button>
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2"><UploadCloud size={20} className="text-[#3B5998]" /> Import Template</h2>
+          </div>
+          <Stepper currentStep={importStep} />
+          <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+            {importStep === 1 && (
+              <div className="p-6 flex-1 min-h-0 overflow-auto flex flex-col">
+                {importFileStatus === 'idle' && (
+                  <div className="max-w-xl w-full mx-auto my-auto animate-fade-in flex flex-col justify-center h-full pb-10">
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 py-8 px-6 flex flex-col items-center justify-center hover:bg-gray-50 transition cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                      <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
+                      <UploadCloud size={40} className="text-indigo-300 mb-3" />
+                      <p className="text-gray-700 font-medium mb-1">Drag & drop your file here</p>
+                      <p className="text-gray-400 text-sm mb-3">or</p>
+                      <button className="bg-[#3B5998] hover:bg-[#2d4373] text-white px-6 py-2 rounded-md font-medium transition pointer-events-none">Browse Files</button>
+                      <p className="text-gray-400 text-xs mt-3">.json only</p>
+                    </div>
+                    <div className="mt-4 flex justify-center"><button onClick={downloadSampleTemplate} className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-md transition font-medium"><Download size={14} /> Download Sample Template</button></div>
+                  </div>
+                )}
+                {importFileStatus === 'loading' && <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>}
+                {importFileStatus === 'error' && (
+                  <div className="max-w-xl w-full mx-auto my-auto animate-fade-in flex flex-col justify-center h-full pb-10">
+                    <div className="text-center mb-4"><h3 className="text-lg font-semibold text-red-600">Upload Error</h3><p className="text-sm text-red-500 mt-2">{importFormErrors.file || 'File validation failed.'}</p></div>
+                    <div className="border-2 border-dashed border-red-200 rounded-xl bg-red-50 py-8 px-6 flex flex-col items-center justify-center hover:bg-red-100 transition cursor-pointer" onClick={() => { setImportFileStatus('idle'); setImportFormErrors({}); }}>
+                      <UploadCloud size={40} className="text-red-300 mb-3" /><p className="text-gray-700 font-medium mb-1">Click to try again</p><p className="text-gray-400 text-xs">Select a valid .json file (max 10MB)</p>
+                    </div>
+                  </div>
+                )}
+                {importFileStatus === 'parsed' && (() => {
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6 animate-fade-in">
+                      <div className="flex flex-col space-y-6">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between relative overflow-hidden">
+                          <div className="absolute top-0 bottom-0 left-0 w-1 bg-green-500"></div>
+                          <div className="flex items-center gap-3"><div className="bg-blue-100 text-blue-600 font-bold text-[10px] px-2 py-1 rounded">JSON</div><div><p className="text-sm font-semibold text-gray-800 truncate max-w-[150px]">{mockImportParsedTree.fileName}</p><p className="text-xs text-gray-500">{mockImportParsedTree.size}</p></div></div>
+                          <button onClick={() => setImportFileStatus('idle')} className="text-gray-400 hover:text-red-500" title="Remove"><X size={16}/></button>
+                        </div>
+                        <div className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm relative">
+                          <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">Template Info</div>
+                          <div className="space-y-2">
+                            <div><label className="block text-[11px] font-medium text-gray-700 mb-0.5">Title <span className="text-red-500">*</span></label>
+                              <input type="text" maxLength={120} value={importFormData.title} onChange={(e) => { setImportFormData({...importFormData, title: e.target.value}); if(e.target.value) setImportFormErrors({...importFormErrors, title: null}); }} placeholder="Ex: Q4 Global Product Launch" className={`w-full p-1.5 border ${importFormErrors.title ? 'border-red-500' : 'border-gray-300'} rounded text-xs`} />
+                              {importFormErrors.title && <p className="text-[10px] text-red-500 mt-0.5 flex items-center"><AlertCircle size={10} className="mr-1"/>{importFormErrors.title}</p>}
+                            </div>
+                            <div><label className="block text-[11px] font-medium text-gray-700 mb-0.5">Description</label><textarea value={importFormData.desc} onChange={(e) => setImportFormData({...importFormData, desc: e.target.value})} placeholder="Leave empty to use default..." className="w-full p-1.5 border border-gray-300 rounded text-xs h-12" /></div>
+                            <div><label className="block text-[11px] font-medium text-gray-700 mb-0.5">Tags</label><input type="text" value={importFormData.tags} onChange={(e) => setImportFormData({...importFormData, tags: e.target.value})} placeholder="Separate by comma (,)" className="w-full p-1.5 border border-gray-300 rounded text-xs" /></div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          <div className="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm"><p className="text-sm font-bold text-gray-800">{mockImportParsedTree.stats.total}</p><p className="text-[9px] text-gray-500">Total</p></div>
+                          <div className="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm"><p className="text-sm font-bold text-gray-800">{mockImportParsedTree.stats.obj}</p><p className="text-[9px] text-gray-500">Obj</p></div>
+                          <div className="bg-red-50 border border-red-100 rounded-lg p-2 text-center"><p className="text-base font-bold text-red-600">{mockImportParsedTree.stats.error}</p><p className="text-[10px] text-red-500">Errors</p></div>
+                          <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 text-center"><p className="text-base font-bold text-amber-600">{mockImportParsedTree.stats.warning}</p><p className="text-[10px] text-amber-600">Warnings</p></div>
+                        </div>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+                          <div><h3 className="text-sm font-bold text-gray-800">Validation Results</h3><p className="text-xs text-gray-500">{mockImportParsedTree.stats.error + mockImportParsedTree.stats.warning} issues</p></div>
+                          <button onClick={() => { const r = JSON.stringify(mockImportParsedTree, null, 2); const b = new Blob([r], {type:'application/json'}); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href=u; a.download='error_report.json'; a.click(); URL.revokeObjectURL(u); }} className="flex items-center gap-1 border border-gray-300 rounded px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"><FileJson size={14} /> Error Report</button>
+                        </div>
+                        <div className="px-4 py-3 flex gap-2 border-b border-gray-100 overflow-x-auto shrink-0">
+                          <button onClick={() => setImportReviewTab('all')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'all' ? 'bg-[#3B5998] text-white' : 'border border-gray-200 text-gray-600'}`}>All {mockImportParsedTree.stats.total}</button>
+                          <button onClick={() => setImportReviewTab('errors')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'errors' ? 'bg-red-50 border-red-200 text-red-600' : 'border border-gray-200 text-gray-600'}`}>Errors {mockImportParsedTree.stats.error}</button>
+                          <button onClick={() => setImportReviewTab('warnings')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'warnings' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'border border-gray-200 text-gray-600'}`}>Warnings {mockImportParsedTree.stats.warning}</button>
+                          <button onClick={() => setImportReviewTab('passed')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'passed' ? 'bg-green-50 border-green-200 text-green-600' : 'border border-gray-200 text-gray-600'}`}>Passed {mockImportParsedTree.stats.valid}</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">{renderImportValidationTree(importReviewTab, importValidationVisibleColumns, toggleImportValidationColumn, importValidationMaximized, setImportValidationMaximized)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            {importStep === 2 && (
+              <div className="flex flex-1 min-h-0 animate-fade-in">
+                <div className="w-[45%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto">
+                  <h3 className="text-base font-bold text-gray-800 mb-0.5">Field Selection</h3>
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2 shrink-0">
+                    <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" checked={importSelectedFields.length === availableFields.length} onChange={(e) => { if(e.target.checked) setImportSelectedFields(availableFields.map(f => f.id)); else setImportSelectedFields(['name']); }} /><span className="font-semibold text-xs text-gray-800">Select All</span></label>
+                    <span className="text-[10px] text-gray-500">{availableFields.length} fields · {importSelectedFields.length} selected</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto border-t border-gray-100">{availableFields.map(field => { const c = importSelectedFields.includes(field.id); return (<div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50"><div className="w-[140px] flex items-start gap-2"><input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600" checked={c} disabled={field.locked} onChange={() => toggleImportField(field.id)} /><div><span className={`text-sm font-medium ${!c ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span><span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span></div></div><div className="flex-1 text-xs text-gray-500"><p className={!c ? 'line-through opacity-50' : ''}>{field.desc}</p></div></div>);})}</div>
+                </div>
+                <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden">
+                  <div className="flex justify-between items-center mb-4 shrink-0"><div><h3 className="text-base font-bold text-gray-800">OKR Tree Preview</h3><p className="text-xs text-gray-500">Real-time preview</p></div></div>
+                  <div className="flex-1 overflow-hidden"><OKRTreePreview treeData={mockImportParsedTree} selectedFields={importSelectedFields} showNameColumn={false} showDisclaimer={true} visibleColumns={importTreeVisibleColumns} onToggleColumn={toggleImportTreeColumn} maximizable={true} onNodeClick={(node) => openNodeDetail(node, 'edit')} /></div>
+                </div>
+              </div>
+            )}
+            {importStep === 3 && (
+              <div className="flex flex-1 min-h-0 animate-fade-in">
+                <div className="w-[35%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3 text-center"><div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-2 shadow-md"><Check size={20} strokeWidth={3} /></div><h3 className="text-base font-bold text-gray-800 mb-0.5">Ready to Import</h3><p className="text-xs text-gray-600">{mockImportParsedTree.stats.valid} / {mockImportParsedTree.stats.total} nodes will be imported</p></div>
+                  <h4 className="text-xs font-bold text-gray-800 mb-2">Summary</h4>
+                  <div className="space-y-1.5"><div className="flex justify-between p-2 border-b border-gray-100"><span className="text-xs font-semibold text-gray-600">Total</span><span className="text-base font-bold text-gray-800">{mockImportParsedTree.stats.total}</span></div><div className="flex justify-between p-2 bg-green-50 rounded-lg border border-green-100"><span className="text-xs font-semibold text-green-700">Valid</span><span className="text-base font-bold text-green-700">{mockImportParsedTree.stats.valid}</span></div><div className="flex justify-between p-2 bg-red-50 rounded-lg border border-red-100"><span className="text-xs font-semibold text-red-700">Skipped</span><span className="text-base font-bold text-red-700">{mockImportParsedTree.stats.error}</span></div></div>
+                  <div className="mt-3"><h4 className="text-xs font-bold text-gray-800 mb-2">Field Selection</h4><div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700"><span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Selected ({importSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{importSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="px-1.5 py-0.5 bg-white border border-green-200 rounded text-[10px] text-green-700">{f.label}</span> : null; })}</div></div></div>
+                </div>
+                <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden"><div className="flex-1 overflow-hidden"><OKRTreePreview treeData={{...mockImportParsedTree, krs: mockImportParsedTree.krs.filter(kr => kr.status !== 'error')}} selectedFields={importSelectedFields} showNameColumn={false} showDisclaimer={true} visibleColumns={importTreeVisibleColumns} onToggleColumn={toggleImportTreeColumn} maximizable={true} onNodeClick={(node) => openNodeDetail(node, 'edit')} /></div></div>
+              </div>
+            )}
+          </div>
+          <div className="border-t border-gray-200 px-6 py-4 bg-white flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0">
+            <div className="flex items-center text-sm">
+              {importStep === 1 && importFileStatus === 'parsed' && <span className="text-gray-600"><AlertCircle size={16} className="inline text-amber-500 mr-1" />{mockImportParsedTree.stats.valid} valid / {mockImportParsedTree.stats.error} errors</span>}
+              {importStep === 2 && <span className="text-gray-500 flex items-center gap-2 text-xs"><AlertCircle size={14} className="text-blue-500" /><span className="text-green-600 font-semibold">{importSelectedFields.length} selected</span> / <span className="text-orange-600 font-semibold">{availableFields.length - importSelectedFields.length} defaults</span></span>}
+            </div>
+            <div className="flex gap-3">
+              {importStep === 1 ? <button onClick={handleBackFromImport} className="px-4 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button> : <button onClick={() => setImportStep(importStep - 1)} className="px-4 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1"><ChevronRight size={16} className="rotate-180" /> Back</button>}
+              {importStep < 3 ? <button onClick={handleNextImportStep} disabled={importFileStatus !== 'parsed'} className="px-6 py-2 bg-[#3B5998] text-white rounded text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">{importStep === 2 ? 'Next' : 'Continue'} <ChevronRight size={16} /></button> : <button onClick={handleConfirmImport} className="px-6 py-2 bg-[#3B5998] text-white rounded text-sm font-semibold flex items-center gap-1">Confirm Import <ChevronRight size={16} /></button>}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {activeView === 'export' && (
+        <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
+            <button onClick={handleBackFromExport} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-200 rounded-md" title="Back"><ChevronRight size={20} className="rotate-180" /></button>
+            <div><h2 className="text-xl flex items-center gap-2 font-bold text-[#1e3a8a]"><Download size={20} className="text-[#3B5998]" /> Export OKR Template</h2><p className="text-xs text-gray-500 mt-1">Export template list to JSON format for sharing or backup</p></div>
+          </div>
+          <div className="flex border-b border-gray-100 bg-white shrink-0">{[1,2,3].map(step => (<div key={step} className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center border-b-2 ${exportStep === step ? 'border-blue-600 text-blue-600' : exportStep > step ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400'}`}><div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2 ${exportStep === step ? 'bg-blue-600 text-white' : exportStep > step ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>{exportStep > step ? <Check size={12} /> : step}</div>{step === 1 ? '1. Select' : step === 2 ? '2. Fields' : '3. Preview'}</div>))}</div>
+          <div className="flex-1 flex overflow-hidden bg-gray-50/50">
+            {exportStep === 1 && (
+              <><div className="w-[45%] bg-white border-r border-gray-200 p-6 flex flex-col h-full overflow-y-auto">
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-2 shrink-0 mb-4">Template Library</h3>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 mb-4 shrink-0">
+                  <label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600" checked={exportSelectedTemplates.length === templateList.length && templateList.length > 0} onChange={(e) => { if(e.target.checked) setExportSelectedTemplates(templateList.map(t => t.id)); else setExportSelectedTemplates([]); }} /><span className="font-semibold text-sm text-gray-800">Select All</span></label>
+                  <span className="text-xs text-gray-500 bg-white px-2 py-0.5 border border-gray-200 rounded">{exportSelectedTemplates.length}/{templateList.length}</span>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">{templateList.map(t => (<div key={t.id} className={`border rounded-lg p-3 flex gap-3 cursor-pointer ${exportSelectedTemplates.includes(t.id) ? 'border-blue-300 bg-blue-50/30' : 'border-gray-200'}`} onClick={() => toggleExportTemplate(t.id)}><input type="checkbox" checked={exportSelectedTemplates.includes(t.id)} readOnly className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 pointer-events-none" /><div><div className="font-semibold text-sm text-[#1e3a8a]">{t.title}</div><div className="text-xs text-gray-500 line-clamp-1">{t.desc || <span className="italic text-gray-400">Default</span>}</div></div></div>))}{templateList.length === 0 && <p className="text-sm text-gray-500 text-center py-4">No templates.</p>}</div>
+              </div><div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden border-l border-gray-200">
+                <div className="mb-4 shrink-0 border-b border-gray-200 pb-3"><h3 className="text-base font-bold text-gray-800">Export Queue</h3><p className="text-xs text-gray-500">{exportSelectedTemplates.length} templates selected</p></div>
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">{templateList.filter(t => exportSelectedTemplates.includes(t.id)).map((t, idx) => (<div key={t.id} className="bg-white border border-gray-200 rounded-md p-3 shadow-sm flex justify-between items-center"><div className="flex items-center gap-2"><span className="text-xs font-mono text-gray-400">#{idx+1}</span><div className="font-bold text-sm text-gray-800">{t.title}</div></div><button onClick={() => toggleExportTemplate(t.id)} className="text-gray-300 hover:text-red-500"><X size={16}/></button></div>))}</div>
+              </div></>
+            )}
+            {exportStep === 2 && (
+              <><div className="w-[35%] bg-white border-r border-gray-200 p-6 flex flex-col h-full overflow-y-auto shrink-0">
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-1">Field Selection</h3>
+                <div className="border border-gray-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm mb-4"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600" checked={exportSelectedFields.length === availableFields.length} onChange={(e) => { if(e.target.checked) setExportSelectedFields(availableFields.map(f => f.id)); else setExportSelectedFields(['name']); }} /><span className="font-bold text-sm text-gray-800">Select All</span></label><span className="text-xs text-gray-500">{exportSelectedFields.length}/{availableFields.length}</span></div>
+                <div className="flex-1 overflow-y-auto space-y-2">{availableFields.map(field => { const c = exportSelectedFields.includes(field.id); return (<div key={field.id} className={`border rounded-lg p-3 flex gap-3 ${c ? 'bg-white border-blue-200' : 'bg-gray-50 border-gray-200'}`}><input type="checkbox" checked={c} disabled={field.id === 'name'} onChange={() => toggleExportField(field.id)} className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600" /><div><span className={`text-sm font-bold ${c ? 'text-gray-800' : 'text-gray-500'}`}>{field.label}</span><p className={`text-xs mt-1 ${c ? 'text-gray-600' : 'text-gray-400'}`}>{field.desc}</p></div></div>);})}</div>
+                <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                  <div className="flex flex-wrap gap-1 text-xs"><span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({exportSelectedFields.length}):</span>{availableFields.filter(f => exportSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span>)}</div>
+                  {exportSelectedFields.length < availableFields.length && <div className="flex flex-wrap gap-1 text-xs"><span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Excluded ({availableFields.length - exportSelectedFields.length}):</span>{availableFields.filter(f => !exportSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>)}</div>}
+                </div>
+              </div><div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden border-l border-gray-200">
+                <div className="mb-4 shrink-0"><h3 className="text-base font-bold text-gray-800">JSON Format Preview</h3><p className="text-xs text-gray-500">Preview output structure</p></div>
+                <div className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden font-mono text-sm">
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 text-xs shrink-0"><span className="font-semibold text-gray-600"><FileJson size={14} className="inline mr-1"/> {exportFileName}</span></div>
+                  <div className="p-4 overflow-auto flex-1 bg-[#FAFAFA] text-gray-800 whitespace-pre custom-scrollbar">{`[\n  {\n    "okr_key": "OBJ-TEMPLATE-X",${exportSelectedFields.includes('name') ? `\n    "name": "Objective / KR Name",` : ''}${exportSelectedFields.includes('description') ? `\n    "description": "Description...",` : ''}${exportSelectedFields.includes('user') ? `\n    "user": "Owner",` : ''}${exportSelectedFields.includes('metric') ? `\n    "metric": "Revenue",` : ''}${exportSelectedFields.includes('progress') ? `\n    "progress_percent": 75,` : ''}\n  }\n]`}</div>
+                </div>
+              </div></>
+            )}
+            {exportStep === 3 && (
+              <><div className="w-[35%] bg-white border-r border-gray-200 p-6 flex flex-col h-full overflow-y-auto">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6 text-center"><div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-3 shadow-md"><Download size={24} strokeWidth={2} /></div><h3 className="text-lg font-bold text-gray-800">Ready to Export</h3><p className="text-sm text-gray-600">JSON file ready for download</p></div>
+                <h4 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2 mb-3">Summary</h4>
+                <div className="space-y-3"><div className="flex justify-between p-3 border border-gray-200 rounded bg-gray-50"><span className="text-sm font-semibold text-gray-600">Templates</span><span className="text-lg font-bold text-blue-600">{exportSelectedTemplates.length}</span></div><div className="flex justify-between p-3 bg-green-50 rounded-lg border border-green-200"><span className="text-sm font-semibold text-green-700">Fields</span><span className="text-lg font-bold text-green-700">{exportSelectedFields.length}/{availableFields.length}</span></div></div>
+                <div className="mt-3"><span className="text-xs text-gray-500">Selected templates:</span>{templateList.filter(t => exportSelectedTemplates.includes(t.id)).map(t => <div key={t.id} className="text-sm font-medium text-gray-700 mt-1">{t.title}</div>)}</div>
+              </div><div className="flex-1 p-6 bg-slate-50 flex flex-col h-full overflow-hidden border-l border-gray-200">
+                <div className="mb-4 shrink-0 border-b border-gray-200 pb-3"><h3 className="text-base font-bold text-gray-800">Final JSON Payload</h3></div>
+                <div className="flex-1 bg-gray-900 border border-gray-800 rounded-lg overflow-hidden font-mono text-sm text-green-400">
+                  <div className="bg-gray-800 px-4 py-3 text-xs text-gray-400 shrink-0 border-b border-gray-700">JSON Preview</div>
+                  <div className="p-4 overflow-auto flex-1 whitespace-pre custom-scrollbar">{`[\n${exportSelectedTemplates.map(tId => { const t = templateList.find(x => x.id === tId); return `  {\n    "okr_key": "OBJ-${tId}"${exportSelectedFields.includes('name') ? `,\n    "name": "${t?.title || 'Default'}"` : ''}\n  }`;}).join(',\n')}\n]`}</div>
+                </div>
+              </div></>
+            )}
+          </div>
+          <div className="border-t border-gray-200 px-6 py-4 bg-white flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0">
+            <button onClick={handleBackFromExport} className="px-4 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+            <div className="flex gap-3">
+              {exportStep > 1 && <button onClick={() => setExportStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"><ChevronRight size={16} className="rotate-180" /> Back</button>}
+              {exportStep < 3 ? <button onClick={handleNextExportStep} disabled={exportStep === 1 && exportSelectedTemplates.length === 0} className={`px-4 py-2 rounded-md text-sm font-medium ${exportStep === 1 && exportSelectedTemplates.length === 0 ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue <ChevronRight size={16} /></button> : <button onClick={handleConfirmExport} className="px-6 py-2 bg-[#3B5998] text-white rounded text-sm font-semibold flex items-center gap-2"><Download size={16} /> Download JSON</button>}
             </div>
           </div>
         </div>
