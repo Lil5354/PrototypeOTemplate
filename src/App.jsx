@@ -659,6 +659,28 @@ const App = () => {
   const tableData = okrDataMap[`${selectedSpace}|${selectedYear}|${selectedPeriod}`] || [];
 
   useEffect(() => {
+    const checkPending = () => {
+      try {
+        const raw = localStorage.getItem('pendingSavedTemplate');
+        if (raw) {
+          const t = JSON.parse(raw);
+          if (t) {
+            setTemplateList(prev => {
+              if (prev.some(x => x.id === t.id)) return prev;
+              return [t, ...prev];
+            });
+            setActiveView('okr-template');
+          }
+        }
+      } catch(e) {}
+      try { localStorage.removeItem('pendingSavedTemplate'); } catch(e) {}
+    };
+    checkPending();
+    window.addEventListener('storage', checkPending);
+    return () => window.removeEventListener('storage', checkPending);
+  }, []);
+
+  useEffect(() => {
     const spaceTree = timelineTreeBySpace[selectedSpace];
     if (spaceTree) {
       const years = Object.keys(spaceTree);
@@ -1008,6 +1030,7 @@ const App = () => {
         date: new Date().toISOString().split('T')[0],
         tree: filterTree(saveAsTreeData)
       };
+      try { localStorage.setItem('pendingSavedTemplate', JSON.stringify(newTemplate)); } catch(e) {}
       setTemplateList([newTemplate, ...templateList]);
       triggerToast('Template saved successfully from branch view.');
       window.close();
