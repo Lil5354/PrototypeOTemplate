@@ -638,6 +638,8 @@ const App = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const isBranchAddMode = urlParams.get('branchAddTemplate') === 'true';
   const isSaveAsMode = urlParams.get('saveAsTemplate') === 'true';
+  const isViewMode = urlParams.get('viewTemplate') === 'true';
+  const isEditMode = urlParams.get('editTemplate') === 'true';
   const [branchInfo, setBranchInfo] = useState(null);
   const [branchAddStep, setBranchAddStep] = useState(1);
   const [branchSelectedTemplateId, setBranchSelectedTemplateId] = useState(null);
@@ -648,7 +650,7 @@ const App = () => {
 
   const redirectClean = () => { window.location.href = window.location.origin + window.location.pathname; };
   const navigateView = (view) => {
-    if (isBranchAddMode || isSaveAsMode) {
+    if (isBranchAddMode || isSaveAsMode || isViewMode || isEditMode) {
       window.location.href = window.location.origin + window.location.pathname + '?view=' + view;
     } else {
       setActiveView(view);
@@ -947,6 +949,14 @@ const App = () => {
     }
   }, [isSaveAsMode]);
 
+  useEffect(() => {
+    if (isViewMode) { try { const s = localStorage.getItem('viewTemplate'); if (s) { const t = JSON.parse(s); setViewTarget(t); setViewTreeVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]); setViewCollapsedObjs({}); } } catch(e) {} }
+  }, [isViewMode]);
+
+  useEffect(() => {
+    if (isEditMode) { try { const s = localStorage.getItem('editTemplate'); if (s) { const t = JSON.parse(s); setEditTargetId(t.id); setEditFormData({ title: t.title || '', desc: t.desc || '', tags: (t.tags || []).join(', ') }); setEditTreeData(JSON.parse(JSON.stringify(t.tree)) || []); setEditFormErrors({}); } } catch(e) {} }
+  }, [isEditMode]);
+
   const getAllDescendantIds = (nodes) => {
     const ids = [];
     const walk = (list) => { list.forEach(n => { ids.push(n.id); if (n.children) walk(n.children); }); };
@@ -1115,7 +1125,7 @@ const App = () => {
     triggerToast('Template deleted.');
   };
 
-  const handleViewClick = (template) => { setViewTarget(template); setViewTreeVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]); setViewCollapsedObjs({}); };
+  const handleViewClick = (template) => { try { localStorage.setItem('viewTemplate', JSON.stringify(template)); } catch(e) { triggerToast('Failed to open view template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?viewTemplate=true', '_blank'); };
 
   const toggleViewTreeColumn = (colId) => {
     setViewTreeVisibleColumns(prev => prev.includes(colId) ? prev.filter(id => id !== colId) : [...prev, colId]);
@@ -1162,12 +1172,7 @@ const App = () => {
     closeViewModal();
   };
 
-  const handleEditClick = (template) => {
-    setEditTargetId(template.id);
-    setEditFormData({ title: template.title || '', desc: template.desc || '', tags: (template.tags || []).join(', ') });
-    setEditTreeData(JSON.parse(JSON.stringify(template.tree)) || []); 
-    setEditFormErrors({});
-  };
+  const handleEditClick = (template) => { try { localStorage.setItem('editTemplate', JSON.stringify(template)); } catch(e) { triggerToast('Failed to open edit template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?editTemplate=true', '_blank'); };
   const closeEditModal = () => {
     setEditTargetId(null);
     closeNodeDetail();
@@ -3919,7 +3924,7 @@ ${exportSelectedTemplates.map(tId => {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' ? 'hidden' : ''}`}>
+        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' || isViewMode || isEditMode ? 'hidden' : ''}`}>
           
           {/* --- OKR BOARD MAIN VIEW --- */}
           {!isBranchAddMode && !isSaveAsMode && activeView === 'okr-dashboard' && (
@@ -4599,6 +4604,143 @@ ${exportSelectedTemplates.map(tId => {
             <div className="flex gap-3">
               {exportStep > 1 && <button onClick={() => setExportStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"><ChevronRight size={16} className="rotate-180" /> Back</button>}
               {exportStep < 3 ? <button onClick={handleNextExportStep} disabled={exportStep === 1 && exportSelectedTemplates.length === 0} className={`px-4 py-2 rounded-md text-sm font-medium ${exportStep === 1 && exportSelectedTemplates.length === 0 ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue <ChevronRight size={16} /></button> : <button onClick={handleConfirmExport} className="px-6 py-2 bg-[#3B5998] text-white rounded text-sm font-semibold flex items-center gap-2"><Download size={16} /> Download JSON</button>}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {isViewMode && viewTarget && (
+        <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50 shrink-0">
+            <button onClick={() => { try { localStorage.removeItem('viewTemplate'); } catch(e) {} window.location.href = window.location.origin + window.location.pathname + '?view=okr-template'; }} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-200 rounded-md" title="Back"><ChevronRight size={20} className="rotate-180" /></button>
+            <div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><Eye size={18}/></div>
+            <div><h2 className="text-lg font-bold text-[#1e3a8a]">{viewTarget.title}</h2><p className="text-xs text-gray-500">Previewing template structure (Read-only)</p></div>
+            <div className="ml-auto"><button onClick={handleOpenTimelineSelection} className="px-4 py-1.5 bg-green-600 text-white rounded-md font-semibold text-xs hover:bg-green-700 transition shadow-sm flex items-center"><Download size={14} className="mr-1.5" /> Use This Template</button></div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+            <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6 shrink-0">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">General Information</h4>
+              <p className="text-sm text-gray-700 mb-3">{viewTarget.desc || <span className="text-gray-400 italic">Default description</span>}</p>
+              <div className="flex space-x-2">{(viewTarget.tags || []).map(tag => <span key={tag} className="px-2 py-0.5 rounded text-xs bg-gray-100 border border-gray-200 text-gray-600">{tag}</span>)}</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-5 py-3 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between"><span>OKR Tree Structure Preview</span></h4>
+              {(() => {
+                const viewGridCols = getGridTemplate(viewTreeVisibleColumns);
+                const viewTreeHeader = (
+                  <div className="bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider" style={{ display: 'grid', gridTemplateColumns: viewGridCols + ' auto', alignItems: 'center' }}>
+                    <div className="bg-gray-50 truncate" style={{ paddingLeft: '4px' }}>Node</div>
+                    {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} bg-gray-50 truncate`}>{col.label}</div>)}
+                    <div className="flex items-center gap-0.5" style={{ justifySelf: 'end' }}>
+                      <ColumnToggle visibleColumns={viewTreeVisibleColumns} onToggle={toggleViewTreeColumn} />
+                      <button onClick={() => setViewTreeMaximized(!viewTreeMaximized)} className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors" title={viewTreeMaximized ? 'Minimize' : 'Maximize'}>{viewTreeMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
+                    </div>
+                  </div>
+                );
+                const renderViewTreeNode = (node, depth) => {
+                  const nodeId = node.id || `vn${depth}`;
+                  const collapsed = viewCollapsedObjs[nodeId];
+                  const toggleNode = () => setViewCollapsedObjs(prev => ({...prev, [nodeId]: !prev[nodeId]}));
+                  const indent = (depth - 1) * 14;
+                  const getViewIcon = (nd, d) => { const il = nd.level ?? d; if (il === 1) return <Box size={13} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={13} className="text-green-500 shrink-0" />; return <User size={13} className="text-purple-500 shrink-0" />; };
+                  return (
+                    <div key={nodeId}>
+                      <div className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(node, 'view')} style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
+                        <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: `${indent}px` }}>
+                          {depth === 1 && <button onClick={(e) => { e.stopPropagation(); toggleNode(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0"><ChevronRight size={12} className={`text-gray-400 transition-transform ${collapsed ? '' : 'rotate-90'}`} /></button>}
+                          {depth > 1 && <div className="w-4 shrink-0"></div>}
+                          {getViewIcon(node, depth)}
+                          <span className={`${depth === 1 ? 'text-xs font-semibold text-blue-600' : 'text-xs text-gray-700'} hover:underline truncate`}>{node.name}</span>
+                        </div>
+                        {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}><span className="truncate text-[12px]">{node[col.id] || node.description || 'Default'}</span></div>)}
+                      </div>
+                      {!collapsed && node.children && node.children.map(c => renderViewTreeNode(c, depth + 1))}
+                    </div>
+                  );
+                };
+                const treeContent = (<div className="min-w-[500px]">{viewTreeHeader}<div className="divide-y divide-gray-100">{viewTarget.tree.map(n => renderViewTreeNode(n, 1))}</div></div>);
+                if (viewTreeMaximized) return (<FullScreenWindow onClose={() => setViewTreeMaximized(false)}><div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>{treeContent}</div></FullScreenWindow>);
+                return (<div className="overflow-x-auto">{treeContent}</div>);
+              })()}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {isEditMode && (
+        <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-gray-50 shrink-0">
+            <button onClick={() => { try { localStorage.removeItem('editTemplate'); } catch(e) {} window.location.href = window.location.origin + window.location.pathname + '?view=okr-template'; }} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-200 rounded-md" title="Back"><ChevronRight size={20} className="rotate-180" /></button>
+            <div className="w-8 h-8 rounded bg-orange-100 text-orange-600 flex items-center justify-center"><Edit size={18}/></div>
+            <div><h2 className="text-lg font-bold text-gray-800">Edit Template</h2></div>
+            <div className="ml-auto flex gap-3">
+              <button onClick={() => { try { localStorage.removeItem('editTemplate'); } catch(e) {} window.location.href = window.location.origin + window.location.pathname + '?view=okr-template'; }} className="px-4 py-2 border border-gray-300 rounded text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+              <button onClick={() => { if (!editFormData.title.trim()) { setEditFormErrors({ title: 'Template name must not be empty.' }); return; } if (editTreeData.length === 0) { setEditFormErrors({ general: 'Template must have at least 1 Objective.' }); return; } const newTags = editFormData.tags.split(',').map(t => t.trim()).filter(Boolean); const updatedList = templateList.map(t => { if (t.id === editTargetId) return { ...t, title: editFormData.title, desc: editFormData.desc, tags: newTags, tree: editTreeData, date: new Date().toISOString().split('T')[0] }; return t; }); setTemplateList(updatedList); try { localStorage.setItem('templateList', JSON.stringify(updatedList)); } catch(e) {} try { localStorage.removeItem('editTemplate'); } catch(e) {} triggerToast('Changes saved successfully.'); window.location.href = window.location.origin + window.location.pathname + '?view=okr-template'; }} className="px-4 py-2 bg-blue-600 rounded text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm flex items-center"><Save size={16} className="mr-2"/> Save</button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+            {editFormErrors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4 text-sm">{editFormErrors.general}</div>}
+            <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Template Information</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2"><label className="text-xs font-medium text-gray-500 mb-1 block">Title <span className="text-red-500">*</span></label><input type="text" value={editFormData.title} onChange={(e) => setEditFormData({...editFormData, title: e.target.value})} className={`w-full text-sm px-3 py-1.5 border ${editFormErrors.title ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-1 focus:ring-blue-500`} />{editFormErrors.title && <p className="text-xs text-red-500 mt-1">{editFormErrors.title}</p>}</div>
+                <div><label className="text-xs font-medium text-gray-500 mb-1 block">Description</label><input type="text" value={editFormData.desc} onChange={(e) => setEditFormData({...editFormData, desc: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /></div>
+              </div>
+              <div className="mt-3"><label className="text-xs font-medium text-gray-500 mb-1 block">Tags (comma separated)</label><input type="text" value={editFormData.tags} onChange={(e) => setEditFormData({...editFormData, tags: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /></div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
+                <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
+                <button onClick={() => { const newTree = [...editTreeData]; newTree.push({ id: `O-NEW-${Date.now()}`, type: 'objective', name: 'New Objective', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', level: 1, children: [{ id: `KR-NEW-${Date.now()}`, type: 'kr', name: 'New Key Result', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', progress: '0%', timeline: '', level: 2, children: [] }] }); setEditTreeData(newTree); setEditFormErrors(prev => ({...prev, general: null})); }} className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded transition-colors">Create Object</button>
+                <div className="ml-auto"></div>
+                <ColumnToggle visibleColumns={editTreeVisibleColumns} onToggle={toggleEditTreeColumn} />
+                <button onClick={() => setEditTreeMaximized(!editTreeMaximized)} className="p-1.5 hover:bg-gray-200 rounded text-gray-500 transition-colors">{editTreeMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
+              </div>
+              {(() => {
+                const editGridTemplate = '1fr ' + TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).map(c => COL_WIDTH_MAP[c.id] || '112px').join(' ') + ' auto 40px';
+                const editTreeHeader = (
+                  <div className="bg-gray-50 border-b border-gray-200 py-2 px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider" style={{ display: 'grid', gridTemplateColumns: editGridTemplate + ' auto', alignItems: 'center' }}>
+                    <div className="bg-gray-50 truncate" style={{ paddingLeft: '4px' }}>Node</div>
+                    {TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).map(col => <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} bg-gray-50 truncate`}>{col.label}</div>)}
+                    <div className="px-1.5 text-center bg-gray-50 text-[10px]">Actions</div>
+                    <div></div>
+                  </div>
+                );
+                const editTreeRows = (
+                  <div className="divide-y divide-gray-100">
+                    {editTreeData.map((obj, oIdx) => {
+                      const renderNode = (node, path, level = 1) => {
+                        const isObjective = level === 1; const canAddChild = level < 4;
+                        return (
+                          <React.Fragment key={node.id}>
+                            <div className="group py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(node, 'edit', path)} style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
+                              <div className="flex items-center gap-2 truncate" style={{ paddingLeft: `${16 + (level - 1) * 24}px` }}>
+                                {(() => { const il = node.level ?? level; if (il === 1) return <Box size={14} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={14} className="text-green-500 shrink-0" />; return <User size={14} className="text-purple-500 shrink-0" />; })()}
+                                <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.name}</span>
+                                {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
+                              </div>
+                              {TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).map(col => <div key={col.id} className={`px-1.5 text-[12px] ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{(() => { switch(col.id) { case 'description': return <span className="truncate">{node.description || 'Default'}</span>; case 'user': return <span className="truncate">{node.user || <span className="text-gray-300">Default</span>}</span>; case 'metric': return <span className="truncate">{node.metric || <span className="text-gray-300">Default</span>}</span>; case 'progress': return <span className="text-[12px]">{node.progress || '0%'}</span>; case 'status': return <div className="flex justify-center"><CheckCircle2 size={14} className="text-green-600" /></div>; default: return <span className="truncate">{node[col.id] || 'Default'}</span>; } })()}</div>)}
+                              <div></div>
+                              <div className="px-1.5 text-center flex items-center justify-center gap-1">
+                                {isObjective && <button onClick={(e) => { e.stopPropagation(); const nt = [...editTreeData]; nt[path[0]].children.push({ id: `KR-NEW-${Date.now()}`, type: 'kr', name: 'New Key Result', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', progress: '0%', timeline: '', level: 2, children: [] }); setEditTreeData(nt); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
+                                {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); const nt = [...editTreeData]; let target = nt[path[0]]; for (let i = 1; i < path.length; i++) target = target.children[path[i]]; target.children.push({ id: `C-NEW-${Date.now()}`, type: 'kr', name: 'New Child', description: '', user: '', level: level + 1, children: [] }); setEditTreeData(nt); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Child"><Plus size={14}/></button>}
+                                <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit"><Edit size={14}/></button>
+                                {isObjective ? <button onClick={(e) => { e.stopPropagation(); const nt = [...editTreeData]; nt.splice(path[0], 1); setEditTreeData(nt); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 size={14}/></button> : <button onClick={(e) => { e.stopPropagation(); const nt = [...editTreeData]; let target = nt[path[0]]; for (let i = 1; i < path.length; i++) target = target.children[path[i]]; target.children.splice(path[path.length - 1], 1); setEditTreeData(nt); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 size={14}/></button>}
+                              </div>
+                            </div>
+                            {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
+                          </React.Fragment>
+                        );
+                      };
+                      return renderNode(obj, [oIdx], 1);
+                    })}
+                    {editTreeData.length === 0 && (<div className="py-10 text-center text-gray-400"><FolderTree size={32} className="mx-auto mb-2 opacity-50" /><p className="text-sm font-medium">No Objectives</p></div>)}
+                  </div>
+                );
+                const treeContent = (<div className="min-w-[900px]">{editTreeHeader}{editTreeRows}</div>);
+                if (editTreeMaximized) return (<FullScreenWindow onClose={() => setEditTreeMaximized(false)}><div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>{treeContent}</div></FullScreenWindow>);
+                return (<div className="overflow-x-auto">{treeContent}</div>);
+              })()}
             </div>
           </div>
         </div>
