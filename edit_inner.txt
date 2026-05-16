@@ -1,0 +1,181 @@
+
+            
+            <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded bg-orange-100 text-orange-600 flex items-center justify-center mr-3"><Edit size={18}/></div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Edit Template</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">ID: {editTargetId}</p>
+                </div>
+              </div>
+              <div className="flex space-x-3">
+                 <button onClick={redirectClean} className="px-4 py-2 border border-gray-300 rounded text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+                 <button onClick={() => { handleSaveTemplateChanges(); setTimeout(redirectClean, 300); } } className="px-4 py-2 bg-blue-600 rounded text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm flex items-center"><Save size={16} className="mr-2"/> Save</button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex bg-gray-50/50">
+              <div className="w-[350px] bg-white border-r border-gray-200 p-6 overflow-y-auto custom-scrollbar shrink-0">
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-2 mb-4">General Information</h3>
+                {editFormErrors.general && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start">
+                    <AlertCircle size={14} className="mr-1.5 shrink-0 mt-0.5" />
+                    <span>{editFormErrors.general}</span>
+                  </div>
+                )}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
+                    <input type="text" maxLength={120} value={editFormData.title} onChange={(e) => { setEditFormData({...editFormData, title: e.target.value}); if(e.target.value) setEditFormErrors({...editFormErrors, title: null}); }} className={`w-full p-2 border ${editFormErrors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded text-sm focus:outline-none focus:ring-1`} />
+                    {editFormErrors.title && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{editFormErrors.title}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Description</label>
+                    <textarea value={editFormData.desc} onChange={(e) => setEditFormData({...editFormData, desc: e.target.value})} className="w-full p-2 border border-gray-300 rounded text-sm h-24 focus:outline-none focus:ring-1 focus:ring-blue-500 custom-scrollbar" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Domain/Tags</label>
+                    <input type="text" value={editFormData.tags} onChange={(e) => setEditFormData({...editFormData, tags: e.target.value})} className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 relative custom-scrollbar">
+                 <div className="bg-blue-50 border border-blue-200 p-3 rounded-md shadow-sm mb-6 flex items-start">
+                    <Info size={18} className="text-blue-500 mr-2 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-bold text-blue-800">Editing Tips (Template Builder)</h4>
+                      <ul className="text-xs text-blue-700 mt-1 space-y-1 list-disc ml-4">
+                         <li>Hover any node to reveal action buttons (right).</li>
+                         <li>Click <strong>"+"</strong> on Objective to add new Key Result.</li>
+                         <li>Click <strong>"+"</strong> on child nodes to create nested nodes (max 4 levels).</li>
+                         <li>Click <strong>Edit</strong> icon to edit Node details.</li>
+                         <li>Click <strong>Delete</strong> icon to remove node (Warning: Deleting parent also deletes all children).</li>
+                         <li><strong>Level indicator (L2, L3, L4)</strong> shows node depth in the tree.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                    {(() => {
+                        const editGridCols = ['minmax(432px, 2.5fr)'];
+                        TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).forEach(c => editGridCols.push(COL_WIDTH_MAP[c.id] || '112px'));
+                        editGridCols.push('1fr', '96px');
+                        const editGridTemplate = editGridCols.join(' ');
+                        const editRenderCell = (node, colId) => {
+                          if (colId === 'description') return <span className="truncate text-[12px]">{node.description || 'Default'}</span>;
+                          if (colId === 'user') return <span className="truncate text-[12px]">{node.user || 'Default'}</span>;
+                          if (colId === 'group') return <span className="truncate text-[12px]">{node.group || 'Default'}</span>;
+                          if (colId === 'team') return <span className="truncate text-[12px]">{node.team || 'Default'}</span>;
+                          if (colId === 'assign_to') return <span className="truncate text-[12px]">{node.assign || node.user || 'Default'}</span>;
+                          if (colId === 'metric') return <span className="truncate text-[12px]">{node.metric || 'Default'}</span>;
+                          if (colId === 'metric_name') return <span className="truncate text-[12px]">{node.mName || 'Default'}</span>;
+                          if (colId === 'metric_key') return <span className="truncate text-[12px]">{node.mKey || 'Default'}</span>;
+                          if (colId === 'metric_unit') return <span className="truncate text-[12px]">{node.mUnit || 'Default'}</span>;
+                          if (colId === 'agg') return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg || 'SUM'}</span>;
+                          if (colId === 'result') return <span className="truncate text-[12px]">{node.result ?? 'Default'}</span>;
+                          if (colId === 'progress') return <span className="text-[12px] font-medium text-green-600">{node.progress ? <span>{node.progress}</span> : <span className="text-gray-400">-</span>}</span>;
+                          if (colId === 'risk_level') return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
+                          if (colId === 'timeline') return <span className="truncate text-[12px]">{node.timeline || 'Default'}</span>;
+                          if (colId === 'timeline_view_metric') return <span className="text-gray-400 italic text-[12px]">Default</span>;
+                          if (colId === 'status') return <div className="flex justify-center"><CheckCircle2 size={14} className="inline text-green-600" /></div>;
+                          return null;
+                        };
+                        const editTreeHeader = (
+                          <div className="bg-gray-50 border-b border-gray-200 py-1 px-4 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
+                               style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
+                           <div className="bg-gray-50 truncate" style={{ paddingLeft: '2px' }}>OKR</div>
+                           {TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).map(col => (
+                             <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} bg-gray-50 truncate`}>{col.label}</div>
+                           ))}
+                           <div></div>
+                           <div className="px-1.5 text-center bg-gray-50 truncate">Actions</div>
+                         </div>
+                       );
+                       const editTreeRows = (
+                         <div className="divide-y divide-gray-100">
+                            {editTreeData.map((obj, oIdx) => {
+                              const renderNode = (node, path, level = 1) => {
+                                const isObjective = level === 1;
+                                const canAddChild = level < 4;
+                                return (
+                                    <React.Fragment key={node.id}>
+                                      <div onClick={() => openNodeDetail(node, 'edit', path)} className="group py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                                           style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
+                                        <div className="flex items-center gap-2 truncate" style={{ paddingLeft: `${16 + (level - 1) * 24}px` }}>
+                                          {(() => { const il = node.level ?? (isObjective ? 1 : 2); if (il === 1) return <Box size={14} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={14} className="text-green-500 shrink-0" />; return <User size={14} className="text-purple-500 shrink-0" />; })()}
+                                          <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.id} - {node.name}</span>
+                                          {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
+                                        </div>
+                                        {TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).map(col => (
+                                          <div key={col.id} className={`px-1.5 text-[12px] ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate ${col.id === 'agg' ? '' : 'text-gray-600'}`}>{editRenderCell(node, col.id)}</div>
+                                        ))}
+                                      <div></div>
+                                      <div className="px-1.5 text-center flex items-center justify-center gap-1">
+                                        {isObjective && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-kr', path[0]); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Add Key Result"><Plus size={14}/></button>}
+                                        {!isObjective && canAddChild && <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('add-child', null, null, path); }} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Create mới (Add Child)"><Plus size={14}/></button>}
+                                        <button onClick={(e) => { e.stopPropagation(); openNodeDetail(node, 'edit', path); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="Edit Node"><Edit size={14}/></button>
+                                        {isObjective ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-obj', path[0]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Objective"><Trash2 size={14}/></button>
+                                          : level === 2 ? <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-kr', path[0], path[1]); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Key Result"><Trash2 size={14}/></button>
+                                          : <button onClick={(e) => { e.stopPropagation(); handleEditTreeAction('delete-node', null, null, path); }} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete Node"><Trash2 size={14}/></button>}
+                                      </div>
+                                    </div>
+                                    {node.children && node.children.map((child, cIdx) => renderNode(child, [...path, cIdx], level + 1))}
+                                  </React.Fragment>
+                               );
+                             };
+                             return renderNode(obj, [oIdx], 1);
+                           })}
+                           {editTreeData.length === 0 && (
+                             <div className="py-10 text-center text-gray-400">
+                                <FolderTree size={32} className="mx-auto mb-2 opacity-50" />
+                                <p className="text-sm font-medium">Chưa có Objectives</p>
+                                <p className="text-xs mt-1">Template này chưa có dữ liệu OKR tree.</p>
+                             </div>
+                           )}
+                        </div>
+                      );
+                     return (
+                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
+                        <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
+                          <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
+                          <button onClick={() => handleEditTreeAction('add-obj')} className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded transition-colors" title="Add Objective">
+                            Create Object
+                          </button>
+                          <div className="ml-auto"></div>
+                          <ColumnToggle visibleColumns={editTreeVisibleColumns} onToggle={toggleEditTreeColumn} />
+                          <button onClick={() => setEditTreeMaximized(!editTreeMaximized)} className="p-1.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={editTreeMaximized ? 'Minimize' : 'Maximize'}>
+                            {editTreeMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                          </button>
+                        </div>
+                      {editTreeMaximized ? (
+                        <FullScreenWindow onClose={() => setEditTreeMaximized(false)}>
+                          <div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>
+                            {editTreeHeader}
+                            <div className="min-w-[900px]">
+                              {editTreeRows}
+                            </div>
+                            <div className="text-[10px] text-gray-400 italic px-2 py-0.5 bg-gray-50/50 border-t border-gray-100">Các dữ liệu mang tính chất minh họa, tham khảo tài liệu chức năng để nắm rõ hơn</div>
+                          </div>
+                        </FullScreenWindow>
+                      ) : (
+                        <div className="overflow-x-auto flex-1 min-h-0">
+                          {editTreeHeader}
+                          <div className="min-w-[900px]">
+                            {editTreeRows}
+                          </div>
+                        </div>
+                      )}
+                      <div className="px-5 pb-4">
+                        <DisclaimerNote />
+                      </div>
+                    </div>
+                     );
+                   })()}
+              </div>
+            </div>
+
+            {renderNodeDetailSidePanel()}
+            {nodeDetailConfig.isOpen && <div className="absolute inset-0 bg-black/10 z-[65]" onClick={closeNodeDetail}></div>}
+          </div>
+        </div>
+      )}

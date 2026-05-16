@@ -1,0 +1,5 @@
+Trước đó bạn chặn add template bị duplicate -> đổi lại chỉ cảnh báo, cho user confirm hoặc cancel , vẫn có thể add nếu người dùng confirm
+
+Ở bước sửa lần này, hãy để toàn bộ các node đều có icon 3 chấm và dấu +, node thấp nhất cũng có nhưng các node personal sẽ không có phần chọn Add Template
+- Ở step trước bạn đã sai luồng của nút add template ở trang trống → bấm add template ở trang trống sẽ sử dụng luồng của Add template bình thường 
+- Nút 3 chấm ở phần action đang bị lỗi . khi bấm vào các group down đang là dạng trong suốt và không thao tác được -> sửa lại giao diện đồng bộ (add template đồng bộ format với các text có trong group down)

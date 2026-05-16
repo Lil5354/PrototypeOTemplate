@@ -1,0 +1,2 @@
+- Tại giao diện OKR gốc, thêm cột cuối cùng header là AT (Add Template), dữ liệu là các button (3 dấu chấm), không hiển thị cho node cấp personal. 
+- Nhấn vào dấu 3 chấm, chuyển qua xử lý dưới dạng new tab, trong phần giao diện trống sẽ hiển thị giao diện tương tự Add template , các luồng xử lý giống như Add template, duy nhất có 1 mục đích nghiệp vụ cốt lõi khác với Add template ở okr trống là Add template nhánh được trỏ tới bởi nhấn button trong nhánh, sẽ add vào vị trí nhánh đó

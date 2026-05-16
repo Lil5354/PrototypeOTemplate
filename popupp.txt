@@ -1,0 +1,47 @@
+Tiêu đề: Refactor UI - Chuyển đổi các chức năng Modal sang Tab trình duyệt mới (New Browser Tab) giữ nguyên Layout gốc.
+
+1. Bối cảnh & Mục tiêu (Context & Goal):
+
+Hiện tại: Các hành động (Import, Export, Override, Save as, Add, View, Edit) đang mở dưới dạng Popup/Modal đè lên trang hiện tại. Không gian nhỏ hẹp khiến người dùng phải cuộn (scroll) rất nhiều, đặc biệt là với luồng Wizard 3 bước.
+
+Mục tiêu: Gỡ bỏ hoàn toàn việc gọi Popup cho các chức năng này. Thay vào đó, khi click vào các nút hành động, hệ thống phải mở ra một Tab trình duyệt mới (window.open(..., '_blank')).
+
+Yêu cầu UI: Tab trình duyệt mới BẮT BUỘC phải giữ nguyên khung Layout chuẩn của ứng dụng, bao gồm:
+
+Menu Sidebar ở bên trái.
+
+Thanh Header ở bên trên.
+
+Phần nội dung chính (Main Content Area - góc Đông Nam) sẽ hiển thị giao diện của Popup cũ (ví dụ: Form nhập liệu, bảng dữ liệu, quy trình 3 bước).
+
+2. Yêu cầu Kỹ thuật (Technical Constraints):
+
+Điều hướng (Routing): Tạo các Route mới tương ứng cho từng hành động. Ví dụ: /okr-template/import, /okr-template/override/:id.
+
+Giao tiếp giữa các Tab (Data Passing): Vì tab mới là một phiên làm việc độc lập, không được dùng State nội bộ của component cha truyền xuống. Mọi thông tin cần thiết (như templateId, space, timeline hiện tại) phải được truyền qua URL Parameters (Query String). Tab mới sẽ đọc URL params này để gọi API lấy dữ liệu ban đầu.
+
+Tách Component: Tách phần code (giao diện + logic) đang nằm trong các thẻ Modal hiện tại thành các Component độc lập (Ví dụ: <ImportTemplateWizard />). Sau đó nhúng Component này vào Page Component mới.
+
+3. Luồng nghiệp vụ chi tiết (Ví dụ luồng Import/Override):
+
+Bước 1 (Trang gốc): Người dùng bấm nút "Import" ở trang Quản lý OKR.
+
+Bước 2 (Chuyển Tab): Trình duyệt mở một Tab Chrome/Edge mới với URL dạng /okr/import. Trang gốc vẫn giữ nguyên không thay đổi.
+
+Bước 3 (Thao tác trên Tab mới): Tab mới load lên, hiển thị đầy đủ Sidebar + Header. Vùng nội dung chính hiển thị Wizard Import (Step 1, Step 2). Người dùng thao tác bình thường. Logic nghiệp vụ giữ nguyên 100%.
+
+Bước 4 (Hoàn thành - Quan trọng): Ở Step 3 (Review & Apply), khi người dùng bấm "Continue/Apply", gọi API lưu dữ liệu.
+
+Bước 5 (Kết quả): Khi API báo thành công, KHÔNG đóng tab, KHÔNG nhảy về trang gốc. Ngay tại tab mới này, tải lại vùng nội dung chính để hiển thị kết quả (Ví dụ: Hiển thị giao diện chi tiết của OKR Template vừa được Import xong).
+
+4. Acceptance Criteria (Điều kiện nghiệm thu):
+
+Click button mở đúng tab trình duyệt mới (_blank).
+
+Tab mới vẫn có Sidebar và Header hoạt động bình thường.
+
+Nội dung của chức năng dàn tràn màn hình (full-width trong vùng main content), không bị gò bó trong khung Modal cũ.
+
+Hoàn thành quy trình (ví dụ Step 3), màn hình tự động render ra kết quả ngay trên tab đó.
+
+Đảm bảo tính toàn vẹn dữ liệu: Việc thao tác ở tab mới không làm vỡ logic hoặc mất dữ liệu khi gọi API.

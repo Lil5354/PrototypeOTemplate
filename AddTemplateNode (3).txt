@@ -1,0 +1,26 @@
+- Về việc add/save as/use template cho 1 nhánh trong OKR thay vì chọn toàn bộ -> em cho rằng flow sẽ như sau: Trên OKR đã có dữ liệu -> ngoài nút override,save as, sẽ có thêm nút add template -> Chọn nút add template này ở step 1 sẽ có cây OKR preview của hệ thống gốc, cột đầu tiên sẽ là các ô select để chọn vị trí nhánh/object muốn add template vào -> Chọn vị trí nhánh xong các nhánh không được chọn sẽ format màu xám (thể hiện không chọn) -> move qua step 2 để chọn field (tại step này cây okr preview sẽ hiển thị OKR gốc sau khi đã add template vào -> chỗ này cần define lại về các cấp độ và vị trí add sau)
+
+
+
+
+Vị trí: trang OKR trống -> tạo một button có nội dung là Add template, khi bấm vào add template sẽ chuyển sang tab mới, nội dung cho khoảng trống (ngoài header, taskbar) sẽ sử dụng nội dung của Add Template (Add template ở phần OKR template group down), luồng nghiệp vụ xử lý vẫn giữ nguyên
+
+- Bỏ cột AT nhưng vẫn phải giữ lại nghiệp vụ xử lý. Thay thế lại bằng cách sau. Đọc file OKR Board.html tìm đến code giao diện của cột Action (nó sẽ có hình dấu 3 chấm dọc và dấu cộng nằm dọc và cùng 1 hàng , dấu 3 chấm ở trên, dấu + ở dưới); khi bấm vào dấu 3 chấm sẽ hiện ra danh sách group down thứ tự từ trên xuống dưới các trường như sau: 
+Add Template
+Advanced select
+ Find and replace title
+ Bulk change
+ Mass check-in
+ Set planning
+ Clone objective
+ Copy objective
+ Move objective
+ Reset data
+ Delete objective
+ Expand all
+ Collapse all
+View only selected objective
+ View all related objectives
+ Configure view metrics
+  Copy link
+Khi chọn Add Template sẽ kích hoạt các hành động tương tự như bấm vào button dấu 3 chấm ngang ở cột AT (cũ)

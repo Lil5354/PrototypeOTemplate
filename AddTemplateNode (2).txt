@@ -1,0 +1,4 @@
+- dựa vào icon để phân biệt cấp độ, hình khối lập phương xanh dương đang là cấp Company (cao nhất), icon mũi tên trỏ sang phải đang là cấp team (cấp cao thứ 2), hình lập phương xanh lá	là cấp group thứ 3 và cuối cùng hình person là personal, cấp thấp nhất
+- khi add template vào nhánh, đối chiếu với okr preview ở trong giao diện add template, trước đó bạn chưa có bước đối chiếu này nên gây ra lỗi cho add object company làm con của object team -> sai; nếu trong template có cấp cao hơn nhánh được chọn để add -> báo lỗi bằng tiếng anh và chặn add.
+- trường hợp template add vào 1 nhánh trước đó đã được add rôi (ví dụ add template A vào nhánh B, sau đó lại add template A vào nhánh B -> cảnh báo bằng tiếng anh về nội dung bị duplicate)
+- Hiện tại chuyển tab mới đang full screen, tôi muốn tab mới khi được chuyển vẫn sẽ có thanh taskbar và header -> chỉ chuyển tab mới, thay đôi nội dung trong phần trống (ngoài thanh taskbar và header)

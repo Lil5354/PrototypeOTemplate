@@ -1,0 +1,392 @@
+flex justify-between items-center px-4 py-3 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <UploadCloud size={20} className="text-[#3B5998]" /> Import Template
+              </h2>
+              <button onClick={() => handleCloseAttempt('import')} className="text-gray-400 hover:text-gray-600 transition">
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Stepper */}
+            <Stepper currentStep={importStep} />
+
+            {/* Content Area */}
+            <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+              
+              {/* STEP 1: UPLOAD & REVIEW */}
+              {importStep === 1 && (
+                <div className="p-6 flex-1 min-h-0 overflow-auto flex flex-col">
+                  {importFileStatus === 'idle' && (
+                    <div className="max-w-xl w-full mx-auto my-auto animate-fade-in flex flex-col justify-center h-full pb-10">
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 py-8 px-6 flex flex-col items-center justify-center hover:bg-gray-50 transition cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
+                        <UploadCloud size={40} className="text-indigo-300 mb-3" />
+                        <p className="text-gray-700 font-medium mb-1">Drag & drop your file here</p>
+                        <p className="text-gray-400 text-sm mb-3">or</p>
+                        <button className="bg-[#3B5998] hover:bg-[#2d4373] text-white px-6 py-2 rounded-md font-medium transition pointer-events-none">
+                          Browse Files
+                        </button>
+                        <p className="text-gray-400 text-xs mt-3">.json only</p>
+                      </div>
+                      <div className="mt-4 flex justify-center">
+                        <button onClick={downloadSampleTemplate} className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-md transition font-medium">
+                          <Download size={14} /> Download Sample Template
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {importFileStatus === 'loading' && (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+
+                  {importFileStatus === 'error' && (
+                    <div className="max-w-xl w-full mx-auto my-auto animate-fade-in flex flex-col justify-center h-full pb-10">
+                      <div className="text-center mb-4">
+                        <h3 className="text-lg font-semibold text-red-600">Upload Error</h3>
+                        <p className="text-sm text-red-500 mt-2">{importFormErrors.file || 'File validation failed.'}</p>
+                      </div>
+                      <div className="border-2 border-dashed border-red-200 rounded-xl bg-red-50 py-8 px-6 flex flex-col items-center justify-center hover:bg-red-100 transition cursor-pointer" onClick={() => { setImportFileStatus('idle'); setImportFormErrors({}); }}>
+                        <UploadCloud size={40} className="text-red-300 mb-3" />
+                        <p className="text-gray-700 font-medium mb-1">Click to try again</p>
+                        <p className="text-gray-400 text-xs">Select a valid .json file (max 10MB)</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {importFileStatus === 'parsed' && (() => {
+                    const allNodes = [mockImportParsedTree.objective, ...mockImportParsedTree.krs];
+                    const filteredNodes = allNodes.filter(n => {
+                      if (importReviewTab === 'all') return true;
+                      if (importReviewTab === 'errors') return n.status === 'error';
+                      if (importReviewTab === 'warnings') return n.status === 'warning';
+                      if (importReviewTab === 'passed') return n.status === 'valid';
+                      return true;
+                    });
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6 animate-fade-in">
+                        {/* Left Column: Stats & Form */}
+                        <div className="flex flex-col space-y-6">
+                          <div>
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between relative overflow-hidden">
+                              <div className="absolute top-0 bottom-0 left-0 w-1 bg-green-500"></div>
+                              <div className="flex items-center gap-3">
+                                <div className="bg-blue-100 text-blue-600 font-bold text-[10px] px-2 py-1 rounded">JSON</div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-800 truncate max-w-[150px]">{mockImportParsedTree.fileName}</p>
+                                  <p className="text-xs text-gray-500">{mockImportParsedTree.size}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => setImportFileStatus('idle')} className="text-gray-400 hover:text-red-500" title="Remove"><X size={16}/></button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Form */}
+                          <div className="bg-white border border-blue-200 rounded-lg p-3 shadow-sm relative">
+                            <div className="absolute top-0 right-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">Template Info</div>
+                            <h4 className="text-[10px] font-bold text-gray-700 uppercase tracking-wide mb-2">Imported Template Information</h4>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Title <span className="text-red-500">*</span></label>
+                                <input type="text" maxLength={120} value={importFormData.title} onChange={(e) => { setImportFormData({...importFormData, title: e.target.value}); if(e.target.value) setImportFormErrors({...importFormErrors, title: null}); }} placeholder="Ex: Q4 Global Product Launch" className={`w-full p-1.5 border ${importFormErrors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded text-xs focus:outline-none focus:ring-1`} />
+                                {importFormErrors.title && <p className="text-[10px] text-red-500 mt-0.5 flex items-center"><AlertCircle size={10} className="mr-1"/>{importFormErrors.title}</p>}
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Description (Optional)</label>
+                                <textarea value={importFormData.desc} onChange={(e) => setImportFormData({...importFormData, desc: e.target.value})} placeholder="Leave empty to use default..." className="w-full p-1.5 border border-gray-300 rounded text-xs h-12 focus:outline-none focus:ring-1 focus:ring-blue-500 custom-scrollbar" />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Domain/Tags (Optional)</label>
+                                <input type="text" value={importFormData.tags} onChange={(e) => setImportFormData({...importFormData, tags: e.target.value})} placeholder="Separate by comma (,)" className="w-full p-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div className="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm">
+                              <p className="text-sm font-bold text-gray-800">{mockImportParsedTree.stats.total}</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">Total Nodes</p>
+                            </div>
+                            <div className="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm">
+                              <p className="text-sm font-bold text-gray-800">{mockImportParsedTree.stats.obj}</p>
+                              <p className="text-[9px] text-gray-500 mt-0.5">Objectives</p>
+                            </div>
+                            <div className="bg-red-50 border border-red-100 rounded-lg p-2 text-center">
+                              <p className="text-base font-bold text-red-600">{mockImportParsedTree.stats.error}</p>
+                              <p className="text-[10px] text-red-500 mt-0.5">Errors</p>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 text-center">
+                              <p className="text-base font-bold text-amber-600">{mockImportParsedTree.stats.warning}</p>
+                              <p className="text-[10px] text-amber-600 mt-0.5">Warnings</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Column: Validation */}
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0">
+                          <div className="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+                            <div>
+                              <h3 className="text-sm font-bold text-gray-800">Validation Results</h3>
+                              <p className="text-xs text-gray-500">{mockImportParsedTree.stats.error + mockImportParsedTree.stats.warning} issues found across {mockImportParsedTree.stats.total} nodes</p>
+                            </div>
+                            <button onClick={() => { const report = JSON.stringify(mockImportParsedTree, null, 2); const blob = new Blob([report], {type: 'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'error_report.json'; a.click(); URL.revokeObjectURL(url); }} className="flex items-center gap-1 border border-gray-300 rounded px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                              <FileJson size={14} /> Error Report
+                            </button>
+                          </div>
+                          
+                          <div className="px-4 py-3 flex gap-2 border-b border-gray-100 overflow-x-auto shrink-0">
+                            <button onClick={() => setImportReviewTab('all')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'all' ? 'bg-[#3B5998] text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>All {mockImportParsedTree.stats.total}</button>
+                            <button onClick={() => setImportReviewTab('errors')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'errors' ? 'bg-red-50 border-red-200 text-red-600' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>Errors <span className={`${importReviewTab==='errors'? 'text-red-600' : 'text-red-500'} ml-1`}>{mockImportParsedTree.stats.error}</span></button>
+                            <button onClick={() => setImportReviewTab('warnings')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'warnings' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>Warnings <span className={`${importReviewTab==='warnings'? 'text-amber-600' : 'text-amber-500'} ml-1`}>{mockImportParsedTree.stats.warning}</span></button>
+                            <button onClick={() => setImportReviewTab('passed')} className={`px-4 py-1.5 rounded text-xs font-medium transition ${importReviewTab === 'passed' ? 'bg-green-50 border-green-200 text-green-600' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>Passed <span className={`${importReviewTab==='passed'? 'text-green-600' : 'text-green-500'} ml-1`}>{mockImportParsedTree.stats.valid}</span></button>
+                          </div>
+
+                          <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50 custom-scrollbar">
+                            {renderImportValidationTree(importReviewTab, importValidationVisibleColumns, toggleImportValidationColumn, importValidationMaximized, setImportValidationMaximized)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* STEP 2: SELECTION */}
+              {importStep === 2 && (
+                <div className="flex flex-1 min-h-0 animate-fade-in">
+                  {/* Left Column */}
+                  <div className="w-[45%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                    <h3 className="text-base font-bold text-gray-800 mb-0.5">Field Selection</h3>
+                    
+                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2 shrink-0">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                          checked={importSelectedFields.length === availableFields.length}
+                          onChange={(e) => { 
+                            if(e.target.checked) setImportSelectedFields(availableFields.map(f => f.id));
+                            else setImportSelectedFields(['name']);
+                          }}
+                        />
+                        <span className="font-semibold text-xs text-gray-800">Select All Fields</span>
+                      </label>
+                      <span className="text-[10px] text-gray-500">{availableFields.length} fields · {importSelectedFields.length} selected</span>
+                    </div>
+
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-2 flex shrink-0">
+                      <span className="w-[140px]">FIELD NAME</span>
+                      <span>DESCRIPTION</span>
+                    </div>
+
+                    <div className="space-y-0 border-t border-gray-100 flex-1">
+                      {availableFields.map(field => {
+                        const isChecked = importSelectedFields.includes(field.id);
+                        return (
+                          <div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50 transition">
+                            <div className="w-[140px] flex items-start gap-2">
+                              <input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 cursor-pointer" 
+                                checked={isChecked} disabled={field.locked} onChange={() => toggleImportField(field.id)} />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-sm font-medium ${!isChecked ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span>
+                                  <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span>
+                                </div>
+                                {field.locked && <div className="text-[10px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><AlertTriangle size={10}/> Required field</div>}
+                                
+                              </div>
+                            </div>
+                            <div className="flex-1 text-xs text-gray-500">
+                              <p className={!isChecked ? 'line-through opacity-50' : ''}>{field.desc}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({importSelectedFields.length}):</span>
+                        {importSelectedFields.map(fId => {
+                          const f = availableFields.find(x => x.id === fId);
+                          return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null;
+                        })}
+                      </div>
+                      {importSelectedFields.length < availableFields.length && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - importSelectedFields.length}):</span>
+                          {availableFields.filter(f => !importSelectedFields.includes(f.id)).map(f => (
+                            <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column (OKR Tree Preview) */}
+                  <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                      <div>
+                        <h3 className="text-base font-bold text-gray-800">OKR Tree Preview</h3>
+                        <p className="text-xs text-gray-500">Real-time preview with selected fields</p>
+                      </div>
+                      <div className="flex gap-2 flex-wrap max-w-sm justify-end">
+                        {importSelectedFields.slice(0, 3).map(f => (
+                          <div key={f} className="bg-white border border-gray-200 shadow-sm rounded px-2 py-0.5 text-[10px] font-semibold text-blue-600">
+                            {f}
+                          </div>
+                        ))}
+                        {importSelectedFields.length > 3 && <div className="text-xs text-gray-400 pt-1">+{importSelectedFields.length - 3}</div>}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-hidden">
+                      <OKRTreePreview 
+                        treeData={mockImportParsedTree}
+                        selectedFields={importSelectedFields}
+                        showNameColumn={false}
+                        showDisclaimer={true}
+                        visibleColumns={importTreeVisibleColumns}
+                        onToggleColumn={toggleImportTreeColumn}
+                        maximizable={true}
+                        onNodeClick={(node) => openNodeDetail(node, 'edit')}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: REVIEW */}
+              {importStep === 3 && (
+                <div className="flex flex-1 min-h-0 animate-fade-in">
+                  {/* Left Column */}
+                  <div className="w-[35%] bg-white border-r border-gray-200 p-4 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3 text-center">
+                      <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-2 shadow-md">
+                        <Check size={20} strokeWidth={3} />
+                      </div>
+                      <h3 className="text-base font-bold text-gray-800 mb-0.5">Ready to Import</h3>
+                      <p className="text-xs text-gray-600">{mockImportParsedTree.stats.valid} of {mockImportParsedTree.stats.total} nodes will be imported</p>
+                      {mockImportParsedTree.stats.error > 0 && (
+                        <p className="text-[11px] text-red-500 font-medium mt-0.5">{mockImportParsedTree.stats.error} nodes skipped due to errors.</p>
+                      )}
+                    </div>
+
+                    <h4 className="text-xs font-bold text-gray-800 mb-2">Import Summary</h4>
+                    
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center p-2 border-b border-gray-100">
+                        <span className="text-xs font-semibold text-gray-600">Total Nodes in File</span>
+                        <span className="text-base font-bold text-gray-800">{mockImportParsedTree.stats.total}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-100">
+                        <span className="text-xs font-semibold text-green-700">Nodes Ready</span>
+                        <span className="text-base font-bold text-green-700">{mockImportParsedTree.stats.valid}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-red-50 rounded-lg border border-red-100">
+                        <span className="text-xs font-semibold text-red-700">Nodes Skipped</span>
+                        <span className="text-base font-bold text-red-700">{mockImportParsedTree.stats.error}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <h4 className="text-xs font-bold text-gray-800 mb-2">Field Selection Summary</h4>
+                      <div className="space-y-1.5">
+                        <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                          <span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({importSelectedFields.length}):</span>
+                          <div className="flex flex-wrap gap-1">
+                            {importSelectedFields.map(fId => {
+                              const f = availableFields.find(x => x.id === fId);
+                              return f ? <span key={f.id} className="px-1.5 py-0.5 bg-white border border-green-200 rounded text-[10px] text-green-700 shadow-sm">{f.label}</span> : null;
+                            })}
+                          </div>
+                        </div>
+                        {importSelectedFields.length < availableFields.length && (
+                          <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                            <span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields using default values ({availableFields.length - importSelectedFields.length}):</span>
+                            <div className="flex flex-wrap gap-1">
+                              {availableFields.filter(f => !importSelectedFields.includes(f.id)).map(f => (
+                                <span key={f.id} className="px-1.5 py-0.5 bg-white border border-orange-200 rounded text-[10px] text-orange-600 shadow-sm">{f.label}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column (OKR Tree Preview) */}
+                  <div className="flex-1 p-6 bg-slate-50 flex flex-col min-h-0 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                      <div>
+                        <h3 className="text-base font-bold text-gray-800">Final OKR Preview</h3>
+                        <p className="text-xs text-gray-500">Validated items only - {mockImportParsedTree.stats.valid} of {mockImportParsedTree.stats.total} nodes</p>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden">
+                      <OKRTreePreview 
+                        treeData={{
+                          ...mockImportParsedTree,
+                          krs: mockImportParsedTree.krs.filter(kr => kr.status !== 'error')
+                        }}
+                        selectedFields={importSelectedFields}
+                        showNameColumn={false}
+                        showDisclaimer={true}
+                        visibleColumns={importTreeVisibleColumns}
+                        onToggleColumn={toggleImportTreeColumn}
+                        maximizable={true}
+                        onNodeClick={(node) => openNodeDetail(node, 'edit')}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-gray-200 px-6 py-4 bg-white flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] relative z-20">
+              <div className="flex items-center text-sm">
+                {importStep === 1 && importFileStatus === 'parsed' && (
+                  <span className="text-gray-600 font-medium">
+                    <AlertCircle size={16} className="inline text-amber-500 mr-1" />
+                    <strong className="text-amber-600">{mockImportParsedTree.stats.error} invalid nodes</strong> will be skipped — <strong className="text-green-600">{mockImportParsedTree.stats.valid} valid nodes</strong> will be imported
+                  </span>
+                )}
+                {importStep === 2 && (
+                  <span className="text-gray-500 flex items-center gap-2 text-xs">
+                    <AlertCircle size={14} className="text-blue-500" />
+                    <span className="text-green-600 font-semibold">{importSelectedFields.length} selected</span> / <span className="text-orange-600 font-semibold">{availableFields.length - importSelectedFields.length} will use default</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                {importStep === 1 ? (
+                  <button onClick={() => handleCloseAttempt('import')} className="px-4 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                ) : (
+                  <button onClick={() => setImportStep(importStep - 1)} className="px-4 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1">
+                     <ChevronRight size={16} className="rotate-180" /> Back
+                  </button>
+                )}
+                
+                {importStep < 3 ? (
+                  <button 
+                    onClick={handleNextImportStep} 
+                    disabled={importFileStatus !== 'parsed'}
+                    className="px-6 py-2 bg-[#3B5998] hover:bg-[#2d4373] text-white rounded text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition"
+                  >
+                    {importStep === 2 ? 'Next: Review' : 'Continue'} <ChevronRight size={16} className={importStep === 2 ? "" : "hidden"} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleConfirmImport}
+                    className="px-6 py-2 bg-[#3B5998] hover:bg-[#2d4373] text-white rounded text-sm font-semibold flex items-center gap-1 transition"
+                  >
+                    Confirm Import <ChevronRight size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>

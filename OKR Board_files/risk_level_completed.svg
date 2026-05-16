@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+    <defs>
+        <clipPath id="bv6yfu30oa">
+            <path data-name="Rectangle 1048" style="stroke:#707070;fill:none" d="M0 0h20v20H0z"/>
+        </clipPath>
+        <clipPath id="87n00a7wqb">
+            <path data-name="Rectangle 1047" style="stroke:#707070;fill:none" d="M0 0h22.4v30.909H0z"/>
+        </clipPath>
+        <clipPath id="r5sflljw7c">
+            <path data-name="Rectangle 1046" style="stroke:#707070;fill:none" d="M0 0h24v33.719H0z"/>
+        </clipPath>
+    </defs>
+    <g data-name="Mask Group 220" style="clip-path:url(#bv6yfu30oa)">
+        <g data-name="Mask Group 219" transform="translate(-1.2 -.381)" style="clip-path:url(#87n00a7wqb)">
+            <g data-name="Mask Group 218" transform="translate(-.8)" style="clip-path:url(#r5sflljw7c)">
+                <g data-name="Group 1565">
+                    <g data-name="Group 1564" transform="translate(1.999 .897)">
+                        <ellipse data-name="Ellipse 270" cx="10.001" cy="9.757" rx="10.001" ry="9.757" style="fill:#77be79"/>
+                        <path data-name="check (2)" d="m13.827 6-6.756 6.592L4 9.6" transform="translate(1.5 .342)" style="stroke:#fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:2px;fill:none"/>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,9 @@
+<svg data-name="Risk Level On Track" xmlns="http://www.w3.org/2000/svg" width="19.504" height="19.502" viewBox="0 0 19.504 19.502">
+    <g data-name="Group 24339">
+        <g data-name="Ellipse 185" style="fill:#fff;stroke:#00c4ff;stroke-width:1.5px">
+            <ellipse cx="9.752" cy="9.751" rx="9.752" ry="9.751" style="stroke:none"/>
+            <ellipse cx="9.752" cy="9.751" rx="9.002" ry="9.001" style="fill:none"/>
+        </g>
+        <path data-name="Subtraction 40" d="M4.181 13.251A6.424 6.424 0 0 1 0 11.693L4.56 7.01V0a6.576 6.576 0 0 1 6.113 6.619 6.571 6.571 0 0 1-6.492 6.632z" transform="translate(5.627 3.132)" style="fill:#00c4ff"/>
+    </g>
+</svg>

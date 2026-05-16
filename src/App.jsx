@@ -964,6 +964,23 @@ const App = () => {
 
   const findTreeNode = (nodes, id) => { for (const n of nodes) { if (n.id === id) return n; if (n.children) { const f = findTreeNode(n.children, id); if (f) return f; } } return null; };
 
+  const hasSelectedDescendant = (node, selectedSet) => selectedSet.has(node.id) || (node.children && node.children.some(c => hasSelectedDescendant(c, selectedSet)));
+
+  const filterSelectedNodes = (nodes, selectedSet) => nodes.filter(n => hasSelectedDescendant(n, selectedSet)).map(n => ({ ...n, children: n.children ? filterSelectedNodes(n.children, selectedSet) : [] }));
+
+  const filterTreeKeepSelected = (nodes, selectedSet, baseLevel = 0) => {
+    const result = [];
+    for (const n of nodes) {
+      if (!selectedSet.has(n.id)) {
+        if (n.children) result.push(...filterTreeKeepSelected(n.children, selectedSet, baseLevel + 1));
+        continue;
+      }
+      const nodeLevel = baseLevel + 1;
+      result.push({ ...n, level: nodeLevel, children: n.children ? filterTreeKeepSelected(n.children, selectedSet, nodeLevel) : [] });
+    }
+    return result;
+  };
+
   const handleSaveAsToggleNode = (nodeId) => {
     setSaveAsSelectedNodeIds(prev => {
       const next = new Set(prev);
@@ -1012,9 +1029,7 @@ const App = () => {
       if (templateList.some(t => t.title === finalTitle)) {
         finalTitle = `${finalTitle}_(1)`;
       }
-      const hasSelectedDesc = (node) => saveAsSelectedNodeIds.has(node.id) || (node.children && node.children.some(c => hasSelectedDesc(c)));
-      const filterTree = (nodes) => nodes.filter(n => hasSelectedDesc(n)).map(n => ({ ...n, children: n.children ? filterTree(n.children) : [] }));
-      const savedTree = filterTree(saveAsTreeData);
+      const savedTree = filterTreeKeepSelected(saveAsTreeData, saveAsSelectedNodeIds);
       const newTemplate = {
         id: Date.now(),
         title: finalTitle,
@@ -2553,9 +2568,9 @@ const App = () => {
                         </div>
                       );
                      return (
-                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
-                        <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
-                          <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
+             <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col flex-1 min-h-0">
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
+                  <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
                           <button onClick={() => handleEditTreeAction('add-obj')} className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded transition-colors" title="Add Objective">
                             Create Object
                           </button>
@@ -3414,10 +3429,10 @@ ${exportSelectedTemplates.map(tId => {
                    </button>
                  ) : (
                    <button 
-                     onClick={handleConfirmExport}
-                     className="px-6 py-2 bg-[#3B5998] hover:bg-[#2d4373] text-white rounded text-sm font-semibold flex items-center gap-2 transition shadow-sm"
-                   >
-                     <Download size={16} /> Download JSON
+                      onClick={handleConfirmExport}
+                      className="px-6 py-2 bg-[#3B5998] hover:bg-[#2d4373] text-white rounded text-sm font-semibold flex items-center gap-2 transition shadow-sm"
+                    >
+                      <Download size={16} /> Download
                    </button>
                  )}
               </div>
@@ -3706,7 +3721,7 @@ ${exportSelectedTemplates.map(tId => {
                 {addStep < 3 ? (
                   <button onClick={handleNextAddStep} disabled={addStep === 1 && !selectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium transition shadow-sm ${addStep === 1 && !selectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white hover:bg-blue-700'}`}>Continue</button>
                 ) : (
-                  <button onClick={handleApplyTemplate} className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply to Timeline</button>
+                  <button onClick={handleApplyTemplate} className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply</button>
                 )}
               </div>
             </div>
@@ -4169,7 +4184,7 @@ ${exportSelectedTemplates.map(tId => {
                   <button onClick={() => window.close()} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Cancel</button>
                   {branchAddStep > 1 && (<button onClick={() => setBranchAddStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Back</button>)}
                   {branchAddStep < 3 ? (<button onClick={() => { if (branchAddStep === 1 && !branchSelectedTemplateId) return; setBranchAddStep(prev => Math.min(prev + 1, 3)); }} disabled={branchAddStep === 1 && !branchSelectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium ${branchAddStep === 1 && !branchSelectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue</button>)
-                  : (<button onClick={branchInfo?.isFullBoard ? handleEmptyApplyTemplate : handleBranchApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold"><Download size={16} className="mr-2" />{branchInfo?.isFullBoard ? 'Apply to Timeline' : 'Apply to Branch'}</button>)}
+                   : (<button onClick={branchInfo?.isFullBoard ? handleEmptyApplyTemplate : handleBranchApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold flex items-center gap-1.5"><Download size={16} />Apply</button>)}
                 </div>
               </div>
             </div>
@@ -4186,7 +4201,7 @@ ${exportSelectedTemplates.map(tId => {
                 </div>
                 <div className="flex space-x-3 mt-1">
                   <button onClick={handleOpenImportModal} className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition shadow-sm">
-                    <UploadCloud size={16} className="mr-2 text-gray-500" /> Import Template
+                    <UploadCloud size={16} className="mr-2 text-gray-500" /> Import
                   </button>
                   <button onClick={handleOpenExportModal} className="flex items-center px-4 py-2 bg-[#2563eb] border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm">
                     <Download size={16} className="mr-2" /> Export Template
@@ -4360,8 +4375,52 @@ ${exportSelectedTemplates.map(tId => {
                   </div>
                   <div className="flex-1 min-h-0">
                     {(() => {
-                      const filterSelected = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterSelected(n.children) : [] }));
-                      return renderPreviewTree(true, saveAsSelectedFields, false, filterSelected(saveAsTreeData), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
+                      const selectedNodes = filterTreeKeepSelected(saveAsTreeData, saveAsSelectedNodeIds);
+                      if (selectedNodes.length === 0) return <div className="text-gray-400 text-sm text-center py-10">No nodes selected</div>;
+                      const gridCols = getGridTemplate(saveAsPreviewVisibleColumns);
+                      const getFieldVal = (node, fId) => {
+                        if (fId === 'progress') fId = 'progress_percent';
+                        if (!saveAsSelectedFields.includes(fId)) { const d = {'description':'Default description','user':'Unassigned','group':'Default Group','team':'Default Team','assign_to':'Unassigned','metric':'Default Metric','metric_name':'Default','metric_key':'Default','metric_unit':'Default','agg':'SUM','result':'Default','progress_percent':'0%','risk_level':'Low','timeline_view_metric':'Default'}; return d[fId]||'Default'; }
+                        const m = {'description':node.description,'user':node.assign||node.user,'group':node.group,'team':node.team,'assign_to':node.assign||node.user,'metric':node.metric,'metric_name':node.mName,'metric_key':node.mKey,'metric_unit':node.mUnit,'agg':node.agg,'result':node.result,'progress_percent':node.progress,'risk_level':node.risk,'timeline_view_metric':'Default'};
+                        return m[fId]||'Default';
+                      };
+                      const getNodeIcon = (nd) => { const lv = nd.level ?? 2; if (lv === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (lv === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (lv === 3) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; };
+                      const getNodeColor = (nd) => { const lv = nd.level ?? 2; if (lv === 1) return 'text-blue-600'; if (lv === 2) return 'text-gray-700'; if (lv === 3) return 'text-green-700'; return 'text-purple-700'; };
+                      const rows = [];
+                      const renderNodeRow = (node, depth) => {
+                        const indent = (depth - 1) * 14;
+                        rows.push(
+                          <div key={node.id} onClick={() => openNodeDetail(node, 'view')} className="border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer"
+                               style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
+                            <div className="flex items-center gap-1 truncate" style={{ paddingLeft: `${indent}px` }}>
+                              <div className="w-3 shrink-0"></div>
+                              {getNodeIcon(node)}
+                              <span className={`text-[11px] font-medium truncate ${getNodeColor(node)}`}>{node.name}</span>
+                            </div>
+                            {TREE_COLUMNS.filter(c => saveAsPreviewVisibleColumns.includes(c.id)).map(col => (
+                              <div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${isCenteredCol(col.id)?'text-center':'text-left'} overflow-hidden truncate`}>
+                                {(() => { switch(col.id) { case 'description': return <span className="truncate">{getFieldVal(node,'description')}</span>; case 'user': return <span className="truncate">{getFieldVal(node,'user')}</span>; case 'group': return <span className="truncate">{getFieldVal(node,'group')}</span>; case 'team': return <span className="truncate">{getFieldVal(node,'team')}</span>; case 'assign_to': return <span className="truncate">{getFieldVal(node,'assign_to')}</span>; case 'metric': return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{getFieldVal(node,'metric')}</span>; case 'metric_name': return <span className="truncate">{getFieldVal(node,'metric_name')}</span>; case 'metric_key': return <span className="truncate">{getFieldVal(node,'metric_key')}</span>; case 'metric_unit': return <span className="truncate">{getFieldVal(node,'metric_unit')}</span>; case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{getFieldVal(node,'agg')}</span>; case 'result': return <span className="truncate">{getFieldVal(node,'result')}</span>; case 'progress': return <span className="text-green-600 font-medium">{getFieldVal(node,'progress_percent')}</span>; case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${(getFieldVal(node,'risk_level'))==='high'?'bg-red-100 text-red-600':(getFieldVal(node,'risk_level'))==='medium'?'bg-amber-100 text-amber-600':'bg-green-100 text-green-600'}`}>{getFieldVal(node,'risk_level')}</span>; case 'status': return <div className="flex justify-center"><CheckCircle2 size={14} className="text-green-600" /></div>; default: return null; } })()}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                        if (node.children) node.children.forEach(child => renderNodeRow(child, depth + 1));
+                      };
+                      selectedNodes.forEach(n => renderNodeRow(n, 1));
+                      return (
+                        <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex flex-col h-full">
+                          <div className="bg-gray-50 border-b border-gray-200 py-1 px-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
+                               style={{ display: 'grid', gridTemplateColumns: gridCols + ' auto', alignItems: 'center' }}>
+                            <div className="bg-gray-50 truncate" style={{ paddingLeft: '2px' }}>Node</div>
+                            {TREE_COLUMNS.filter(c => saveAsPreviewVisibleColumns.includes(c.id)).map(col => <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id)?'text-center':'text-left'} bg-gray-50 truncate`}>{col.label}</div>)}
+                            <div className="flex items-center gap-0.5" style={{ justifySelf: 'end' }}>
+                              <ColumnToggle visibleColumns={saveAsPreviewVisibleColumns} onToggle={(c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])} />
+                            </div>
+                          </div>
+                          <div className="flex-1 overflow-auto min-h-0 custom-scrollbar">{rows}</div>
+                          <div className="text-[10px] text-gray-400 italic px-2 py-0.5 shrink-0 bg-gray-50/50 border-t border-gray-100">Giao diện chỉ mang tính chất minh họa</div>
+                        </div>
+                      );
                     })()}
                   </div>
                 </div>
@@ -4374,8 +4433,7 @@ ${exportSelectedTemplates.map(tId => {
                   </div>
                   <div className="flex-1 min-h-0">
                     {(() => {
-                      const filterSelected = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterSelected(n.children) : [] }));
-                      return renderPreviewTree(true, saveAsSelectedFields, false, filterSelected(saveAsTreeData), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
+                      return renderPreviewTree(true, saveAsSelectedFields, false, filterTreeKeepSelected(saveAsTreeData, saveAsSelectedNodeIds), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
                     })()}
                   </div>
                 </div>
@@ -4587,7 +4645,7 @@ ${exportSelectedTemplates.map(tId => {
             <button onClick={handleBackFromExport} className="px-4 py-2 border border-gray-300 rounded text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
             <div className="flex gap-3">
               {exportStep > 1 && <button onClick={() => setExportStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"><ChevronRight size={16} className="rotate-180" /> Back</button>}
-              {exportStep < 3 ? <button onClick={handleNextExportStep} disabled={exportStep === 1 && exportSelectedTemplates.length === 0} className={`px-4 py-2 rounded-md text-sm font-medium ${exportStep === 1 && exportSelectedTemplates.length === 0 ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue <ChevronRight size={16} /></button> : <button onClick={handleConfirmExport} className="px-6 py-2 bg-[#3B5998] text-white rounded text-sm font-semibold flex items-center gap-2"><Download size={16} /> Download JSON</button>}
+              {exportStep < 3 ? <button onClick={handleNextExportStep} disabled={exportStep === 1 && exportSelectedTemplates.length === 0} className={`px-4 py-2 rounded-md text-sm font-medium ${exportStep === 1 && exportSelectedTemplates.length === 0 ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue <ChevronRight size={16} /></button> : <button onClick={handleConfirmExport} className="px-6 py-2 bg-[#3B5998] text-white rounded text-sm font-semibold flex items-center gap-2"><Download size={16} /> Download</button>}
             </div>
           </div>
         </div>
@@ -4601,14 +4659,14 @@ ${exportSelectedTemplates.map(tId => {
             <div><h2 className="text-lg font-bold text-[#1e3a8a]">{viewTarget.title}</h2><p className="text-xs text-gray-500">Previewing template structure (Read-only)</p></div>
             <div className="ml-auto"><button onClick={handleOpenTimelineSelection} className="px-4 py-1.5 bg-green-600 text-white rounded-md font-semibold text-xs hover:bg-green-700 transition shadow-sm flex items-center"><Download size={14} className="mr-1.5" /> Use This Template</button></div>
           </div>
-          <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+          <div className="flex flex-col flex-1 min-h-0 p-6 bg-gray-50/50 overflow-hidden">
             <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6 shrink-0">
               <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">General Information</h4>
               <p className="text-sm text-gray-700 mb-3">{viewTarget.desc || <span className="text-gray-400 italic">Default description</span>}</p>
               <div className="flex space-x-2">{(viewTarget.tags || []).map(tag => <span key={tag} className="px-2 py-0.5 rounded text-xs bg-gray-100 border border-gray-200 text-gray-600">{tag}</span>)}</div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-5 py-3 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between"><span>OKR Tree Structure Preview</span></h4>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-5 py-3 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between shrink-0"><span>OKR Tree Structure Preview</span></h4>
               {(() => {
                 const viewGridCols = getGridTemplate(viewTreeVisibleColumns);
                 const viewTreeHeader = (
@@ -4644,7 +4702,7 @@ ${exportSelectedTemplates.map(tId => {
                 };
                 const treeContent = (<div className="min-w-[500px]">{viewTreeHeader}<div className="divide-y divide-gray-100">{viewTarget.tree.map(n => renderViewTreeNode(n, 1))}</div></div>);
                 if (viewTreeMaximized) return (<FullScreenWindow onClose={() => setViewTreeMaximized(false)}><div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>{treeContent}</div></FullScreenWindow>);
-                return (<div className="overflow-x-auto">{treeContent}</div>);
+                return (<div className="overflow-auto flex-1 min-h-0">{treeContent}</div>);
               })()}
             </div>
           </div>
@@ -4662,9 +4720,9 @@ ${exportSelectedTemplates.map(tId => {
               <button onClick={() => { if (!editFormData.title.trim()) { setEditFormErrors({ title: 'Template name must not be empty.' }); return; } if (editTreeData.length === 0) { setEditFormErrors({ general: 'Template must have at least 1 Objective.' }); return; } const newTags = editFormData.tags.split(',').map(t => t.trim()).filter(Boolean); const updatedList = templateList.map(t => { if (t.id === editTargetId) return { ...t, title: editFormData.title, desc: editFormData.desc, tags: newTags, tree: editTreeData, date: new Date().toISOString().split('T')[0] }; return t; }); setTemplateList(updatedList); try { localStorage.setItem('templateList', JSON.stringify(updatedList)); } catch(e) {} try { localStorage.removeItem('editTemplate'); } catch(e) {} triggerToast('Changes saved successfully.'); window.location.href = window.location.origin + window.location.pathname + '?view=okr-template'; }} className="px-4 py-2 bg-blue-600 rounded text-sm font-medium text-white hover:bg-blue-700 transition shadow-sm flex items-center"><Save size={16} className="mr-2"/> Save</button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
-            {editFormErrors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4 text-sm">{editFormErrors.general}</div>}
-            <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6">
+          <div className="flex flex-col flex-1 min-h-0 p-6 bg-gray-50/50 overflow-hidden">
+            {editFormErrors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4 text-sm shrink-0">{editFormErrors.general}</div>}
+            <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm mb-6 shrink-0">
               <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Template Information</h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2"><label className="text-xs font-medium text-gray-500 mb-1 block">Title <span className="text-red-500">*</span></label><input type="text" value={editFormData.title} onChange={(e) => setEditFormData({...editFormData, title: e.target.value})} className={`w-full text-sm px-3 py-1.5 border ${editFormErrors.title ? 'border-red-500' : 'border-gray-300'} rounded focus:ring-1 focus:ring-blue-500`} />{editFormErrors.title && <p className="text-xs text-red-500 mt-1">{editFormErrors.title}</p>}</div>
@@ -4672,7 +4730,7 @@ ${exportSelectedTemplates.map(tId => {
               </div>
               <div className="mt-3"><label className="text-xs font-medium text-gray-500 mb-1 block">Tags (comma separated)</label><input type="text" value={editFormData.tags} onChange={(e) => setEditFormData({...editFormData, tags: e.target.value})} className="w-full text-sm px-3 py-1.5 border border-gray-300 rounded" /></div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col min-h-0">
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col flex-1 min-h-0">
               <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 bg-gray-50/50 shrink-0">
                 <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">OKR Tree Editor</h4>
                 <button onClick={() => { const newTree = [...editTreeData]; newTree.push({ id: `O-NEW-${Date.now()}`, type: 'objective', name: 'New Objective', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', level: 1, children: [{ id: `KR-NEW-${Date.now()}`, type: 'kr', name: 'New Key Result', description: '', user: '', group: '', team: '', metric: '', agg: 'SUM', progress: '0%', timeline: '', level: 2, children: [] }] }); setEditTreeData(newTree); setEditFormErrors(prev => ({...prev, general: null})); }} className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded transition-colors">Create Object</button>
@@ -4723,7 +4781,7 @@ ${exportSelectedTemplates.map(tId => {
                 );
                 const treeContent = (<div className="min-w-[900px]">{editTreeHeader}{editTreeRows}</div>);
                 if (editTreeMaximized) return (<FullScreenWindow onClose={() => setEditTreeMaximized(false)}><div className="p-4 bg-white" style={{ height: '100vh', overflow: 'auto' }}>{treeContent}</div></FullScreenWindow>);
-                return (<div className="overflow-x-auto">{treeContent}</div>);
+                return (<div className="overflow-auto flex-1 min-h-0">{treeContent}</div>);
               })()}
             </div>
           </div>
