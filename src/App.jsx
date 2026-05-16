@@ -2517,8 +2517,8 @@ const App = () => {
                                       <div onClick={() => openNodeDetail(node, 'edit', path)} className="group py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer"
                                            style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
                                         <div className="flex items-center gap-2 truncate" style={{ paddingLeft: `${16 + (level - 1) * 24}px` }}>
-                                          {(() => { if (isObjective) return <Box size={14} className="text-blue-500 shrink-0" />; return <span className="text-gray-400 shrink-0 leading-none">↳</span>; })()}
-                                          <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.id} - {node.name}</span>
+                                           {(() => { const il = node.level ?? level; if (il === 1) return <Box size={14} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={14} className="text-green-500 shrink-0" />; return <User size={14} className="text-purple-500 shrink-0" />; })()}
+                                           <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.name}</span>
                                           {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
                                         </div>
                                         {TREE_COLUMNS.filter(c => editTreeVisibleColumns.includes(c.id)).map(col => (
