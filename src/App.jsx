@@ -1501,7 +1501,7 @@ const App = () => {
   
   const renderImportValidationTree = (tab, visCol, onToggle, maxd, setMax) => (<div className="text-sm text-gray-500 p-4">Validation results will appear here after file upload.</div>);
 
-  const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
+  const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null, showCheckboxes = false, selectedIds = new Set(), onToggleCheckbox = null) => {
     const gridCols = getGridTemplate(visibleColumns);
     const toggleCollapse = (id) => setPreviewCollapsed(prev => ({...prev, [id]: !prev[id]}));
 
@@ -1573,6 +1573,11 @@ const App = () => {
         <div key={nodeId} onClick={() => openNodeDetail(node, 'view')} className={`border-b border-gray-100 py-1.5 px-2 hover:bg-blue-50/30 transition-colors cursor-pointer ${s === 'error' ? 'bg-red-50/40' : s === 'warning' ? 'bg-amber-50/40' : ''}`}
              style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
           <div className="flex items-center gap-1 truncate" style={{ paddingLeft: `${indent}px` }}>
+            {showCheckboxes && (
+              <span onClick={(e) => { e.stopPropagation(); if (onToggleCheckbox) onToggleCheckbox(nodeId); }} className="shrink-0 flex items-center">
+                <input type="checkbox" checked={selectedIds.has(nodeId)} readOnly className="w-3 h-3 rounded border-gray-300 text-blue-600 cursor-pointer" />
+              </span>
+            )}
             {isTopLevel && (
               <button onClick={(e) => { e.stopPropagation(); toggleCollapse(nodeId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
                 <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
@@ -1580,7 +1585,7 @@ const App = () => {
             )}
             {!isTopLevel && <div className="w-3 shrink-0"></div>}
             {(() => { const il = node.level ?? level; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; if (il >= 4) return <User size={11} className="text-purple-500 shrink-0" />; return null; })()}
-            <span className={`text-[11px] font-medium truncate ${isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
+            <span className={`text-[11px] font-medium truncate ${showCheckboxes && !selectedIds.has(nodeId) ? 'text-gray-400' : isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
           </div>
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
             <div key={col.id} className={`px-1.5 text-[10px] ${isTopLevel ? 'text-gray-500' : 'text-gray-600'} ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(node, col.id, isTopLevel)}</div>
@@ -4124,36 +4129,25 @@ ${exportSelectedTemplates.map(tId => {
           <div className="flex-1 overflow-hidden flex bg-gray-50/50">
             <div className="w-[35%] p-4 overflow-y-auto bg-white border-r border-gray-200 custom-scrollbar relative">
               {saveAsStep === 1 && (
-                <div className="animate-fade-in flex flex-col h-full">
-                  <div className="mb-3 shrink-0 flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">OKR Node Selection</h3>
-                    <span className="text-xs text-gray-500">{saveAsSelectedNodeIds.size} selected</span>
+                <div className="animate-fade-in flex flex-col h-full space-y-3">
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide shrink-0">Template Info</h3>
+                  <div className="shrink-0"><label className="block text-xs font-bold text-gray-700 mb-0.5">Title <span className="text-red-500">*</span></label>
+                    <input type="text" maxLength={120} value={saveAsFormData.title} onChange={(e) => { setSaveAsFormData({...saveAsFormData, title: e.target.value}); if(e.target.value) setSaveAsFormErrors({...saveAsFormErrors, title: null}); }} placeholder="e.g., Q3 Sales Team Template" className={`w-full p-2 border ${saveAsFormErrors.title ? 'border-red-500' : 'border-gray-300'} rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500`} />
+                    {saveAsFormErrors.title && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{saveAsFormErrors.title}</p>}
                   </div>
-                  <div className="shrink-0 flex gap-2 mb-3">
-                    <button onClick={handleSaveAsSelectAll} className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100">Select All</button>
-                    <button onClick={handleSaveAsDeselectAll} className="px-3 py-1 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 rounded hover:bg-gray-100">Deselect All</button>
+                  <div className="shrink-0"><label className="block text-xs font-bold text-gray-700 mb-0.5">Description</label><textarea value={saveAsFormData.description} onChange={(e) => setSaveAsFormData({...saveAsFormData, description: e.target.value})} placeholder="Describe the purpose..." className="w-full p-2 border border-gray-300 rounded-md text-sm h-16 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                  <div className="shrink-0"><label className="block text-xs font-bold text-gray-700 mb-0.5">Domain</label><input type="text" value={saveAsFormData.domain} onChange={(e) => setSaveAsFormData({...saveAsFormData, domain: e.target.value})} placeholder="e.g., Engineering" className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                  <div className="shrink-0"><label className="block text-xs font-bold text-gray-700 mb-0.5">Tags (Comma separated)</label><input type="text" value={saveAsFormData.tags} onChange={(e) => setSaveAsFormData({...saveAsFormData, tags: e.target.value})} placeholder="e.g., Sales, Quarterly" className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                  <div className="shrink-0 pt-2 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-gray-600">Nodes to save</span>
+                      <span className="text-xs text-gray-500">{saveAsSelectedNodeIds.size} selected</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveAsSelectAll} className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100">Select All</button>
+                      <button onClick={handleSaveAsDeselectAll} className="px-3 py-1 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 rounded hover:bg-gray-100">Deselect All</button>
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-0.5 border border-gray-200 rounded p-1">
-                    {(() => {
-                      const renderNodeCheckbox = (node, depth) => {
-                        const checked = saveAsSelectedNodeIds.has(node.id);
-                        return (
-                          <div key={node.id}>
-                            <div className="flex items-center gap-2 py-1.5 px-1 hover:bg-gray-50 rounded cursor-pointer" style={{ paddingLeft: `${12 + depth * 20}px` }} onClick={() => handleSaveAsToggleNode(node.id)}>
-                              <input type="checkbox" checked={checked} readOnly className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 cursor-pointer" />
-                              <span className={`text-xs truncate ${checked ? 'font-medium text-gray-800' : 'text-gray-400'}`}>{node.name}</span>
-                              {node.type === 'objective' && <span className="text-[9px] px-1 py-0.5 rounded bg-blue-50 text-blue-500 ml-auto shrink-0">OBJ</span>}
-                              {node.type === 'kr' && <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 text-purple-500 ml-auto shrink-0">KR</span>}
-                            </div>
-                            {node.children && node.children.map(c => renderNodeCheckbox(c, depth + 1))}
-                          </div>
-                        );
-                      };
-                      return saveAsTreeData.map(n => renderNodeCheckbox(n, 0));
-                    })()}
-                    {saveAsTreeData.length === 0 && <div className="p-4 text-center text-gray-400 text-sm">No OKR data available.</div>}
-                  </div>
-                  <div className="mt-2 shrink-0 text-[10px] text-gray-400 text-center">Select parent → children auto-selected. Uncheck individual child if needed.</div>
                 </div>
               )}
               {saveAsStep === 2 && (
@@ -4227,25 +4221,12 @@ ${exportSelectedTemplates.map(tId => {
             <div className="w-[65%] flex flex-col h-full bg-gray-50/50 border-l border-gray-200 relative">
               {saveAsStep === 1 && (
                 <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
-                  <div className="mb-4 shrink-0 space-y-3">
-                    <div><label className="block text-xs font-bold text-gray-700 mb-0.5">Title <span className="text-red-500">*</span></label>
-                      <input type="text" maxLength={120} value={saveAsFormData.title} onChange={(e) => { setSaveAsFormData({...saveAsFormData, title: e.target.value}); if(e.target.value) setSaveAsFormErrors({...saveAsFormErrors, title: null}); }} placeholder="e.g., Q3 Sales Team Template" className={`w-full p-2 border ${saveAsFormErrors.title ? 'border-red-500' : 'border-gray-300'} rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500`} />
-                      {saveAsFormErrors.title && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{saveAsFormErrors.title}</p>}
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="flex-1"><label className="block text-xs font-bold text-gray-700 mb-0.5">Description</label><textarea value={saveAsFormData.description} onChange={(e) => setSaveAsFormData({...saveAsFormData, description: e.target.value})} placeholder="Describe the purpose..." className="w-full p-2 border border-gray-300 rounded-md text-sm h-16 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                      <div className="w-40"><label className="block text-xs font-bold text-gray-700 mb-0.5">Domain</label><input type="text" value={saveAsFormData.domain} onChange={(e) => setSaveAsFormData({...saveAsFormData, domain: e.target.value})} placeholder="e.g., Engineering" className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                    </div>
-                    <div><label className="block text-xs font-bold text-gray-700 mb-0.5">Tags (Comma separated)</label><input type="text" value={saveAsFormData.tags} onChange={(e) => setSaveAsFormData({...saveAsFormData, tags: e.target.value})} placeholder="e.g., Sales, Quarterly" className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
-                  </div>
-                  <div className="flex items-center justify-between shrink-0 mb-2">
-                    <span className="text-xs font-medium text-gray-600">Preview ({saveAsSelectedNodeIds.size} nodes selected)</span>
+                  <div className="flex items-center justify-between shrink-0 mb-3">
+                    <span className="text-xs font-medium text-gray-600">Select nodes to save by checking the boxes below</span>
+                    <span className="text-xs text-gray-500">{saveAsSelectedNodeIds.size} of {getAllDescendantIds(saveAsTreeData).length} selected</span>
                   </div>
                   <div className="flex-1 min-h-0">
-                    {(() => {
-                      const filterSelected = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterSelected(n.children) : [] }));
-                      return renderPreviewTree(false, saveAsSelectedFields, false, filterSelected(saveAsTreeData), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
-                    })()}
+                    {renderPreviewTree(false, saveAsSelectedFields, false, saveAsTreeData, saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null, true, saveAsSelectedNodeIds, (id) => handleSaveAsToggleNode(id))}
                   </div>
                 </div>
               )}
