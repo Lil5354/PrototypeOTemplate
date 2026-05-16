@@ -57,7 +57,7 @@ const tableToTreeArray = (tableData) => {
     const node = {
       id: row.id?.toString() || `N${Date.now()}`,
       originalId: row.id,
-      level: row.level,
+      level: row.level + 1,
       type: row.level === 0 ? 'objective' : 'kr',
       name: row.name || '', description: row.subtitle || '',
       user: row.user || '', group: row.group || '', team: row.team || '',
@@ -579,8 +579,8 @@ const TimelineTreeDropdown = ({ selected, onSelect, space }) => {
 
 const App = () => {
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
-  const getInitialView = () => { try { const p = new URLSearchParams(window.location.search); const v = p.get('view'); if (v && ['okr-dashboard','okr-template'].includes(v)) { window.history.replaceState({}, '', window.location.pathname); return v; } } catch(e) {} return 'okr-dashboard'; };
-  const [activeView, setActiveView] = useState(getInitialView);
+  const [activeView, setActiveView] = useState('okr-dashboard');
+  useEffect(() => { try { const p = new URLSearchParams(window.location.search); const v = p.get('view'); if (v && ['okr-dashboard','okr-template'].includes(v)) { setActiveView(v); window.history.replaceState({}, '', window.location.pathname); } } catch(e) {} }, []);
   
   // --- STATE DATA OKR BOARD ---
   const engData = [
@@ -940,7 +940,8 @@ const App = () => {
           const ctx = JSON.parse(s);
           const tree = tableToTreeArray(ctx.tableData || []);
           setSaveAsTreeData(tree);
-          setSaveAsSelectedNodeIds(new Set(tree.map(n => n.id)));
+          const allIds = []; const collect = (nodes) => { nodes.forEach(n => { allIds.push(n.id); if (n.children) collect(n.children); }); }; collect(tree);
+          setSaveAsSelectedNodeIds(new Set(allIds));
         }
       } catch (e) {}
     }
@@ -955,14 +956,31 @@ const App = () => {
 
   const findTreeNode = (nodes, id) => { for (const n of nodes) { if (n.id === id) return n; if (n.children) { const f = findTreeNode(n.children, id); if (f) return f; } } return null; };
 
+  const findAncestorIds = (nodes, targetId, parents = []) => {
+    for (const n of nodes) {
+      if (n.id === targetId) return [];
+      if (n.children) {
+        if (n.children.some(c => c.id === targetId)) return [n.id];
+        const result = findAncestorIds(n.children, targetId, [...parents, n.id]);
+        if (result !== null) return [n.id, ...result];
+      }
+    }
+    return null;
+  };
+
   const handleSaveAsToggleNode = (nodeId) => {
     setSaveAsSelectedNodeIds(prev => {
       const next = new Set(prev);
       const node = findTreeNode(saveAsTreeData, nodeId);
       if (!node) return prev;
       const all = getAllDescendantIds([node]);
-      if (prev.has(nodeId)) all.forEach(id => next.delete(id));
-      else all.forEach(id => next.add(id));
+      if (prev.has(nodeId)) {
+        all.forEach(id => next.delete(id));
+      } else {
+        all.forEach(id => next.add(id));
+        const ancestors = findAncestorIds(saveAsTreeData, nodeId);
+        if (ancestors) ancestors.forEach(id => next.add(id));
+      }
       return next;
     });
   };
