@@ -1265,6 +1265,27 @@ const App = () => {
     }
   };
 
+  const handleCloseAttempt = (type) => {
+    const steps = { import: importStep, export: exportStep, add: addStep, save: saveStep };
+    const canClose = { import: importFileStatus === 'idle', export: exportStep === 1 && exportSelectedTemplates.length === 0, add: addStep === 1 && !selectedTemplateId, save: saveStep === 1 && !formData.title.trim() };
+    if (canClose[type]) {
+      if (type === 'import') { setIsImportModalOpen(false); setImportFileStatus('idle'); setImportStep(1); }
+      else if (type === 'export') { setIsExportModalOpen(false); setExportStep(1); setExportSelectedTemplates([]); }
+      else if (type === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
+      else if (type === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
+    } else {
+      setConfirmCloseTarget(type);
+    }
+  };
+
+  const handleConfirmClose = () => {
+    if (confirmCloseTarget === 'import') { setIsImportModalOpen(false); setImportFileStatus('idle'); setImportStep(1); }
+    else if (confirmCloseTarget === 'export') { setIsExportModalOpen(false); setExportStep(1); setExportSelectedTemplates([]); }
+    else if (confirmCloseTarget === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
+    else if (confirmCloseTarget === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
+    setConfirmCloseTarget(null);
+  };
+
   const downloadSampleTemplate = () => {
     try {
       const sample = {
@@ -1373,6 +1394,8 @@ const App = () => {
 
   
   
+  const renderImportValidationTree = (tab, visCol, onToggle, maxd, setMax) => (<div className="text-sm text-gray-500 p-4">Validation results will appear here after file upload.</div>);
+
   const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
     const gridCols = getGridTemplate(visibleColumns);
     const toggleCollapse = (id) => setPreviewCollapsed(prev => ({...prev, [id]: !prev[id]}));
@@ -2031,41 +2054,37 @@ const App = () => {
                     <TimelineTreeDropdown selected={selectedTimelineForUse} onSelect={setSelectedTimelineForUse} space={selectedSpaceForUse} />
                 </div>
              </div>
-              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-                {showOverrideConfirm ? (
-                  <div className="space-y-3">
-                    <div className="bg-red-50 border border-red-200 p-3 rounded shadow-sm">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
-                        <div>
-                          <h4 className="text-sm font-bold text-red-800">Override Existing OKR?</h4>
-                          <p className="text-xs text-red-700 mt-1 leading-relaxed">
-                            This timeline already has OKR data. Override will create and overwrite OKR data immediately on the selected Timeline.
-                            <strong> This action cannot be undone after confirmation.</strong>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => setShowOverrideConfirm(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Back</button>
-                      <button onClick={handleConfirmUseTemplate} className="px-4 py-1.5 text-sm text-white bg-red-600 rounded hover:bg-red-700 font-medium flex items-center gap-1"><AlertTriangle size={14} /> Confirm Override</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => setIsTimelineModalOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+               <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                  <div className="flex flex-col gap-3">
                     {(() => {
                       const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
                       const hasData = selectedSpaceForUse && selectedTimelineForUse && (okrDataMap[targetKey]?.length > 0);
                       return hasData ? (
-                        <button onClick={() => setShowOverrideConfirm(true)} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium flex items-center gap-1 ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}><AlertTriangle size={14} /> Override Template</button>
-                      ) : (
-                        <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>Apply Template</button>
-                      );
+                        <div className="bg-amber-50 border border-amber-200 p-3 rounded shadow-sm">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+                            <div>
+                              <h4 className="text-sm font-bold text-amber-800">Timeline has existing data</h4>
+                              <p className="text-xs text-amber-700 mt-1">This timeline already has OKR data. Template can only be applied to an empty timeline. Please select another timeline without data.</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null;
                     })()}
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setIsTimelineModalOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                      {(() => {
+                        const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
+                        const hasData = selectedSpaceForUse && selectedTimelineForUse && (okrDataMap[targetKey]?.length > 0);
+                        return hasData ? (
+                          <button disabled className="px-4 py-1.5 text-sm text-gray-400 bg-gray-200 border border-gray-200 rounded font-medium cursor-not-allowed">Timeline not empty</button>
+                        ) : (
+                          <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>Apply Template</button>
+                        );
+                      })()}
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
           </div>
         </div>
       )}
@@ -2409,7 +2428,7 @@ const App = () => {
             <p className="text-gray-600 text-sm mb-6">Progress will be lost. Are you sure you want to exit and cancel current action?</p>
             <div className="flex justify-end space-x-3">
               <button onClick={() => setConfirmCloseTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Continue</button>
-              <button onClick={confirmClose} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700">Confirm exit</button>
+              <button onClick={handleConfirmClose} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700">Confirm exit</button>
             </div>
           </div>
         </div>
