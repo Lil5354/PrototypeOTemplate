@@ -955,31 +955,14 @@ const App = () => {
 
   const findTreeNode = (nodes, id) => { for (const n of nodes) { if (n.id === id) return n; if (n.children) { const f = findTreeNode(n.children, id); if (f) return f; } } return null; };
 
-  const findAncestorIds = (nodes, targetId, parents = []) => {
-    for (const n of nodes) {
-      if (n.id === targetId) return [];
-      if (n.children) {
-        if (n.children.some(c => c.id === targetId)) return [n.id];
-        const result = findAncestorIds(n.children, targetId, [...parents, n.id]);
-        if (result !== null) return [n.id, ...result];
-      }
-    }
-    return null;
-  };
-
   const handleSaveAsToggleNode = (nodeId) => {
     setSaveAsSelectedNodeIds(prev => {
       const next = new Set(prev);
       const node = findTreeNode(saveAsTreeData, nodeId);
       if (!node) return prev;
       const all = getAllDescendantIds([node]);
-      if (prev.has(nodeId)) {
-        all.forEach(id => next.delete(id));
-      } else {
-        all.forEach(id => next.add(id));
-        const ancestors = findAncestorIds(saveAsTreeData, nodeId);
-        if (ancestors) ancestors.forEach(id => next.add(id));
-      }
+      if (prev.has(nodeId)) all.forEach(id => next.delete(id));
+      else all.forEach(id => next.add(id));
       return next;
     });
   };
@@ -1020,7 +1003,8 @@ const App = () => {
       if (templateList.some(t => t.title === finalTitle)) {
         finalTitle = `${finalTitle}_(1)`;
       }
-      const filterTree = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterTree(n.children) : [] }));
+      const hasSelectedDesc = (node) => saveAsSelectedNodeIds.has(node.id) || (node.children && node.children.some(c => hasSelectedDesc(c)));
+      const filterTree = (nodes) => nodes.filter(n => hasSelectedDesc(n)).map(n => ({ ...n, children: n.children ? filterTree(n.children) : [] }));
       const newTemplate = {
         id: Date.now(),
         title: finalTitle,
