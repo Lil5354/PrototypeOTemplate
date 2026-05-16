@@ -2290,7 +2290,7 @@ const App = () => {
       )}
 
       {/* --- C1: VIEW TEMPLATE MODAL --- */}
-      {viewTarget && (
+      {!isViewMode && viewTarget && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden relative">
             <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
@@ -2416,7 +2416,7 @@ const App = () => {
       )}
 
       {/* --- C2: EDIT TEMPLATE MODAL --- */}
-      {editTargetId && (
+      {!isEditMode && editTargetId && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden relative">
             
