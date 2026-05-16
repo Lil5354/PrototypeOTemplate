@@ -4,7 +4,7 @@ import {
   Menu, ChevronDown, ChevronRight, Search, Globe, Bell, User, Clock,
   Briefcase, CheckSquare, LayoutDashboard, Calendar, BarChart2,
   FolderTree, Users, FileText, Settings, Shield, Package,
-  MoreHorizontal, Filter, Columns, List, Box, PlayCircle, Plus,
+  MoreHorizontal, MoreVertical, Filter, Columns, List, Box, PlayCircle, Plus,
   AlertTriangle, ArrowUp, ArrowDown, AlignLeft,
   UploadCloud, Download, Eye, Edit, Trash2, X, Check, Info, AlertCircle,
   Save, XCircle, FileJson, CheckCircle2, XOctagon, Copy, CalendarDays, Pin,
@@ -56,6 +56,7 @@ const tableToTreeArray = (tableData) => {
     while (stack.length > row.level) stack.pop();
     const node = {
       id: row.id?.toString() || `N${Date.now()}`,
+      originalId: row.id,
       type: row.level === 0 ? 'objective' : 'kr',
       name: row.name || '', description: row.subtitle || '',
       user: row.user || '', group: row.group || '', team: row.team || '',
@@ -339,9 +340,7 @@ const OKRTreePreview = ({
               </button>
             )}
             {!isObjective && <div className="w-3 shrink-0"></div>}
-            {isObjective ? (
-              <Box size={11} className="text-blue-500 shrink-0" />
-            ) : (
+            {isObjective ? (() => { const il = node.level ?? 1; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; })() : (
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
             )}
             <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : hasWarning ? 'text-amber-600' : 'text-gray-700'}`}>
@@ -625,9 +624,27 @@ const App = () => {
     return map;
   };
   const allSpaces = ['Engineering', 'Sales', 'HR', 'Product', 'Marketing', 'Finance', 'Operations'];
-  const initialOkrData = initOkrDataMap(allSpaces, timelineTreeBySpace);
-
+  const loadPersistedOkrData = () => { try { const s = localStorage.getItem('okrDataMap'); if (s) return JSON.parse(s); } catch (e) {} return null; };
+  const initialOkrData = loadPersistedOkrData() || initOkrDataMap(allSpaces, timelineTreeBySpace);
   const [okrDataMap, setOkrDataMap] = useState(initialOkrData);
+  useEffect(() => { try { localStorage.setItem('okrDataMap', JSON.stringify(okrDataMap)); } catch (e) {} }, [okrDataMap]);
+
+  const getMaxLevel = (data) => data.reduce((max, r) => Math.max(max, r.level), 0);
+  const isPersonalLevel = (level) => level >= 3;
+  const getLevelCategory = (level) => { if (level === 0) return 'company'; if (level === 1) return 'team'; if (level === 2) return 'group'; return 'personal'; };
+  const mapTreeToTableDeep = (treeArray, baseLevel = 0) => { let result = []; let counter = Date.now(); const flatten = (nodes, level) => { nodes.forEach(node => { const el = (node.level !== undefined && node.level !== null) ? (node.level - 1) : level; result.push({ id: counter++, level: el, name: node.name, subtitle: node.description, user: node.user, group: node.group, team: node.team, assignTo: node.team, metric: node.metric, agg: node.agg, progress: parseInt(node.progress) || 0, risk: 'high', tl: 1, isExpanded: true }); if (node.children && node.children.length > 0) flatten(node.children, el + 1); }); }; flatten(treeArray, baseLevel); return result; };
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const isBranchAddMode = urlParams.get('branchAddTemplate') === 'true';
+  const [branchInfo, setBranchInfo] = useState(null);
+  const [branchAddStep, setBranchAddStep] = useState(1);
+  const [branchSelectedTemplateId, setBranchSelectedTemplateId] = useState(null);
+  const [branchAddSearchQuery, setBranchAddSearchQuery] = useState('');
+  const [branchError, setBranchError] = useState(null);
+  const [branchDuplicateConfirm, setBranchDuplicateConfirm] = useState(null);
+  const handleBranchDuplicateForce = () => { setBranchDuplicateConfirm({ ...branchDuplicateConfirm, force: true }); setTimeout(() => handleBranchApplyTemplate(), 0); };
+
+  const redirectClean = () => { window.location.href = window.location.origin + window.location.pathname; };
 
   const currentContext = { timeline: selectedPeriod, space: selectedSpace };
   const tableData = okrDataMap[`${selectedSpace}|${selectedYear}|${selectedPeriod}`] || [];
@@ -660,54 +677,26 @@ const App = () => {
 
   // --- MOCK DATA CÂY OKR ---
   const sampleTreeData = [
-    {
-      id: 'O1', type: 'objective', name: 'Increase Enterprise Revenue to $10M', description: 'Drive Q3 revenue growth focusing on Tier 1 clients', user: 'Duc Le', group: 'Sales', team: 'Global Sales', metric: 'Revenue', agg: 'SUM',
-      children: [
-        { id: 'KR1.1', type: 'kr', name: 'Achieve $5M ARR in US Market', description: 'Target top 100 Fortune companies', user: 'Ngan Vu', group: 'Sales', team: 'US Sales', metric: 'Revenue', agg: 'SUM', progress: '75%', timeline: 'Q3 2025' },
-        { id: 'KR1.2', type: 'kr', name: 'Close 50 Enterprise deals globally', description: 'Avg deal size > $100k', user: 'Duy Nguyen', group: 'Sales', team: 'Global Sales', metric: 'Deals', agg: 'COUNT', progress: '60%', timeline: 'Q3 2025' },
-        { id: 'KR1.3', type: 'kr', name: 'Reduce enterprise churn rate to < 5%', description: 'Proactive CS tracking', user: 'Hoa Pham', group: 'CS', team: 'Retention', metric: 'Churn', agg: 'AVG', progress: '30%', timeline: 'Q3 2025' }
-      ]
-    },
-    {
-      id: 'O2', type: 'objective', name: 'Launch New V2 Platform Infrastructure', description: 'Complete rebuild of core engine for 10x scalability', user: 'Minh Nguyen', group: 'Engineering', team: 'Core Platform', metric: 'Milestone', agg: 'AVG',
-      children: [
-        { id: 'KR2.1', type: 'kr', name: 'Release Beta to 1000 users', description: 'Ensure crash-free rate > 99%', user: 'Dat Tran', group: 'Product', team: 'Alpha/Beta', metric: 'Users', agg: 'COUNT', progress: '100%', timeline: 'Jul 2025' },
-        { id: 'KR2.2', type: 'kr', name: 'Achieve 99.99% system uptime', description: 'Implement auto-scaling groups', user: 'Huy Dinh', group: 'Engineering', team: 'DevOps', metric: 'Uptime', agg: 'AVG', progress: '99%', timeline: 'Q3 2025' }
-      ]
-    }
+    { id: 'O1', level: 3, type: 'objective', name: 'Increase Enterprise Revenue to $10M', children: [ { id: 'KR1.1', level: 4, type: 'kr', name: 'Achieve $5M ARR in US Market' }, { id: 'KR1.2', level: 4, type: 'kr', name: 'Close 50 Enterprise deals globally' }, { id: 'KR1.3', level: 4, type: 'kr', name: 'Reduce enterprise churn rate to < 5%' } ] },
+    { id: 'O2', level: 3, type: 'objective', name: 'Launch New V2 Platform Infrastructure', children: [ { id: 'KR2.1', level: 4, type: 'kr', name: 'Release Beta to 1000 users' }, { id: 'KR2.2', level: 4, type: 'kr', name: 'Achieve 99.99% system uptime' } ] }
   ];
-
   const engTreeData = [
-    {
-      id: 'O1', type: 'objective', name: 'Accelerate Platform Modernization', description: 'Migrate legacy services to microservices architecture by Q4', user: 'Minh Nguyen', group: 'Engineering', team: 'Core Platform', metric: 'Milestone', agg: 'SUM',
-      children: [
-        { id: 'KR1.1', type: 'kr', name: 'Migrate 80% of APIs to new gateway', description: 'Target 200+ API endpoints migrated', user: 'Dat Tran', group: 'Engineering', team: 'API Team', metric: 'APIs', agg: 'COUNT', progress: '45%', timeline: 'Q4 2025' },
-        { id: 'KR1.2', type: 'kr', name: 'Reduce avg response time to < 200ms', description: 'Current avg is 450ms', user: 'Huy Dinh', group: 'Engineering', team: 'DevOps', metric: 'Latency', agg: 'AVG', progress: '60%', timeline: 'Q3 2025' },
-        { id: 'KR1.3', type: 'kr', name: 'Achieve 99.99% uptime for core services', description: 'Implement multi-region failover', user: 'Tuan Pham', group: 'Engineering', team: 'SRE', metric: 'Uptime', agg: 'AVG', progress: '99%', timeline: 'Q4 2025' }
-      ]
-    }
+    { id: 'O1', level: 1, type: 'objective', name: 'Accelerate Platform Modernization', children: [ { id: 'KR1.1', level: 2, type: 'kr', name: 'Migrate 80% of APIs to new gateway' }, { id: 'KR1.2', level: 2, type: 'kr', name: 'Reduce avg response time to < 200ms' }, { id: 'KR1.3', level: 2, type: 'kr', name: 'Achieve 99.99% uptime for core services' } ] }
   ];
-
   const productTreeData = [
-    {
-      id: 'O1', type: 'objective', name: 'Deliver V2 Product Experience', description: 'Ship V2 with all core features by end of Q3', user: 'Hoa Pham', group: 'Product', team: 'Product Design', metric: 'Features', agg: 'SUM',
-      children: [
-        { id: 'KR1.1', type: 'kr', name: 'Launch 12 new UI components', description: 'Design system v2 rollout', user: 'Lan Nguyen', group: 'Product', team: 'UI/UX', metric: 'Components', agg: 'COUNT', progress: '50%', timeline: 'Q3 2025' },
-        { id: 'KR1.2', type: 'kr', name: 'Achieve NPS score of 45+', description: 'Current NPS is 32, target 45', user: 'Hoa Pham', group: 'Product', team: 'Product Design', metric: 'NPS', agg: 'AVG', progress: '35%', timeline: 'Q3 2025' }
-      ]
-    },
-    {
-      id: 'O2', type: 'objective', name: 'Improve User Onboarding Flow', description: 'Reduce time-to-value for new users by 40%', user: 'Minh Tran', group: 'Product', team: 'Growth', metric: 'Conversion', agg: 'AVG',
-      children: [
-        { id: 'KR2.1', type: 'kr', name: 'Increase onboarding completion to 80%', description: 'Current rate is 55%', user: 'Minh Tran', group: 'Product', team: 'Growth', metric: 'Rate', agg: 'AVG', progress: '70%', timeline: 'Q3 2025' }
-      ]
-    }
+    { id: 'O1', level: 2, type: 'objective', name: 'Deliver V2 Product Experience', children: [ { id: 'KR1.1', level: 3, type: 'kr', name: 'Launch 12 new UI components' }, { id: 'KR1.2', level: 3, type: 'kr', name: 'Achieve NPS score of 45+' } ] },
+    { id: 'O2', level: 2, type: 'objective', name: 'Improve User Onboarding Flow', children: [ { id: 'KR2.1', level: 3, type: 'kr', name: 'Increase onboarding completion to 80%' } ] }
   ];
+  const arrowHighTreeData = [ { id: 'AR1', level: 2, type: 'objective', name: 'Optimize Team Productivity', children: [ { id: 'AR1.1', level: 3, type: 'kr', name: 'Reduce meeting time by 30%' }, { id: 'AR1.2', level: 3, type: 'kr', name: 'Achieve 90% tool adoption' } ] } ];
+  const greenHighTreeData = [ { id: 'GR1', level: 3, type: 'objective', name: 'Enhance Personal Development', children: [ { id: 'GR1.1', level: 4, type: 'kr', name: 'Complete 20 training modules' }, { id: 'GR1.2', level: 4, type: 'kr', name: 'Conduct 3 cross-team workshops' } ] } ];
 
+  try { localStorage.removeItem('templateList'); localStorage.removeItem('branchAppliedTemplates'); } catch (e) {}
   const [templateList, setTemplateList] = useState([
-    { id: 1, title: 'HR Performance Template', desc: 'Standard template for HR team performance tracking', tags: ['HR', 'Performance'], creator: 'Duc Le', date: '2025-05-08', tree: JSON.parse(JSON.stringify(sampleTreeData)) },
-    { id: 2, title: 'Engineering Sprint Template', desc: 'Engineering-focused OKR template for sprint planning', tags: ['Engineering'], creator: 'Minh Nguyen', date: '2025-05-07', tree: JSON.parse(JSON.stringify(engTreeData)) }, 
-    { id: 3, title: 'Product Quality Template', desc: 'Template for product quality and user satisfaction', tags: ['Product', 'Quality', 'UX'], creator: 'Hoa Pham', date: '2025-05-06', tree: JSON.parse(JSON.stringify(productTreeData)) },
+    { id: 1, title: 'HR Performance Template', desc: 'Template with green cube and personal level nodes', tags: ['HR', 'Performance'], creator: 'Duc Le', date: '2025-05-08', tree: JSON.parse(JSON.stringify(sampleTreeData)) },
+    { id: 2, title: 'Engineering Sprint Template', desc: 'Template with blue cube and arrow level nodes', tags: ['Engineering'], creator: 'Minh Nguyen', date: '2025-05-07', tree: JSON.parse(JSON.stringify(engTreeData)) }, 
+    { id: 3, title: 'Product Quality Template', desc: 'Template with arrow and green cube level nodes', tags: ['Product', 'Quality', 'UX'], creator: 'Hoa Pham', date: '2025-05-06', tree: JSON.parse(JSON.stringify(productTreeData)) },
+    { id: 4, title: 'Team Productivity Template', desc: 'Team-level OKR template with arrow as highest level', tags: ['Team', 'Productivity'], creator: 'Lan Nguyen', date: '2025-05-15', tree: JSON.parse(JSON.stringify(arrowHighTreeData)) },
+    { id: 5, title: 'Personal Growth Template', desc: 'Personal/group-level OKR template with green cube as highest level', tags: ['Personal', 'Growth'], creator: 'Duc Le', date: '2025-05-15', tree: JSON.parse(JSON.stringify(greenHighTreeData)) },
   ]);
 
   const previewTreeData = {
@@ -780,6 +769,11 @@ const App = () => {
   const [nodeDetailBottomTab, setNodeDetailBottomTab] = useState('comment'); 
   const [editingNodeData, setEditingNodeData] = useState(null);
   
+  const [actionDropdown, setActionDropdown] = useState(null);
+  const [isBranchSelectOpen, setIsBranchSelectOpen] = useState(false);
+  const [selectedBranchRowId, setSelectedBranchRowId] = useState(null);
+  const handleConfirmBranchSelect = () => { if (selectedBranchRowId === null) return; const row = tableData.find(r => r.id === selectedBranchRowId); if (!row) return; setIsBranchSelectOpen(false); setSelectedBranchRowId(null); handleOpenBranchAdd(row); };
+
   const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
   const [selectedSpaceForUse, setSelectedSpaceForUse] = useState('Engineering');
   const [selectedTimelineForUse, setSelectedTimelineForUse] = useState('Quarter 3, 2025');
@@ -1271,6 +1265,27 @@ const App = () => {
     }
   };
 
+  const handleCloseAttempt = (type) => {
+    const steps = { import: importStep, export: exportStep, add: addStep, save: saveStep };
+    const canClose = { import: importFileStatus === 'idle', export: exportStep === 1 && exportSelectedTemplates.length === 0, add: addStep === 1 && !selectedTemplateId, save: saveStep === 1 && !formData.title.trim() };
+    if (canClose[type]) {
+      if (type === 'import') { setIsImportModalOpen(false); setImportFileStatus('idle'); setImportStep(1); }
+      else if (type === 'export') { setIsExportModalOpen(false); setExportStep(1); setExportSelectedTemplates([]); }
+      else if (type === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
+      else if (type === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
+    } else {
+      setConfirmCloseTarget(type);
+    }
+  };
+
+  const handleConfirmClose = () => {
+    if (confirmCloseTarget === 'import') { setIsImportModalOpen(false); setImportFileStatus('idle'); setImportStep(1); }
+    else if (confirmCloseTarget === 'export') { setIsExportModalOpen(false); setExportStep(1); setExportSelectedTemplates([]); }
+    else if (confirmCloseTarget === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
+    else if (confirmCloseTarget === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
+    setConfirmCloseTarget(null);
+  };
+
   const downloadSampleTemplate = () => {
     try {
       const sample = {
@@ -1342,29 +1357,45 @@ const App = () => {
     triggerToast('JSON file downloaded successfully.');
   };
 
-  // --- HANDLERS: CHUNG ---
-  const handleCloseAttempt = (type) => {
-    if (type === 'save' && (formData.title || saveStep > 1)) setConfirmCloseTarget('save');
-    else if (type === 'add' && (selectedTemplateId || addStep > 1)) setConfirmCloseTarget('add');
-    else if (type === 'import' && (importFileStatus === 'parsed' || importStep > 1)) setConfirmCloseTarget('import');
-    else if (type === 'export' && exportStep > 1) setConfirmCloseTarget('export');
-    else {
-      if(type === 'save') setIsSaveModalOpen(false);
-      if(type === 'add') setIsAddModalOpen(false);
-      if(type === 'import') setIsImportModalOpen(false);
-      if(type === 'export') setIsExportModalOpen(false);
-    }
-  };
+  // --- BRANCH ADD TEMPLATE HANDLERS ---
+  useEffect(() => {
+    if (isBranchAddMode) { try { const s = localStorage.getItem('branchAddTemplate'); if (s) setBranchInfo(JSON.parse(s)); else setBranchError('No branch information found.'); } catch (e) { setBranchError('Failed to read branch information.'); } }
+  }, []);
+  const handleOpenBranchAdd = (row) => { const bi = { nodeId: row.id, nodeLevel: row.level, nodeName: row.name, space: selectedSpace, year: selectedYear, period: selectedPeriod, maxDepth: getMaxLevel(tableData) }; try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open branch add template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank'); };
+  const handleOpenEmptyAddTemplate = () => { const bi = { isFullBoard: true, space: selectedSpace, year: selectedYear, period: selectedPeriod }; try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open add template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank'); };
+  const filteredBranchTemplates = templateList.filter(t => t.title.toLowerCase().includes(branchAddSearchQuery.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(branchAddSearchQuery.toLowerCase())));
+  const branchSelectedTemplateData = templateList.find(t => t.id === branchSelectedTemplateId);
 
-  const confirmClose = () => {
-    if (confirmCloseTarget === 'save') setIsSaveModalOpen(false);
-    if (confirmCloseTarget === 'add') setIsAddModalOpen(false);
-    if (confirmCloseTarget === 'import') setIsImportModalOpen(false);
-    if (confirmCloseTarget === 'export') setIsExportModalOpen(false);
-    setConfirmCloseTarget(null);
+  const handleBranchApplyTemplate = () => {
+    try {
+      const t = templateList.find(x => x.id === branchSelectedTemplateId); if (!t) { setBranchError('Template no longer exists.'); return; } if (!branchInfo) { setBranchError('Branch info missing.'); return; }
+      const branchKey = `${branchInfo.space}|${branchInfo.year}|${branchInfo.period}|node${branchInfo.nodeId}`;
+      const prevApplied = (() => { try { return JSON.parse(localStorage.getItem('branchAppliedTemplates') || '{}'); } catch (e) { return {}; } })();
+      const isDuplicate = prevApplied[branchKey] && prevApplied[branchKey].includes(t.id);
+      if (isDuplicate && !branchDuplicateConfirm?.force) { setBranchDuplicateConfirm({ branchKey, templateId: t.id, title: t.title }); return; }
+      const getNodeLevel = (node, depth) => (node.level !== undefined && node.level !== null) ? (node.level - 1) : depth;
+      const hasIncompatibleLevel = (nodes, depth) => { for (const node of nodes) { const nl = getNodeLevel(node, depth); if (nl < branchInfo.nodeLevel) return true; if (node.children && node.children.length > 0) { if (hasIncompatibleLevel(node.children, depth + 1)) return true; } } return false; };
+      if (hasIncompatibleLevel(t.tree, 0)) { setBranchError('The selected template contains nodes at a higher or equal organizational level than the target branch. Please choose another template with compatible level structure.'); return; }
+      const targetKey = `${branchInfo.space}|${branchInfo.year}|${branchInfo.period}`;
+      const currentData = okrDataMap[targetKey] || [];
+      const treeArray = tableToTreeArray(currentData);
+      const targetNodeId = branchInfo.nodeId?.toString();
+      let targetFound = false;
+      const findAndInsertSiblings = (nodes) => { for (let i = 0; i < nodes.length; i++) { if (nodes[i].id === targetNodeId || nodes[i].originalId === branchInfo.nodeId) { const ct = JSON.parse(JSON.stringify(t.tree)); nodes.splice(i + 1, 0, ...ct); targetFound = true; return true; } if (nodes[i].children && nodes[i].children.length > 0) { if (findAndInsertSiblings(nodes[i].children)) return true; } } return false; };
+      findAndInsertSiblings(treeArray);
+      if (!targetFound) { if (currentData.length === 0) { setBranchError('No data found.'); return; } const ct = JSON.parse(JSON.stringify(t.tree)); treeArray.push(...ct); }
+      const newTableData = mapTreeToTableDeep(treeArray);
+      setOkrDataMap(prev => ({ ...prev, [targetKey]: newTableData.map(r => ({ ...r, id: Date.now() + Math.random(), progress: r.progress || 0, risk: 'low', result: 0, status: 'valid', warnMsg: null, errorMsg: null })) }));
+      try { prevApplied[branchKey] = [...(prevApplied[branchKey] || []), t.id]; localStorage.setItem('branchAppliedTemplates', JSON.stringify(prevApplied)); } catch (e) {}
+      setBranchDuplicateConfirm(null); try { localStorage.removeItem('branchAddTemplate'); } catch (e) {} window.location.href = window.location.origin + window.location.pathname;
+    } catch (err) { setBranchError('Apply failed: ' + err.message); }
   };
+  const handleEmptyApplyTemplate = () => { try { const t = templateList.find(x => x.id === branchSelectedTemplateId); if (!t) { setBranchError('Template no longer exists.'); return; } if (!branchInfo) { setBranchError('Context info missing.'); return; } executeApplyToBoard(t.tree, branchInfo.period, branchInfo.space); setBranchDuplicateConfirm(null); try { localStorage.removeItem('branchAddTemplate'); } catch (e) {} window.location.href = window.location.origin + window.location.pathname; } catch (err) { setBranchError('Apply failed: ' + err.message); } };
 
-  // --- RENDER HELPERS: PREVIEW CÂY (COMPACT COLLAPSIBLE) ---
+  
+  
+  const renderImportValidationTree = (tab, visCol, onToggle, maxd, setMax) => (<div className="text-sm text-gray-500 p-4">Validation results will appear here after file upload.</div>);
+
   const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
     const gridCols = getGridTemplate(visibleColumns);
     const toggleCollapse = (id) => setPreviewCollapsed(prev => ({...prev, [id]: !prev[id]}));
@@ -1443,11 +1474,7 @@ const App = () => {
               </button>
             )}
             {!isTopLevel && <div className="w-3 shrink-0"></div>}
-            {level === 1 && <Box size={11} className="text-blue-500 shrink-0" />}
-            {level === 2 && <span className="text-gray-400 shrink-0 leading-none">↳</span>}
-            {level === 3 && <Box size={11} className="text-green-500 shrink-0" />}
-            {level === 4 && <Box size={11} className="text-green-400 shrink-0" />}
-            {level >= 5 && <User size={11} className="text-purple-500 shrink-0" />}
+            {(() => { const il = node.level ?? level; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; if (il >= 4) return <User size={11} className="text-purple-500 shrink-0" />; return null; })()}
             <span className={`text-[11px] font-medium truncate ${isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
           </div>
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -1497,141 +1524,9 @@ const App = () => {
 
     return treeContent;
 
-  };
+  }
 
-  const renderImportValidationTree = (filterTab, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null) => {
-    const gridCols = getGridTemplate(visibleColumns);
-    const isNodeVisible = (n) => {
-      if (filterTab === 'all') return true;
-      if (filterTab === 'errors') return n.status === 'error';
-      if (filterTab === 'warnings') return n.status === 'warning';
-      if (filterTab === 'passed') return n.status === 'valid';
-      return true;
-    };
 
-    const treeData = mockImportParsedTree;
-    const objVisible = isNodeVisible(treeData.objective);
-    const visibleKRs = treeData.krs.filter(kr => isNodeVisible(kr));
-    const shouldShowObj = objVisible || visibleKRs.length > 0;
-
-    if (!shouldShowObj && visibleKRs.length === 0) {
-       return <div className="p-8 text-center text-gray-500">No nodes match the current filter.</div>;
-    }
-
-    const renderValidationCell = (node, colId) => {
-      switch (colId) {
-        case 'description': return <span className="truncate">{node.description || 'Default'}</span>;
-        case 'user': return <span className="truncate">{node.assign || node.user || 'Default'}</span>;
-        case 'group': return <span className="truncate">{node.group || 'Default'}</span>;
-        case 'team': return <span className="truncate">{node.team || 'Default'}</span>;
-        case 'assign_to': return <span className="truncate">{node.assign || node.user || 'Default'}</span>;
-        case 'metric': return <span className="truncate">{node.metric || 'Default'}</span>;
-        case 'metric_name': return <span className="truncate">{node.mName || 'Default'}</span>;
-        case 'metric_key': return <span className="truncate">{node.mKey || 'Default'}</span>;
-        case 'metric_unit': return <span className="truncate">{node.mUnit || 'Default'}</span>;
-        case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{node.agg || 'Default'}</span>;
-        case 'result': return <span className="truncate">{node.result ?? 'Default'}</span>;
-        case 'progress': {
-          const p = node.progress || '0%';
-          return (
-            <div className="flex items-center justify-center gap-1">
-              <div className="w-10 bg-gray-200 h-1.5 rounded-full overflow-hidden"><div className="bg-green-500 h-full" style={{ width: p }}></div></div>
-              <span className="text-[10px] text-green-600 font-medium">{p}</span>
-            </div>
-          );
-        }
-        case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
-        case 'timeline': return <span className="truncate">{node.timeline || 'Default'}</span>;
-        case 'timeline_view_metric': return <span className="text-[10px] text-gray-500 italic">Default</span>;
-        case 'status':
-          return <div className="flex justify-center">
-            {node.status === 'valid' && <CheckCircle2 size={14} className="inline text-green-600" />}
-            {node.status === 'warning' && <AlertTriangle size={14} className="inline text-amber-600" />}
-            {node.status === 'duplicate' && <AlertTriangle size={14} className="inline text-orange-600" />}
-            {node.status === 'error' && <XOctagon size={14} className="inline text-red-600" />}
-          </div>;
-        default: return null;
-      }
-    };
-
-    const toggleCollapse = (id) => setImportValidationCollapsed(prev => ({...prev, [id]: !prev[id]}));
-    const objId = treeData.objective?.id || 'val-root';
-    const isCollapsed = importValidationCollapsed[objId];
-
-    const treeContent = (
-      <div className="flex flex-col h-full min-h-0">
-        <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm flex-1 flex flex-col min-h-0">
-          <div className="bg-gray-50 border-b border-gray-200 py-1 px-1.5 text-[10px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
-               style={{ display: 'grid', gridTemplateColumns: gridCols + ' auto', alignItems: 'center' }}>
-            <div className="bg-gray-50 truncate" style={{ paddingLeft: '2px' }}>Node</div>
-            {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-              <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} bg-gray-50 truncate`}>{col.label}</div>
-            ))}
-            <div className="flex items-center gap-0.5" style={{ justifySelf: 'end' }}>
-              {onToggleColumn && <ColumnToggle visibleColumns={visibleColumns} onToggle={onToggleColumn} />}
-              {onMaximize && (
-                <button onClick={() => onMaximize(!maximized)} className="p-0.5 hover:bg-gray-200 rounded text-gray-500 hover:text-gray-700 transition-colors" title={maximized ? 'Minimize' : 'Maximize'}>
-                  {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 overflow-auto custom-scrollbar">
-            <div className="min-w-[400px]">
-              {objVisible && (
-                <div onClick={() => openNodeDetail(treeData.objective, 'view')} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${treeData.objective.status === 'error' ? 'bg-red-50/40' : treeData.objective.status === 'duplicate' ? 'bg-orange-50/40' : treeData.objective.status === 'warning' ? 'bg-amber-50/40' : ''}`}
-                     style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
-                  <div className="flex items-center gap-1 truncate">
-                    <button onClick={(e) => { e.stopPropagation(); toggleCollapse(objId); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-                      <ChevronRight size={10} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                    </button>
-                    <Box size={11} className="text-blue-500 shrink-0" />
-                    <span className="text-[11px] font-medium text-blue-600 truncate">{treeData.objective.id}: {treeData.objective.name}</span>
-                    {(treeData.objective.warnMsg || treeData.objective.errorMsg) && <span className="relative group inline-flex" onDoubleClick={() => alert(treeData.objective.warnMsg || treeData.objective.errorMsg)} title={treeData.objective.warnMsg || treeData.objective.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ml-1 ${treeData.objective.status === 'error' ? 'text-red-600' : treeData.objective.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{treeData.objective.warnMsg || treeData.objective.errorMsg}</p><div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 pointer-events-none"><div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-normal break-words max-w-[260px] max-h-[120px] overflow-y-auto">{treeData.objective.warnMsg || treeData.objective.errorMsg}</div></div></span>}
-                  </div>
-                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                    <div key={col.id} className={`px-1.5 text-[10px] text-gray-500 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(treeData.objective, col.id)}</div>
-                  ))}
-                </div>
-              )}
-              {!isCollapsed && visibleKRs.map(kr => (
-                <div onClick={() => openNodeDetail(kr, 'view')} key={kr.id} className={`border-b border-gray-100 py-1 px-1.5 hover:bg-blue-50/30 transition-colors cursor-pointer ${kr.status === 'error' ? 'bg-red-50/40' : kr.status === 'duplicate' ? 'bg-orange-50/40' : kr.status === 'warning' ? 'bg-amber-50/40' : ''}`}
-                     style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
-                  <div className="flex items-center gap-1 truncate" style={{ paddingLeft: '16px' }}>
-                    <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
-                    <span className={`text-[11px] font-medium truncate ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : kr.status === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{kr.id}: {kr.name}</span>
-                    {(kr.warnMsg || kr.errorMsg) && <span className="relative group inline-flex" onDoubleClick={() => alert(kr.warnMsg || kr.errorMsg)} title={kr.warnMsg || kr.errorMsg}><p className={`text-[10px] italic truncate max-w-[120px] ml-1 ${kr.status === 'error' ? 'text-red-600' : kr.status === 'duplicate' ? 'text-orange-600' : 'text-amber-600'}`}>{kr.warnMsg || kr.errorMsg}</p><div className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 pointer-events-none"><div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-normal break-words max-w-[260px] max-h-[120px] overflow-y-auto">{kr.warnMsg || kr.errorMsg}</div></div></span>}
-                  </div>
-                  {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
-                    <div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderValidationCell(kr, col.id)}</div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-
-    if (maximized) {
-      return (
-        <FullScreenWindow onClose={() => onMaximize(false)}>
-          {treeContent}
-        </FullScreenWindow>
-      );
-    }
-
-    return treeContent;
-  };
-
-  const FieldRow = ({ label, required, children }) => (
-    <div>
-      <label className="text-[11px] font-medium text-gray-500 mb-1 block">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      {children}
-    </div>
-  );
-
-  // --- RENDER HELPERS: NODE DETAILS ---
   const renderNodeDetailSidePanel = () => {
     if (!nodeDetailConfig.isOpen || !nodeDetailConfig.data) return null;
     const { mode, data } = nodeDetailConfig;
@@ -2030,7 +1925,7 @@ const App = () => {
         )}
       </div>
     );
-  };
+  }
 
 
   // --- RENDERING MAIN ---
@@ -2049,6 +1944,75 @@ const App = () => {
           {toastType === 'warning' && <AlertTriangle size={18} className="text-white mr-2 shrink-0" />}
           {toastType === 'info' && <Info size={18} className="text-white mr-2 shrink-0" />}
           <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Action dropdown overlay + fixed dropdown */}
+      {actionDropdown !== null && (
+        <><div className="fixed inset-0 z-[60]" onClick={() => setActionDropdown(null)}></div>
+          <div className="fixed z-[70] w-52 bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-[320px] overflow-y-auto custom-scrollbar" style={{ top: `${actionDropdown.top}px`, left: `${actionDropdown.left}px` }}>
+            {(() => { const row = tableData.find(r => r.id === actionDropdown.rowId); const p = row ? isPersonalLevel(row.level) : false; return (<>
+              {!p && row && <button onClick={() => { setActionDropdown(null); handleOpenBranchAdd(row); }} className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"><Plus size={12} /> Add Template</button>}
+              <div className="border-t border-gray-100 my-1"></div>
+              <div className="px-3 py-1 text-[10px] text-gray-400 uppercase tracking-wider">Advanced</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Advanced select</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Find and replace title</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Bulk change</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Mass check-in</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Set planning</div>
+              <div className="border-t border-gray-100 my-1"></div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Clone objective</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Copy objective</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Move objective</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Reset data</div>
+              <div className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 cursor-pointer flex items-center gap-2">Delete objective</div>
+              <div className="border-t border-gray-100 my-1"></div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Expand all</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Collapse all</div>
+              <div className="border-t border-gray-100 my-1"></div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">View only selected objective</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">View all related objectives</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Configure view metrics</div>
+              <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Copy link</div>
+            </>)})()}
+          </div>
+        </>
+      )}
+
+      {/* Duplicate confirm dialog */}
+      {isBranchAddMode && branchDuplicateConfirm && !branchDuplicateConfirm.force && (
+        <div className="fixed inset-0 z-[100] bg-gray-500/75 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-96 border-t-4 border-amber-500 animate-fade-in">
+            <div className="flex items-center text-amber-500 mb-3"><AlertTriangle size={24} className="mr-2" /><h3 className="text-lg font-bold text-gray-900">Duplicate Template</h3></div>
+            <p className="text-gray-600 text-sm mb-2">Template <strong>"{branchDuplicateConfirm.title}"</strong> has already been applied to this branch.</p>
+            <p className="text-gray-600 text-sm mb-6">Do you want to apply it again anyway?</p>
+            <div className="flex justify-end gap-3"><button onClick={() => setBranchDuplicateConfirm(null)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Cancel</button><button onClick={handleBranchDuplicateForce} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded hover:bg-amber-700">Apply Anyway</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* Branch error dialog */}
+      {isBranchAddMode && branchError && (
+        <div className="fixed inset-0 z-[100] bg-gray-500/75 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-96 border-t-4 border-red-500 animate-fade-in">
+            <div className="flex items-center text-red-500 mb-3"><AlertTriangle size={24} className="mr-2" /><h3 className="text-lg font-bold text-gray-900">Error</h3></div>
+            <p className="text-gray-600 text-sm mb-6">{branchError}</p>
+            <div className="flex justify-end"><button onClick={() => window.close()} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700">Close Tab</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* Branch select dialog */}
+      {isBranchSelectOpen && tableData.length > 0 && (
+        <div className="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center">
+          <div className="bg-white p-5 rounded-lg shadow-xl w-[420px] max-h-[80vh] flex flex-col animate-fade-in">
+            <div className="flex items-center justify-between mb-3 shrink-0"><h3 className="text-base font-bold text-gray-900 flex items-center gap-2"><FolderTree size={18} className="text-blue-500" /> Select Branch</h3><button onClick={() => setIsBranchSelectOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button></div>
+            <p className="text-xs text-gray-500 mb-3 shrink-0">Choose a branch to add the template to:</p>
+            <div className="flex-1 overflow-y-auto custom-scrollbar border border-gray-200 rounded">
+              {tableData.map(row => { const per = isPersonalLevel(row.level); const sel = selectedBranchRowId === row.id; return (<div key={row.id} onClick={() => !per && setSelectedBranchRowId(row.id)} className={`flex items-center gap-2 px-3 py-2 text-xs border-b border-gray-50 transition-colors ${per ? 'opacity-30 cursor-not-allowed' : sel ? 'bg-blue-50' : 'hover:bg-gray-50 cursor-pointer'}`} style={{ paddingLeft: `${12 + row.level * 16}px` }}><input type="radio" name="branchSelect" checked={sel} disabled={per} onChange={() => !per && setSelectedBranchRowId(row.id)} className="w-3.5 h-3.5 text-blue-600 border-gray-300" /><div className="flex items-center gap-1 min-w-0">{row.level === 0 && <Box size={12} className="text-blue-500 shrink-0" />}{row.level === 1 && <span className="text-gray-400 shrink-0 leading-none">↳</span>}{row.level === 2 && <Box size={12} className="text-green-500 shrink-0" />}{row.level >= 3 && <User size={12} className="text-purple-500 shrink-0" />}<span className={`truncate ${sel ? 'font-medium text-blue-700' : 'text-gray-700'}`}>{row.name}</span></div></div>); })}
+            </div>
+            <div className="flex justify-end gap-2 mt-4 shrink-0"><button onClick={() => setIsBranchSelectOpen(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Cancel</button><button onClick={handleConfirmBranchSelect} disabled={selectedBranchRowId === null} className={`px-4 py-1.5 text-xs font-medium text-white rounded ${selectedBranchRowId === null ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Continue</button></div>
+          </div>
         </div>
       )}
 
@@ -2090,41 +2054,37 @@ const App = () => {
                     <TimelineTreeDropdown selected={selectedTimelineForUse} onSelect={setSelectedTimelineForUse} space={selectedSpaceForUse} />
                 </div>
              </div>
-              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-                {showOverrideConfirm ? (
-                  <div className="space-y-3">
-                    <div className="bg-red-50 border border-red-200 p-3 rounded shadow-sm">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
-                        <div>
-                          <h4 className="text-sm font-bold text-red-800">Override Existing OKR?</h4>
-                          <p className="text-xs text-red-700 mt-1 leading-relaxed">
-                            This timeline already has OKR data. Override will create and overwrite OKR data immediately on the selected Timeline.
-                            <strong> This action cannot be undone after confirmation.</strong>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => setShowOverrideConfirm(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Back</button>
-                      <button onClick={handleConfirmUseTemplate} className="px-4 py-1.5 text-sm text-white bg-red-600 rounded hover:bg-red-700 font-medium flex items-center gap-1"><AlertTriangle size={14} /> Confirm Override</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => setIsTimelineModalOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+               <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                  <div className="flex flex-col gap-3">
                     {(() => {
                       const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
                       const hasData = selectedSpaceForUse && selectedTimelineForUse && (okrDataMap[targetKey]?.length > 0);
                       return hasData ? (
-                        <button onClick={() => setShowOverrideConfirm(true)} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium flex items-center gap-1 ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}><AlertTriangle size={14} /> Override Template</button>
-                      ) : (
-                        <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>Apply Template</button>
-                      );
+                        <div className="bg-amber-50 border border-amber-200 p-3 rounded shadow-sm">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+                            <div>
+                              <h4 className="text-sm font-bold text-amber-800">Timeline has existing data</h4>
+                              <p className="text-xs text-amber-700 mt-1">This timeline already has OKR data. Template can only be applied to an empty timeline. Please select another timeline without data.</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null;
                     })()}
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setIsTimelineModalOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                      {(() => {
+                        const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
+                        const hasData = selectedSpaceForUse && selectedTimelineForUse && (okrDataMap[targetKey]?.length > 0);
+                        return hasData ? (
+                          <button disabled className="px-4 py-1.5 text-sm text-gray-400 bg-gray-200 border border-gray-200 rounded font-medium cursor-not-allowed">Timeline not empty</button>
+                        ) : (
+                          <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>Apply Template</button>
+                        );
+                      })()}
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
           </div>
         </div>
       )}
@@ -2216,8 +2176,8 @@ const App = () => {
                                      <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
                                        <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
                                      </button>
-                                     <Box size={13} className="text-blue-500 shrink-0" />
-                                     <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
+                                      {(() => { const il = obj.level ?? 1; if (il === 1) return <Box size={13} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={13} className="text-green-500 shrink-0" />; return <User size={13} className="text-purple-500 shrink-0" />; })()}
+                                      <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.id} - {obj.name}</span>
                                    </div>
                                    {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
                                       <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(obj, col.id, false)}</div>
@@ -2227,8 +2187,8 @@ const App = () => {
                                      <div key={kr.id} className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')}
                                           style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
                                        <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: '28px' }}>
-                                         <span className="text-gray-400 shrink-0 leading-none">↳</span>
-                                        <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
+                                          {(() => { const il = kr.level ?? 2; if (il === 1) return <Box size={13} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={13} className="text-green-500 shrink-0" />; return <User size={13} className="text-purple-500 shrink-0" />; })()}
+                                         <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.id} - {kr.name}</span>
                                       </div>
                                       {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
                                         <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(kr, col.id, true)}</div>
@@ -2382,7 +2342,7 @@ const App = () => {
                                       <div onClick={() => openNodeDetail(node, 'edit', path)} className="group py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer"
                                            style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
                                         <div className="flex items-center gap-2 truncate" style={{ paddingLeft: `${16 + (level - 1) * 24}px` }}>
-                                          {isObjective ? <Box size={14} className="text-blue-500 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0"></div>}
+                                          {(() => { const il = node.level ?? (isObjective ? 1 : 2); if (il === 1) return <Box size={14} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={14} className="text-green-500 shrink-0" />; return <User size={14} className="text-purple-500 shrink-0" />; })()}
                                           <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.id} - {node.name}</span>
                                           {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
                                         </div>
@@ -2468,7 +2428,7 @@ const App = () => {
             <p className="text-gray-600 text-sm mb-6">Progress will be lost. Are you sure you want to exit and cancel current action?</p>
             <div className="flex justify-end space-x-3">
               <button onClick={() => setConfirmCloseTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Continue</button>
-              <button onClick={confirmClose} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700">Confirm exit</button>
+              <button onClick={handleConfirmClose} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700">Confirm exit</button>
             </div>
           </div>
         </div>
@@ -3787,7 +3747,7 @@ ${exportSelectedTemplates.map(tId => {
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0">
           
           {/* --- OKR BOARD MAIN VIEW --- */}
-          {activeView === 'okr-dashboard' && (
+          {!isBranchAddMode && activeView === 'okr-dashboard' && (
             <>
               {/* Metrics Row */}
               <div className="flex space-x-3 overflow-x-auto pb-2 custom-scrollbar">
@@ -3849,10 +3809,13 @@ ${exportSelectedTemplates.map(tId => {
                       <FileText size={14} className="mr-2" /> OKR Template <ChevronDown size={14} className="ml-2" />
                     </button>
                     {isTemplateDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1">
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1">
                         {tableData.length === 0 ? (
-                          <button onClick={handleOpenAddModal} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-green-500" /> Add template</button>
+                          <button onClick={() => { setIsTemplateDropdownOpen(false); handleOpenEmptyAddTemplate(); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-green-500" /> Add template</button>
                         ) : (
+                          <button onClick={() => { setIsTemplateDropdownOpen(false); setIsBranchSelectOpen(true); setSelectedBranchRowId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-green-500" /> Add template</button>
+                        )}
+                        {tableData.length > 0 && (
                           <button onClick={handleOpenAddModal} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-orange-500" /> Override Template</button>
                         )}
                         <button onClick={handleOpenSaveModal} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><FileText size={14} className="mr-2 text-blue-500" /> Save as template</button>
@@ -3891,14 +3854,15 @@ ${exportSelectedTemplates.map(tId => {
                 <div className="min-w-[1200px]">
                   <div className="flex items-center border-b border-gray-200 bg-gray-50 py-2 px-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10">
                     <div className="w-80 flex items-center"><span>OKR</span><ArrowUp size={12} className="ml-1" /><ArrowDown size={12} /><AlignLeft size={12} className="ml-2" /></div>
-                    <div className="w-24">User</div><div className="w-24">Group</div><div className="w-24">Team</div><div className="w-24">Assign To</div><div className="w-32">Metric</div><div className="w-28">M.Name</div><div className="w-32">M.Key</div><div className="w-16">M.Unit</div><div className="w-16">Agg.Type</div><div className="w-24 text-center">Result</div><div className="w-32">Progress</div><div className="w-16 text-center">Risk</div><div className="w-12 text-center">TL</div><div className="w-12 text-center">IC+</div>
+                    <div className="w-24">User</div><div className="w-24">Group</div><div className="w-24">Team</div><div className="w-24">Assign To</div><div className="w-32">Metric</div><div className="w-28">M.Name</div><div className="w-32">M.Key</div><div className="w-16">M.Unit</div><div className="w-16">Agg.Type</div><div className="w-24 text-center">Result</div><div className="w-32">Progress</div><div className="w-16 text-center">Risk</div><div className="w-12 text-center">TL</div><div className="w-12 text-center">IC+</div><div className="w-10 text-center">Actions</div>
                   </div>
                   <div className="flex flex-col text-[11px] bg-white">
                     {tableData.length === 0 ? (
                       <div className="py-12 flex flex-col items-center justify-center text-gray-400">
                          <FolderTree size={40} className="mb-3 opacity-30" />
                          <p className="text-sm font-medium">No OKR data in this Timeline</p>
-                         <p className="text-xs mt-1">Use "Add template" button to add sample data here.</p>
+                         <p className="text-xs mt-1 mb-4">Get started by adding a template.</p>
+                         <button onClick={handleOpenEmptyAddTemplate} className="px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition shadow-sm flex items-center gap-1.5"><FileText size={14} /> Add template</button>
                       </div>
                     ) : (
                       tableData.map((row) => (
@@ -3909,7 +3873,7 @@ ${exportSelectedTemplates.map(tId => {
                               {row.level === 0 && <Box size={14} className="mr-1.5 text-blue-500 shrink-0 mt-0.5" />}
                               {row.level === 1 && <span className="text-gray-400 mr-1.5 shrink-0 mt-0.5">↳</span>}
                               {row.level === 2 && <Box size={14} className="mr-1.5 text-green-500 shrink-0 mt-0.5" />}
-                              {row.level === 3 && <Box size={14} className="mr-1.5 text-green-400 shrink-0 mt-0.5" />}
+                              {row.level === 3 && <User size={14} className="mr-1.5 text-purple-500 shrink-0 mt-0.5" />}
                               {row.level === 4 && <User size={14} className="mr-1.5 text-purple-500 shrink-0 mt-0.5" />}
                               <div className="flex flex-col">
                                 <span onClick={() => openNodeDetail({ ...row, id: row.id.toString(), description: row.subtitle, timeline: selectedPeriod, type: row.level === 0 ? 'objective' : 'kr', progress: row.progress, mName: row.mName, mKey: row.mKey, mUnit: row.mUnit }, 'edit')}
@@ -3926,6 +3890,10 @@ ${exportSelectedTemplates.map(tId => {
                           <div className="w-32 pr-4"><div className="flex justify-between items-center mb-1"><span className="text-green-600 font-medium">{row.progress}%</span><span className="text-[9px] text-gray-400">Default</span></div><div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden"><div className="bg-green-500 h-full" style={{ width: `${row.progress}%` }}></div></div></div>
                           <div className="w-16 flex flex-col items-center justify-center"><AlertTriangle size={14} className="text-red-500 mb-0.5" /><span className="text-[9px] text-gray-400">{row.risk}</span></div>
                           <div className="w-12 flex justify-center"><div className="flex items-center text-gray-500"><ArrowUp size={12} className="text-green-500 mr-0.5" />{row.tl}</div></div><div className="w-12 flex justify-center text-gray-400">-</div>
+                          <div className="w-10 flex flex-col items-center justify-center gap-0.5">
+                            <button onClick={(e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setActionDropdown({ rowId: row.id, top: r.bottom + 4, left: r.right - 208 }); }} className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-blue-600 transition-colors" title="Actions"><MoreVertical size={13} /></button>
+                            <button onClick={(e) => e.stopPropagation()} className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-green-600 transition-colors" title="Add"><Plus size={13} /></button>
+                          </div>
                         </div>
                       ))
                     )}
@@ -3933,6 +3901,46 @@ ${exportSelectedTemplates.map(tId => {
                 </div>
               </div>
             </>
+          )}
+
+          {/* --- BRANCH ADD TEMPLATE INLINE WIZARD --- */}
+          {isBranchAddMode && (
+            <div className="flex flex-col flex-1 min-h-0 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4"><div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><FolderTree size={16} /></div>
+                  <div><h2 className="text-lg font-bold text-[#1e3a8a]">{branchInfo?.isFullBoard ? 'Add template to' : 'Add Template to Branch'}</h2>
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mt-0.5">
+                      {branchInfo?.isFullBoard ? (<><span>Space: <strong className="text-blue-700">{branchInfo?.space || '...'}</strong></span><span>Timeline: <strong className="text-blue-700">{branchInfo?.period || '...'}</strong></span></>)
+                      : (<><span>Space: <strong className="text-blue-700">{branchInfo?.space || '...'}</strong></span><span>Timeline: <strong className="text-blue-700">{branchInfo?.period || '...'}</strong></span><span>Branch: <strong className="text-blue-700">{branchInfo?.nodeName || '...'}</strong></span><span>Level: <strong className="text-blue-700">{branchInfo ? getLevelCategory(branchInfo.nodeLevel) : '...'}</strong></span></>)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex border-b border-gray-100 bg-white shrink-0">
+                {[1, 2, 3].map(step => (<div key={step} className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center border-b-2 transition-colors ${branchAddStep === step ? 'border-blue-600 text-blue-600' : branchAddStep > step ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400'}`}><div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2 ${branchAddStep === step ? 'bg-blue-600 text-white' : branchAddStep > step ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>{branchAddStep > step ? <Check size={12} /> : step}</div>{step === 1 ? '1. Select Template' : step === 2 ? '2. Field Import' : '3. Review & Apply'}</div>))}
+              </div>
+              <div className="flex-1 overflow-hidden flex bg-gray-50/50">
+                <div className="w-[35%] p-4 overflow-y-auto bg-white border-r border-gray-200 custom-scrollbar relative">
+                  {branchAddStep === 1 && (<div className="space-y-3 animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Template Library</h3><div className="relative shrink-0"><input type="text" value={branchAddSearchQuery} onChange={(e) => setBranchAddSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm" /><Search size={14} className="absolute left-2.5 top-2 text-gray-400" /></div><div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pb-1 pr-1">{filteredBranchTemplates.map(t => (<div key={t.id} onClick={() => setBranchSelectedTemplateId(t.id)} className={`p-3 border rounded-md cursor-pointer ${branchSelectedTemplateId === t.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}><h4 className="font-semibold text-sm text-[#1e3a8a]">{t.title}</h4><p className="text-xs text-gray-500 mb-1">{t.desc}</p></div>))}{filteredBranchTemplates.length === 0 && (<div className="flex flex-col items-center justify-center py-8 text-gray-400"><Search size={28} className="mb-2 opacity-30" /><p className="text-sm">No matching templates</p></div>)}</div></div>)}
+                  {branchAddStep === 2 && (<div className="animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Field Selection</h3><div className="bg-gray-50 p-4 rounded border border-gray-200 flex justify-between items-center mb-4"><label className="flex items-center font-bold text-sm cursor-pointer"><input type="checkbox" checked={addSelectedFields.length === availableFields.length} onChange={() => { if (addSelectedFields.length === availableFields.length) setAddSelectedFields(['name']); else setAddSelectedFields(availableFields.map(f => f.id)); }} className="mr-3 w-4 h-4 rounded" /> Select All</label><span className="text-xs text-gray-500">{addSelectedFields.length} selected</span></div><div className="flex-1 overflow-y-auto border border-gray-200 rounded">{[...availableFields].map(f => { const c = addSelectedFields.includes(f.id); return (<div key={f.id} className="flex px-3 py-3 border-b border-gray-50"><input type="checkbox" checked={c} disabled={f.locked} onChange={() => { const s = new Set(addSelectedFields); s.has(f.id) ? s.delete(f.id) : s.add(f.id); setAddSelectedFields([...s]); }} className="mr-3 w-4 h-4 rounded" /><span className={c ? 'font-medium text-sm' : 'text-gray-400 line-through text-sm'}>{f.label}</span></div>); })}</div></div>)}
+                  {branchAddStep === 3 && (<div className="space-y-3 animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Review</h3><div className="bg-amber-50 border border-amber-200 p-2 rounded"><AlertTriangle className="text-amber-500 mr-2 inline" size={18} />{branchInfo?.isFullBoard ? 'Template will be applied to this timeline.' : 'Template will be added as sibling of the selected branch.'}</div></div>)}
+                </div>
+                <div className="w-[65%] flex flex-col h-full bg-gray-50/50 border-l border-gray-200 relative">
+                   {branchAddStep === 1 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">{branchSelectedTemplateId ? (<div className="flex-1 min-h-0">{renderPreviewTree(false, availableFields.map(f=>f.id), false, branchSelectedTemplateData?.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}</div>) : (<div className="h-full flex flex-col items-center justify-center text-gray-400"><FolderTree size={48} className="mb-3 opacity-20" /><p className="text-sm">Select a template</p></div>)}</div>)}
+                  {branchAddStep === 2 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6"><div className="mb-4 shrink-0"><span className="text-sm font-bold text-gray-700 block">Import Data Preview</span></div><div className="flex-1 min-h-0">{renderPreviewTree(true, addSelectedFields, false, branchSelectedTemplateData?.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}</div></div>)}
+                  {branchAddStep === 3 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6"><div className="mb-4 shrink-0"><span className="text-sm font-bold text-gray-700 block">Final Preview</span></div><div className="flex-1 min-h-0">{renderPreviewTree(true, addSelectedFields, true, branchSelectedTemplateData?.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}</div></div>)}
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center shrink-0">
+                <div className="text-xs text-gray-500">{branchAddStep === 2 && `${addSelectedFields.length} fields selected`}</div>
+                <div className="flex space-x-3 ml-auto">
+                  <button onClick={() => window.close()} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Cancel</button>
+                  {branchAddStep > 1 && (<button onClick={() => setBranchAddStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Back</button>)}
+                  {branchAddStep < 3 ? (<button onClick={() => { if (branchAddStep === 1 && !branchSelectedTemplateId) return; setBranchAddStep(prev => Math.min(prev + 1, 3)); }} disabled={branchAddStep === 1 && !branchSelectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium ${branchAddStep === 1 && !branchSelectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue</button>)
+                  : (<button onClick={branchInfo?.isFullBoard ? handleEmptyApplyTemplate : handleBranchApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold"><Download size={16} className="mr-2" />{branchInfo?.isFullBoard ? 'Apply to Timeline' : 'Apply to Branch'}</button>)}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* --- OKR TEMPLATES PAGE (Flow C & D & E) --- */}
@@ -4028,3 +4036,4 @@ const SubNavItem = ({ label, active, icon, isNew, onClick }) => (
 );
 
 export default App;
+
