@@ -340,7 +340,7 @@ const OKRTreePreview = ({
               </button>
             )}
             {!isObjective && <div className="w-3 shrink-0"></div>}
-            {isObjective ? (() => { if (level === 0) return <Box size={11} className="text-blue-500 shrink-0" />; if (level === 1) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (level === 2) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; })() : (
+            {isObjective ? (() => { const il = node.level ?? level + 1; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; })() : (
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
             )}
             <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : hasWarning ? 'text-amber-600' : 'text-gray-700'}`}>
@@ -1668,7 +1668,7 @@ const App = () => {
               </button>
             )}
             {!isTopLevel && <div className="w-3 shrink-0"></div>}
-            {(() => { if (level === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (level === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (level === 3) return <Box size={11} className="text-green-500 shrink-0" />; if (level >= 4) return <User size={11} className="text-purple-500 shrink-0" />; return null; })()}
+            {(() => { const il = node.level ?? level; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; if (il >= 4) return <User size={11} className="text-purple-500 shrink-0" />; return null; })()}
             <span className={`text-[11px] font-medium truncate ${showCheckboxes && !selectedIds.has(nodeId) ? 'text-gray-400' : isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
           </div>
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -2343,7 +2343,7 @@ const App = () => {
                         const collapsed = viewCollapsedObjs[nodeId];
                         const toggleNode = () => setViewCollapsedObjs(prev => ({...prev, [nodeId]: !prev[nodeId]}));
                         const indent = (depth - 1) * 14;
-                        const viewIcon = depth === 1 ? <Box size={13} className="text-blue-500 shrink-0" /> : depth === 2 ? <span className="text-gray-400 shrink-0 leading-none">↳</span> : depth === 3 ? <Box size={13} className="text-green-500 shrink-0" /> : <User size={13} className="text-purple-500 shrink-0" />;
+                        const getViewIcon = (node, d) => { const il = node.level ?? d; if (il === 1) return <Box size={13} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={13} className="text-green-500 shrink-0" />; return <User size={13} className="text-purple-500 shrink-0" />; };
                         const nameClass = depth === 1 ? 'text-xs font-semibold text-blue-600' : 'text-xs text-gray-700';
                         return (
                           <div key={nodeId}>
@@ -2356,7 +2356,7 @@ const App = () => {
                                   </button>
                                 )}
                                 {depth > 1 && <div className="w-4 shrink-0"></div>}
-                                {viewIcon}
+                                {getViewIcon(node, depth)}
                                 <span className={`${nameClass} hover:underline truncate`}>{node.name}</span>
                               </div>
                               {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
