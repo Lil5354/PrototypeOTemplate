@@ -340,7 +340,7 @@ const OKRTreePreview = ({
               </button>
             )}
             {!isObjective && <div className="w-3 shrink-0"></div>}
-            {isObjective ? (() => { const il = node.level ?? 1; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; })() : (
+            {isObjective ? (() => { const il = 1; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; return null; })() : (
               <div className="w-1 h-1 rounded-full bg-green-500 shrink-0"></div>
             )}
             <span className={`text-[11px] font-medium truncate ${isObjective ? 'text-blue-600' : hasError ? 'text-red-600' : hasDuplicate ? 'text-orange-600' : hasWarning ? 'text-amber-600' : 'text-gray-700'}`}>
@@ -1512,7 +1512,22 @@ const App = () => {
 
   
   
-  const renderImportValidationTree = (tab, visCol, onToggle, maxd, setMax) => (<div className="text-sm text-gray-500 p-4">Validation results will appear here after file upload.</div>);
+  const renderImportValidationTree = (tab, visCol, onToggle, maxd, setMax) => {
+    const allNodes = [mockImportParsedTree.objective, ...mockImportParsedTree.krs];
+    const filtered = allNodes.filter(n => { if (tab === 'all') return true; if (tab === 'errors') return n.status === 'error'; if (tab === 'warnings') return n.status === 'warning'; if (tab === 'passed') return n.status === 'valid'; return true; });
+    return (
+      <div className="space-y-1">
+        {filtered.length === 0 && <div className="text-sm text-gray-400 p-4 text-center">No results.</div>}
+        {filtered.map(n => (
+          <div key={n.id} className={`flex items-center gap-2 p-2 rounded border text-xs ${n.status === 'error' ? 'bg-red-50 border-red-200 text-red-700' : n.status === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' : n.status === 'duplicate' ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+            <div className="shrink-0">{n.status === 'valid' ? <CheckCircle2 size={14} /> : n.status === 'warning' ? <AlertTriangle size={14} /> : <XOctagon size={14} />}</div>
+            <div className="flex-1 min-w-0"><span className="font-medium truncate block">{n.name}</span></div>
+            <div className="text-right shrink-0 ml-2"><span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/80">{n.type?.toUpperCase() || 'NODE'}</span></div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const renderPreviewTree = (isStep2, currentFields, isFinalReview = false, treeData = previewTreeData, visibleColumns = DEFAULT_VISIBLE_COLUMNS, onToggleColumn = null, maximized = false, onMaximize = null, showCheckboxes = false, selectedIds = new Set(), onToggleCheckbox = null) => {
     const gridCols = getGridTemplate(visibleColumns);
@@ -1597,7 +1612,7 @@ const App = () => {
               </button>
             )}
             {!isTopLevel && <div className="w-3 shrink-0"></div>}
-            {(() => { const il = node.level ?? level; if (il === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={11} className="text-green-500 shrink-0" />; if (il >= 4) return <User size={11} className="text-purple-500 shrink-0" />; return null; })()}
+            {(() => { if (level === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (level === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (level === 3) return <Box size={11} className="text-green-500 shrink-0" />; if (level >= 4) return <User size={11} className="text-purple-500 shrink-0" />; return null; })()}
             <span className={`text-[11px] font-medium truncate ${showCheckboxes && !selectedIds.has(nodeId) ? 'text-gray-400' : isTopLevel ? 'text-blue-600' : s === 'error' ? 'text-red-600' : s === 'warning' ? 'text-amber-600' : 'text-gray-700'}`}>{node.name}</span>
           </div>
           {TREE_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
@@ -2445,7 +2460,7 @@ const App = () => {
                                       <div onClick={() => openNodeDetail(node, 'edit', path)} className="group py-2.5 px-4 hover:bg-blue-50/30 transition-colors cursor-pointer"
                                            style={{ display: 'grid', gridTemplateColumns: editGridTemplate, alignItems: 'center' }}>
                                         <div className="flex items-center gap-2 truncate" style={{ paddingLeft: `${16 + (level - 1) * 24}px` }}>
-                                          {(() => { const il = node.level ?? (isObjective ? 1 : 2); if (il === 1) return <Box size={14} className="text-blue-500 shrink-0" />; if (il === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (il === 3) return <Box size={14} className="text-green-500 shrink-0" />; return <User size={14} className="text-purple-500 shrink-0" />; })()}
+                                          {(() => { if (isObjective) return <Box size={14} className="text-blue-500 shrink-0" />; return <span className="text-gray-400 shrink-0 leading-none">↳</span>; })()}
                                           <span className={`${isObjective ? 'font-semibold text-blue-600' : 'text-gray-700'} text-[13px] line-clamp-1`}>{node.id} - {node.name}</span>
                                           {level > 1 && <span className="text-[10px] px-1 py-0.5 bg-gray-100 text-gray-500 rounded shrink-0">L{level}</span>}
                                         </div>
@@ -4025,8 +4040,76 @@ ${exportSelectedTemplates.map(tId => {
               <div className="flex-1 overflow-hidden flex bg-gray-50/50">
                 <div className="w-[35%] p-4 overflow-y-auto bg-white border-r border-gray-200 custom-scrollbar relative">
                   {branchAddStep === 1 && (<div className="space-y-3 animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Template Library</h3><div className="relative shrink-0"><input type="text" value={branchAddSearchQuery} onChange={(e) => setBranchAddSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm" /><Search size={14} className="absolute left-2.5 top-2 text-gray-400" /></div><div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pb-1 pr-1">{filteredBranchTemplates.map(t => (<div key={t.id} onClick={() => setBranchSelectedTemplateId(t.id)} className={`p-3 border rounded-md cursor-pointer ${branchSelectedTemplateId === t.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}><h4 className="font-semibold text-sm text-[#1e3a8a]">{t.title}</h4><p className="text-xs text-gray-500 mb-1">{t.desc}</p></div>))}{filteredBranchTemplates.length === 0 && (<div className="flex flex-col items-center justify-center py-8 text-gray-400"><Search size={28} className="mb-2 opacity-30" /><p className="text-sm">No matching templates</p></div>)}</div></div>)}
-                  {branchAddStep === 2 && (<div className="animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Field Selection</h3><div className="bg-gray-50 p-4 rounded border border-gray-200 flex justify-between items-center mb-4"><label className="flex items-center font-bold text-sm cursor-pointer"><input type="checkbox" checked={addSelectedFields.length === availableFields.length} onChange={() => { if (addSelectedFields.length === availableFields.length) setAddSelectedFields(['name']); else setAddSelectedFields(availableFields.map(f => f.id)); }} className="mr-3 w-4 h-4 rounded" /> Select All</label><span className="text-xs text-gray-500">{addSelectedFields.length} selected</span></div><div className="flex-1 overflow-y-auto border border-gray-200 rounded">{[...availableFields].map(f => { const c = addSelectedFields.includes(f.id); return (<div key={f.id} className="flex px-3 py-3 border-b border-gray-50"><input type="checkbox" checked={c} disabled={f.locked} onChange={() => { const s = new Set(addSelectedFields); s.has(f.id) ? s.delete(f.id) : s.add(f.id); setAddSelectedFields([...s]); }} className="mr-3 w-4 h-4 rounded" /><span className={c ? 'font-medium text-sm' : 'text-gray-400 line-through text-sm'}>{f.label}</span></div>); })}</div></div>)}
-                  {branchAddStep === 3 && (<div className="space-y-3 animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Review</h3><div className="bg-amber-50 border border-amber-200 p-2 rounded"><AlertTriangle className="text-amber-500 mr-2 inline" size={18} />{branchInfo?.isFullBoard ? 'Template will be applied to this timeline.' : 'Template will be added as sibling of the selected branch.'}</div></div>)}
+                   {branchAddStep === 2 && (<div className="animate-fade-in flex flex-col h-full">
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4 shrink-0">Field Import Selection</h3>
+                    <div className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center mb-4 shrink-0">
+                      <label className="flex items-center font-bold text-sm text-gray-800 cursor-pointer">
+                        <input type="checkbox" checked={addSelectedFields.length === availableFields.length} onChange={() => { if (addSelectedFields.length === availableFields.length) setAddSelectedFields(['name']); else setAddSelectedFields(availableFields.map(f => f.id)); }} className="mr-3 w-4 h-4 text-blue-600 rounded border-gray-300" />
+                        Select All Fields
+                      </label>
+                      <span className="text-xs text-gray-500">{addSelectedFields.length} selected</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto border border-gray-200 rounded custom-scrollbar min-h-[200px]">
+                      <div className="flex px-3 py-2 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200">
+                        <div className="w-1/3">Field Name</div>
+                        <div className="w-2/3">Description</div>
+                      </div>
+                      {availableFields.map(field => {
+                        const isChecked = addSelectedFields.includes(field.id);
+                        return (
+                          <div key={field.id} className="flex px-3 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
+                            <div className="w-1/3 flex items-start">
+                              <input type="checkbox" checked={isChecked} disabled={field.locked} onChange={() => { const s = new Set(addSelectedFields); s.has(field.id) ? s.delete(field.id) : s.add(field.id); setAddSelectedFields([...s]); }} className={`mt-1 mr-3 w-4 h-4 rounded border-gray-300 ${field.locked ? 'text-gray-400' : 'text-blue-600 cursor-pointer'}`} />
+                              <div>
+                                <span className="font-medium text-sm text-gray-800">{field.label}</span>
+                                <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600">{field.type === 'number' ? 'num' : field.type}</span>
+                              </div>
+                            </div>
+                            <div className="w-2/3 flex flex-col justify-center">
+                              <span className={`text-sm ${isChecked ? 'text-gray-600' : 'text-gray-400 line-through'}`}>{field.desc}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({addSelectedFields.length}):</span>
+                        {addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null; })}
+                      </div>
+                      {addSelectedFields.length < availableFields.length && (
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - addSelectedFields.length}):</span>
+                          {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>)}
+                   {branchAddStep === 3 && (<div className="space-y-3 animate-fade-in flex flex-col h-full">
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Review Summary</h3>
+                    {branchInfo?.isFullBoard ? (
+                      <div className="bg-amber-50 border border-amber-200 p-2 rounded shrink-0"><div className="flex items-start"><AlertTriangle className="text-amber-500 mr-2 shrink-0 mt-0.5" size={18} /><p className="text-xs text-amber-700 leading-relaxed">Template will be applied to this timeline.</p></div></div>
+                    ) : (
+                      <div className="bg-red-50 border border-red-200 p-2 rounded shrink-0"><div className="flex items-start"><AlertTriangle className="text-red-500 mr-2 shrink-0 mt-0.5" size={18} /><div><h4 className="text-sm font-bold text-red-800">Important Warning</h4><p className="text-xs text-red-700 mt-1 leading-relaxed">Template will be added as sibling of the selected branch. <strong>This action cannot be undone.</strong></p></div></div></div>
+                    )}
+                    <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                      <div className="bg-blue-50/50 p-2 rounded-md border border-blue-100">
+                        <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context</span>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {branchInfo?.space || '...'}</div>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {branchInfo?.period || '...'}</div>
+                        {!branchInfo?.isFullBoard && <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Branch:</span> {branchInfo?.nodeName || '...'}</div>}
+                      </div>
+                      <div><span className="text-xs text-gray-500 block mb-1">Template Selected</span><div className="font-medium text-gray-900 border border-gray-200 px-3 py-2 rounded bg-gray-50">{branchSelectedTemplateData?.title || 'None'}</div></div>
+                      <div>
+                        <span className="text-xs text-gray-500 block mb-1">Fields Configuration</span>
+                        <div className="text-sm mb-1 text-gray-700"><span className="font-medium text-blue-600">{addSelectedFields.length}</span> field(s) mapped from template.</div>
+                        <div className="mt-2 space-y-2">
+                          <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700"><span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="px-1.5 py-0.5 bg-white border border-green-200 rounded text-[10px] text-green-700">{f.label}</span> : null; })}</div></div>
+                          {addSelectedFields.length < availableFields.length && <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700"><span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields using default values ({availableFields.length - addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="px-1.5 py-0.5 bg-white border border-orange-200 rounded text-[10px] text-orange-600">{f.label}</span>)}</div></div>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>)}
                 </div>
                 <div className="w-[65%] flex flex-col h-full bg-gray-50/50 border-l border-gray-200 relative">
                    {branchAddStep === 1 && (<div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">{branchSelectedTemplateId ? (<div className="flex-1 min-h-0">{renderPreviewTree(false, availableFields.map(f=>f.id), false, branchSelectedTemplateData?.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}</div>) : (<div className="h-full flex flex-col items-center justify-center text-gray-400"><FolderTree size={48} className="mb-3 opacity-20" /><p className="text-sm">Select a template</p></div>)}</div>)}
