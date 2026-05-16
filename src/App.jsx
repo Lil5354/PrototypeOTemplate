@@ -1004,11 +1004,8 @@ const App = () => {
         finalTitle = `${finalTitle}_(1)`;
       }
       const hasSelectedDesc = (node) => saveAsSelectedNodeIds.has(node.id) || (node.children && node.children.some(c => hasSelectedDesc(c)));
-      const countSelected = (nodes) => nodes.reduce((s, n) => s + 1 + (n.children ? countSelected(n.children) : 0), 0);
       const filterTree = (nodes) => nodes.filter(n => hasSelectedDesc(n)).map(n => ({ ...n, children: n.children ? filterTree(n.children) : [] }));
       const savedTree = filterTree(saveAsTreeData);
-      const savedCount = countSelected(savedTree);
-      console.log('=== SAVE AS DEBUG ===', { selectedCount: saveAsSelectedNodeIds.size, savedCount, saveAsSelectedNodeIds: [...saveAsSelectedNodeIds], savedTree });
       const newTemplate = {
         id: Date.now(),
         title: finalTitle,
@@ -2212,7 +2209,6 @@ const App = () => {
       {/* --- C1: VIEW TEMPLATE MODAL --- */}
       {viewTarget && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
-          {(() => { console.log('=== VIEW TEMPLATE ===', { title: viewTarget.title, treeLength: viewTarget.tree?.length, treeData: JSON.parse(JSON.stringify(viewTarget.tree)) }); return null; })()}
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden relative">
             <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div className="flex items-center">
@@ -2265,62 +2261,42 @@ const App = () => {
                           </div>
                         </div>
                       );
-                     const viewTreeRows = (
-                       <div className="divide-y divide-gray-100">
-                         {viewTarget.tree.map((obj) => {
-                           const objCollapsed = viewCollapsedObjs[obj.id];
-                           const toggleViewObj = () => setViewCollapsedObjs(prev => ({...prev, [obj.id]: !prev[obj.id]}));
-                            const renderCell = (node, colId, isKr = false) => {
-                              if (colId === 'description') return <span className="truncate text-[12px]">{node.description || 'Default'}</span>;
-                              if (colId === 'user') return <span className="truncate text-[12px]">{node.user || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'group') return <span className="truncate text-[12px]">{node.group || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'team') return <span className="truncate text-[12px]">{node.team || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'assign_to') return <span className="truncate text-[12px]">{node.assign || node.user || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'metric') return <span className="truncate text-[12px]">{node.metric || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'metric_name') return <span className="truncate text-[12px]">{node.mName || node.metricName || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'metric_key') return <span className="truncate text-[12px]">{node.mKey || node.metricKey || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'metric_unit') return <span className="truncate text-[12px]">{node.mUnit || node.metricUnit || <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'agg') return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{node.agg || 'SUM'}</span>;
-                              if (colId === 'result') return <span className="truncate text-[12px]">{node.result ?? <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'progress') return <span className="text-[12px] font-medium text-green-600">{isKr ? (node.progress || 'Default') : <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'risk_level') return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
-                              if (colId === 'timeline') return <span className="truncate text-[12px]">{isKr ? (node.timeline || <span className="text-gray-300">Default</span>) : <span className="text-gray-300">Default</span>}</span>;
-                              if (colId === 'timeline_view_metric') return <span className="text-gray-400 italic text-[12px]">Default</span>;
-                              if (colId === 'status') return <div className="flex justify-center"><CheckCircle2 size={14} className="inline text-green-600" /></div>;
-                              return null;
-                            };
-                           return (
-                             <div key={obj.id}>
-                                <div className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => openNodeDetail(obj, 'view')}
-                                     style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
-                                  <div className="flex items-center gap-1.5 truncate">
-                                      <button onClick={(e) => { e.stopPropagation(); toggleViewObj(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
-                                        <ChevronRight size={12} className={`text-gray-400 transition-transform ${objCollapsed ? '' : 'rotate-90'}`} />
-                                      </button>
-                                       <Box size={13} className="text-blue-500 shrink-0" />
-                                       <span className="text-xs font-semibold text-blue-600 hover:underline truncate">{obj.name}</span>
-                                   </div>
-                                   {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
-                                      <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(obj, col.id, false)}</div>
-                                    ))}
-                                   </div>
-                                  {!objCollapsed && obj.children && obj.children.map(kr => (
-                                     <div key={kr.id} className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(kr, 'view')}
-                                          style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
-                                        <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: '28px' }}>
-                                           <span className="text-gray-400 shrink-0 leading-none">↳</span>
-                                          <span className="text-xs text-gray-700 hover:text-blue-600 hover:underline truncate">{kr.name}</span>
-                                      </div>
-                                      {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
-                                        <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>{renderCell(kr, col.id, true)}</div>
-                                     ))}
-                                   </div>
-                                ))}
+                      const renderViewTreeNode = (node, depth) => {
+                        const nodeId = node.id || `vn${depth}`;
+                        const collapsed = viewCollapsedObjs[nodeId];
+                        const toggleNode = () => setViewCollapsedObjs(prev => ({...prev, [nodeId]: !prev[nodeId]}));
+                        const indent = (depth - 1) * 14;
+                        const viewIcon = depth === 1 ? <Box size={13} className="text-blue-500 shrink-0" /> : depth === 2 ? <span className="text-gray-400 shrink-0 leading-none">↳</span> : depth === 3 ? <Box size={13} className="text-green-500 shrink-0" /> : <User size={13} className="text-purple-500 shrink-0" />;
+                        const nameClass = depth === 1 ? 'text-xs font-semibold text-blue-600' : 'text-xs text-gray-700';
+                        return (
+                          <div key={nodeId}>
+                            <div className="py-2 px-3 hover:bg-blue-50/30 transition-colors cursor-pointer border-t border-gray-50" onClick={() => openNodeDetail(node, 'view')}
+                                 style={{ display: 'grid', gridTemplateColumns: viewGridCols, alignItems: 'center' }}>
+                              <div className="flex items-center gap-1.5 truncate" style={{ paddingLeft: `${indent}px` }}>
+                                {depth === 1 && (
+                                  <button onClick={(e) => { e.stopPropagation(); toggleNode(); }} className="p-0.5 hover:bg-gray-200 rounded shrink-0">
+                                    <ChevronRight size={12} className={`text-gray-400 transition-transform ${collapsed ? '' : 'rotate-90'}`} />
+                                  </button>
+                                )}
+                                {depth > 1 && <div className="w-4 shrink-0"></div>}
+                                {viewIcon}
+                                <span className={`${nameClass} hover:underline truncate`}>{node.name}</span>
                               </div>
-                            );
-                         })}
-                       </div>
-                     );
+                              {TREE_COLUMNS.filter(c => viewTreeVisibleColumns.includes(c.id)).map(col => (
+                                <div key={col.id} className={`px-1.5 ${isCenteredCol(col.id) ? 'text-center' : 'text-left'} overflow-hidden truncate`}>
+                                  <span className="truncate text-[12px]">{node[col.id] || node.description || 'Default'}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {!collapsed && node.children && node.children.map(c => renderViewTreeNode(c, depth + 1))}
+                          </div>
+                        );
+                      };
+                      const viewTreeRows = (
+                        <div className="divide-y divide-gray-100">
+                          {viewTarget.tree.map(n => renderViewTreeNode(n, 1))}
+                        </div>
+                      );
                      const treeContent = (
                        <div className="min-w-[500px]">
                          {viewTreeHeader}
