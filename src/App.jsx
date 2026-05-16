@@ -636,6 +636,7 @@ const App = () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const isBranchAddMode = urlParams.get('branchAddTemplate') === 'true';
+  const isSaveAsMode = urlParams.get('saveAsTemplate') === 'true';
   const [branchInfo, setBranchInfo] = useState(null);
   const [branchAddStep, setBranchAddStep] = useState(1);
   const [branchSelectedTemplateId, setBranchSelectedTemplateId] = useState(null);
@@ -645,6 +646,14 @@ const App = () => {
   const handleBranchDuplicateForce = () => { setBranchDuplicateConfirm({ ...branchDuplicateConfirm, force: true }); setTimeout(() => handleBranchApplyTemplate(), 0); };
 
   const redirectClean = () => { window.location.href = window.location.origin + window.location.pathname; };
+  const navigateView = (view) => {
+    if (isBranchAddMode || isSaveAsMode) {
+      try { sessionStorage.setItem('redirectView', view); } catch(e) {}
+      redirectClean();
+    } else {
+      setActiveView(view);
+    }
+  };
 
   const currentContext = { timeline: selectedPeriod, space: selectedSpace };
   const tableData = okrDataMap[`${selectedSpace}|${selectedYear}|${selectedPeriod}`] || [];
@@ -737,13 +746,19 @@ const App = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // --- STATES FLOW A & B ---
+  // --- STATES FLOW A & A' (save-as tab) ---
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveStep, setSaveStep] = useState(1);
   const [formData, setFormData] = useState({ title: '', description: '', domain: '', tags: '' });
   const [formErrors, setFormErrors] = useState({});
   const [selectedFields, setSelectedFields] = useState(availableFields.map(f => f.id));
   const [savePreviewVisibleColumns, setSavePreviewVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
+  const [saveAsStep, setSaveAsStep] = useState(1);
+  const [saveAsSelectedNodeIds, setSaveAsSelectedNodeIds] = useState(new Set());
+  const [saveAsFormData, setSaveAsFormData] = useState({ title: '', description: '', domain: '', tags: '' });
+  const [saveAsFormErrors, setSaveAsFormErrors] = useState({});
+  const [saveAsSelectedFields, setSaveAsSelectedFields] = useState(availableFields.map(f => f.id));
+  const [saveAsPreviewVisibleColumns, setSaveAsPreviewVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
   const [previewCollapsed, setPreviewCollapsed] = useState({});
   const [previewMaximized, setPreviewMaximized] = useState(false);
   const [importValidationCollapsed, setImportValidationCollapsed] = useState({});
@@ -849,12 +864,11 @@ const App = () => {
       triggerToast('No OKR data to save. Please create OKR first.', 'error');
       return;
     }
-    setIsSaveModalOpen(true);
-    setSaveStep(1);
-    setFormData({ title: '', description: '', domain: '', tags: '' });
-    setFormErrors({});
-    setSelectedFields(availableFields.map(f => f.id)); 
-    setSavePreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    try {
+      const saveCtx = { space: selectedSpace, year: selectedYear, period: selectedPeriod, tableData };
+      localStorage.setItem('saveAsTemplate', JSON.stringify(saveCtx));
+    } catch (e) { triggerToast('Failed to open save template.', 'error'); return; }
+    window.open(window.location.origin + window.location.pathname + '?saveAsTemplate=true', '_blank');
   };
 
   const handleNextSaveStep = () => {
@@ -906,6 +920,97 @@ const App = () => {
     setTitleDupTarget(null);
     triggerToast('Template saved successfully.');
     setActiveView('okr-template');
+    } catch (err) {
+      triggerToast('An error occurred while saving. Please try again.', 'error');
+    }
+  };
+
+  // --- HANDLERS: FLOW A' (SAVE AS TAB) ---
+  const [saveAsTreeData, setSaveAsTreeData] = useState([]);
+  useEffect(() => {
+    if (isSaveAsMode) {
+      try {
+        const s = localStorage.getItem('saveAsTemplate');
+        if (s) {
+          const ctx = JSON.parse(s);
+          const tree = tableToTreeArray(ctx.tableData || []);
+          setSaveAsTreeData(tree);
+          setSaveAsSelectedNodeIds(new Set(tree.map(n => n.id)));
+        }
+      } catch (e) {}
+    }
+  }, [isSaveAsMode]);
+
+  const getAllDescendantIds = (nodes) => {
+    const ids = [];
+    const walk = (list) => { list.forEach(n => { ids.push(n.id); if (n.children) walk(n.children); }); };
+    walk(nodes);
+    return ids;
+  };
+
+  const findTreeNode = (nodes, id) => { for (const n of nodes) { if (n.id === id) return n; if (n.children) { const f = findTreeNode(n.children, id); if (f) return f; } } return null; };
+
+  const handleSaveAsToggleNode = (nodeId) => {
+    setSaveAsSelectedNodeIds(prev => {
+      const next = new Set(prev);
+      const node = findTreeNode(saveAsTreeData, nodeId);
+      if (!node) return prev;
+      const all = getAllDescendantIds([node]);
+      if (prev.has(nodeId)) all.forEach(id => next.delete(id));
+      else all.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const handleSaveAsSelectAll = () => {
+    setSaveAsSelectedNodeIds(new Set(getAllDescendantIds(saveAsTreeData)));
+  };
+
+  const handleSaveAsDeselectAll = () => {
+    setSaveAsSelectedNodeIds(new Set());
+  };
+
+  const handleNextSaveAsStep = () => {
+    if (saveAsStep === 1) {
+      if (!saveAsFormData.title.trim()) {
+        setSaveAsFormErrors({ title: 'Please enter template name.' });
+        return;
+      }
+      if (saveAsSelectedNodeIds.size === 0) {
+        triggerToast('Please select at least one OKR node to save.', 'error');
+        return;
+      }
+      setSaveAsFormErrors({});
+    }
+    setSaveAsStep(prev => Math.min(prev + 1, 3));
+  };
+
+  const toggleSaveAsField = (fieldId) => {
+    if (fieldId === 'name') return;
+    setSaveAsSelectedFields(prev => prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]);
+  };
+
+  const handleSaveAsSubmit = () => {
+    try {
+      const newTags = saveAsFormData.tags ? saveAsFormData.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+      if (saveAsFormData.domain) newTags.unshift(saveAsFormData.domain);
+      let finalTitle = saveAsFormData.title;
+      if (templateList.some(t => t.title === finalTitle)) {
+        finalTitle = `${finalTitle}_(1)`;
+      }
+      const filterTree = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterTree(n.children) : [] }));
+      const newTemplate = {
+        id: Date.now(),
+        title: finalTitle,
+        desc: saveAsFormData.description,
+        tags: newTags,
+        creator: 'Current User',
+        date: new Date().toISOString().split('T')[0],
+        tree: filterTree(saveAsTreeData)
+      };
+      setTemplateList([newTemplate, ...templateList]);
+      triggerToast('Template saved successfully from branch view.');
+      window.close();
     } catch (err) {
       triggerToast('An error occurred while saving. Please try again.', 'error');
     }
@@ -3699,8 +3804,8 @@ ${exportSelectedTemplates.map(tId => {
             <div className="flex flex-col pb-2">
               <SubNavItem label="OKR Dashboard" icon={<LayoutDashboard size={14} />} />
               <SubNavItem label="My OKR" icon={<User size={14} />} />
-              <SubNavItem label="OKR" active={activeView === 'okr-dashboard'} icon={<BarChart2 size={14} />} onClick={() => setActiveView('okr-dashboard')} />
-              <SubNavItem label="OKR Template" isNew active={activeView === 'okr-template'} icon={<FileText size={14} />} onClick={() => setActiveView('okr-template')} />
+              <SubNavItem label="OKR" active={activeView === 'okr-dashboard'} icon={<BarChart2 size={14} />} onClick={() => navigateView('okr-dashboard')} />
+              <SubNavItem label="OKR Template" isNew active={activeView === 'okr-template'} icon={<FileText size={14} />} onClick={() => navigateView('okr-template')} />
               <SubNavItem label="OKR Settings" icon={<Settings size={14} />} />
             </div>
           </div>
@@ -3938,6 +4043,208 @@ ${exportSelectedTemplates.map(tId => {
                   {branchAddStep > 1 && (<button onClick={() => setBranchAddStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Back</button>)}
                   {branchAddStep < 3 ? (<button onClick={() => { if (branchAddStep === 1 && !branchSelectedTemplateId) return; setBranchAddStep(prev => Math.min(prev + 1, 3)); }} disabled={branchAddStep === 1 && !branchSelectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium ${branchAddStep === 1 && !branchSelectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue</button>)
                   : (<button onClick={branchInfo?.isFullBoard ? handleEmptyApplyTemplate : handleBranchApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold"><Download size={16} className="mr-2" />{branchInfo?.isFullBoard ? 'Apply to Timeline' : 'Apply to Branch'}</button>)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- SAVE AS TEMPLATE PAGE (Flow A') --- */}
+          {isSaveAsMode && (
+            <div className="flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-4 flex-1 min-h-0">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
+                <button onClick={() => window.close()} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-200 rounded-md" title="Close">
+                  <X size={20} />
+                </button>
+                <div>
+                  <h2 className="text-lg font-bold text-[#1e3a8a]">Save as Template</h2>
+                  <p className="text-xs text-gray-500">Select OKR nodes to create a reusable template</p>
+                </div>
+              </div>
+              <div className="flex border-b border-gray-100 bg-white shrink-0">
+                {[1, 2, 3].map(step => (
+                  <div key={step} className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center border-b-2 transition-colors ${saveAsStep === step ? 'border-blue-600 text-blue-600' : saveAsStep > step ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400'}`}>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2 ${saveAsStep === step ? 'bg-blue-600 text-white' : saveAsStep > step ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>{saveAsStep > step ? <Check size={12} /> : step}</div>
+                    {step === 1 ? '1. Select Nodes' : step === 2 ? '2. Field Selection' : '3. Review & Confirm'}
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1 overflow-hidden flex bg-gray-50/50">
+                <div className="w-[35%] p-4 overflow-y-auto bg-white border-r border-gray-200 custom-scrollbar relative">
+                  {saveAsStep === 1 && (
+                    <div className="animate-fade-in flex flex-col h-full">
+                      <div className="mb-3 shrink-0 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">OKR Node Selection</h3>
+                        <span className="text-xs text-gray-500">{saveAsSelectedNodeIds.size} selected</span>
+                      </div>
+                      <div className="shrink-0 flex gap-2 mb-3">
+                        <button onClick={handleSaveAsSelectAll} className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100">Select All</button>
+                        <button onClick={handleSaveAsDeselectAll} className="px-3 py-1 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 rounded hover:bg-gray-100">Deselect All</button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-0.5 border border-gray-200 rounded p-1">
+                        {(() => {
+                          const renderNodeCheckbox = (node, depth) => {
+                            const checked = saveAsSelectedNodeIds.has(node.id);
+                            return (
+                              <div key={node.id}>
+                                <div className="flex items-center gap-2 py-1.5 px-1 hover:bg-gray-50 rounded cursor-pointer" style={{ paddingLeft: `${12 + depth * 20}px` }} onClick={() => handleSaveAsToggleNode(node.id)}>
+                                  <input type="checkbox" checked={checked} readOnly className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 cursor-pointer" />
+                                  <span className={`text-xs truncate ${checked ? 'font-medium text-gray-800' : 'text-gray-400'}`}>{node.name}</span>
+                                  {node.type === 'objective' && <span className="text-[9px] px-1 py-0.5 rounded bg-blue-50 text-blue-500 ml-auto shrink-0">OBJ</span>}
+                                  {node.type === 'kr' && <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 text-purple-500 ml-auto shrink-0">KR</span>}
+                                </div>
+                                {node.children && node.children.map(c => renderNodeCheckbox(c, depth + 1))}
+                              </div>
+                            );
+                          };
+                          return saveAsTreeData.map(n => renderNodeCheckbox(n, 0));
+                        })()}
+                        {saveAsTreeData.length === 0 && <div className="p-4 text-center text-gray-400 text-sm">No OKR data available.</div>}
+                      </div>
+                      <div className="mt-2 shrink-0 text-[10px] text-gray-400 text-center">Select parent → children auto-selected. Uncheck individual child if needed.</div>
+                    </div>
+                  )}
+                  {saveAsStep === 2 && (
+                    <div className="animate-fade-in flex flex-col h-full">
+                      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4 shrink-0">Field Selection</h3>
+                      <div className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center mb-4 shrink-0">
+                        <label className="flex items-center font-medium text-sm text-gray-800 cursor-pointer">
+                          <input type="checkbox" checked={saveAsSelectedFields.length === availableFields.length} onChange={() => { if (saveAsSelectedFields.length === availableFields.length) setSaveAsSelectedFields(['name']); else setSaveAsSelectedFields(availableFields.map(f => f.id)); }} className="mr-3 w-4 h-4 text-blue-600 rounded border-gray-300" />
+                          Select All Fields
+                        </label>
+                        <span className="text-xs text-gray-500">{saveAsSelectedFields.length} selected</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto border border-gray-200 rounded custom-scrollbar min-h-[200px]">
+                        <div className="flex px-2 py-2 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200">
+                          <div className="w-1/3">Field Name</div>
+                          <div className="w-2/3">Description</div>
+                        </div>
+                        {availableFields.map(field => {
+                          const isChecked = saveAsSelectedFields.includes(field.id);
+                          return (
+                            <div key={field.id} className="flex px-2 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
+                              <div className="w-1/3 flex items-start">
+                                <input type="checkbox" checked={isChecked} disabled={field.locked} onChange={() => toggleSaveAsField(field.id)} className={`mt-1 mr-3 w-4 h-4 rounded border-gray-300 ${field.locked ? 'text-gray-400' : 'text-blue-600 cursor-pointer'}`} />
+                                <div><span className="font-medium text-sm text-gray-800">{field.label}</span></div>
+                              </div>
+                              <div className="w-2/3 flex flex-col justify-center"><span className={`text-sm ${isChecked ? 'text-gray-600' : 'text-gray-400 line-through'}`}>{field.desc}</span></div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({saveAsSelectedFields.length}):</span>
+                          {availableFields.filter(f => saveAsSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span>)}
+                        </div>
+                        {saveAsSelectedFields.length < availableFields.length && (
+                          <div className="flex flex-wrap gap-1 text-xs">
+                            <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - saveAsSelectedFields.length}):</span>
+                            {availableFields.filter(f => !saveAsSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {saveAsStep === 3 && (
+                    <div className="space-y-4 animate-fade-in">
+                      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1">Review Summary</h3>
+                      <div className="space-y-2">
+                        <div><span className="text-xs text-gray-500 block mb-0.5">Template Title</span><div className="font-medium text-gray-900">{saveAsFormData.title}</div></div>
+                        <div><span className="text-xs text-gray-500 block mb-0.5">Description</span><div className="text-sm text-gray-700">{saveAsFormData.description || <span className="text-gray-400 italic">No description</span>}</div></div>
+                        <div>
+                          <span className="text-xs text-gray-500 block mb-1">Nodes Selected</span>
+                          <div className="text-sm font-medium text-blue-600">{saveAsSelectedNodeIds.size} node(s)</div>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-500 block mb-1">Fields Mapped</span>
+                          <div className="text-sm"><span className="font-medium text-blue-600">{saveAsSelectedFields.length}</span> out of {availableFields.length} fields.</div>
+                          <div className="mt-2 space-y-2">
+                            {saveAsSelectedFields.length > 0 && (
+                              <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                                <span className="font-semibold flex items-center mb-1"><Check size={12} className="mr-1"/> Selected ({saveAsSelectedFields.length}):</span>
+                                <div className="flex flex-wrap gap-1">{availableFields.filter(f => saveAsSelectedFields.includes(f.id)).map(f => <span key={f.id} className="bg-white px-1 py-0.5 rounded border border-green-200 text-green-700">{f.label}</span>)}</div>
+                              </div>
+                            )}
+                            {saveAsSelectedFields.length < availableFields.length && (
+                              <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
+                                <span className="font-semibold flex items-center mb-1"><AlertTriangle size={12} className="mr-1"/> Not selected ({availableFields.length - saveAsSelectedFields.length}):</span>
+                                <div className="flex flex-wrap gap-1">{availableFields.filter(f => !saveAsSelectedFields.includes(f.id)).map(f => <span key={f.id} className="bg-white px-1 py-0.5 rounded border border-orange-200 text-orange-700">{f.label}</span>)}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="w-[65%] flex flex-col h-full bg-gray-50/50 border-l border-gray-200 relative">
+                  {saveAsStep === 1 && (
+                    <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                      <div className="mb-4 shrink-0 space-y-3">
+                        <div><label className="block text-xs font-bold text-gray-700 mb-0.5">Title <span className="text-red-500">*</span></label>
+                          <input type="text" maxLength={120} value={saveAsFormData.title} onChange={(e) => { setSaveAsFormData({...saveAsFormData, title: e.target.value}); if(e.target.value) setSaveAsFormErrors({...saveAsFormErrors, title: null}); }} placeholder="e.g., Q3 Sales Team Template" className={`w-full p-2 border ${saveAsFormErrors.title ? 'border-red-500' : 'border-gray-300'} rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500`} />
+                          {saveAsFormErrors.title && <p className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{saveAsFormErrors.title}</p>}
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-1"><label className="block text-xs font-bold text-gray-700 mb-0.5">Description</label><textarea value={saveAsFormData.description} onChange={(e) => setSaveAsFormData({...saveAsFormData, description: e.target.value})} placeholder="Describe the purpose..." className="w-full p-2 border border-gray-300 rounded-md text-sm h-16 focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                          <div className="w-40"><label className="block text-xs font-bold text-gray-700 mb-0.5">Domain</label><input type="text" value={saveAsFormData.domain} onChange={(e) => setSaveAsFormData({...saveAsFormData, domain: e.target.value})} placeholder="e.g., Engineering" className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                        </div>
+                        <div><label className="block text-xs font-bold text-gray-700 mb-0.5">Tags (Comma separated)</label><input type="text" value={saveAsFormData.tags} onChange={(e) => setSaveAsFormData({...saveAsFormData, tags: e.target.value})} placeholder="e.g., Sales, Quarterly" className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" /></div>
+                      </div>
+                      <div className="flex items-center justify-between shrink-0 mb-2">
+                        <span className="text-xs font-medium text-gray-600">Preview ({saveAsSelectedNodeIds.size} nodes selected)</span>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        {(() => {
+                          const filterSelected = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterSelected(n.children) : [] }));
+                          return renderPreviewTree(false, saveAsSelectedFields, false, filterSelected(saveAsTreeData), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                  {saveAsStep === 2 && (
+                    <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                      <div className="mb-4 shrink-0">
+                        <span className="text-sm font-medium text-gray-700 block">Field Preview</span>
+                        <span className="text-xs text-gray-500">Live preview of how fields affect the template.</span>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        {(() => {
+                          const filterSelected = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterSelected(n.children) : [] }));
+                          return renderPreviewTree(true, saveAsSelectedFields, false, filterSelected(saveAsTreeData), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                  {saveAsStep === 3 && (
+                    <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                      <div className="mb-4 flex items-center shrink-0">
+                        <CheckSquare size={16} className="text-green-500 mr-2" />
+                        <span className="text-sm font-medium text-gray-700">Final Template Structure</span>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        {(() => {
+                          const filterSelected = (nodes) => nodes.filter(n => saveAsSelectedNodeIds.has(n.id)).map(n => ({ ...n, children: n.children ? filterSelected(n.children) : [] }));
+                          return renderPreviewTree(true, saveAsSelectedFields, false, filterSelected(saveAsTreeData), saveAsPreviewVisibleColumns, (c) => setSaveAsPreviewVisibleColumns(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]), false, null);
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center shrink-0">
+                <div className="text-xs text-gray-500">
+                  {saveAsStep === 1 && `${saveAsSelectedNodeIds.size} nodes selected`}
+                  {saveAsStep === 2 && `${saveAsSelectedFields.length} of ${availableFields.length} fields selected`}
+                </div>
+                <div className="flex space-x-3 ml-auto">
+                  <button onClick={() => window.close()} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
+                  {saveAsStep > 1 && (<button onClick={() => setSaveAsStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition">Back</button>)}
+                  {saveAsStep < 3 ? (
+                    <button onClick={handleNextSaveAsStep} disabled={saveAsStep === 1 && (saveAsSelectedNodeIds.size === 0 || !saveAsFormData.title.trim())} className={`px-4 py-2 rounded-md text-sm font-medium transition shadow-sm ${saveAsStep === 1 && (saveAsSelectedNodeIds.size === 0 || !saveAsFormData.title.trim()) ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white hover:bg-blue-700'}`}>Continue</button>
+                  ) : (
+                    <button onClick={handleSaveAsSubmit} className="px-6 py-2 bg-[#16a34a] text-white rounded-md text-sm font-bold hover:bg-green-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Save Template</button>
+                  )}
                 </div>
               </div>
             </div>
