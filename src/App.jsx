@@ -577,7 +577,6 @@ const TimelineTreeDropdown = ({ selected, onSelect, space }) => {
 };
 
 const App = () => {
-  const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
   const [activeView, setActiveView] = useState('okr-dashboard');
   useEffect(() => { try { const p = new URLSearchParams(window.location.search); const v = p.get('view'); if (v && ['okr-dashboard','okr-template'].includes(v)) { setActiveView(v); window.history.replaceState({}, '', window.location.pathname); } } catch(e) {} }, []);
   
@@ -866,7 +865,6 @@ const App = () => {
 
   // --- HANDLERS: FLOW A (SAVE AS TEMPLATE) ---
   const handleOpenSaveModal = () => {
-    setIsTemplateDropdownOpen(false);
     if (tableData.length === 0) {
       triggerToast('No OKR data to save. Please create OKR first.', 'error');
       return;
@@ -3983,24 +3981,10 @@ ${exportSelectedTemplates.map(tId => {
                 
                 {/* Right Side */}
                 <div className="flex items-end space-x-4">
-                  <div className="flex flex-col relative pb-0.5" style={{zIndex: 25}}>
-                    <span className="text-[10px] text-gray-500 mb-1">OKR Template</span>
-                    <button onClick={() => {setIsTemplateDropdownOpen(!isTemplateDropdownOpen);}} className="flex items-center text-sm border border-blue-300 bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors focus:outline-none font-medium">
-                      <FileText size={14} className="mr-2" /> OKR Template <ChevronDown size={14} className="ml-2" />
+                  <div className="flex flex-col pb-0.5">
+                    <button onClick={handleOpenSaveModal} className="flex items-center text-sm border border-blue-300 bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors font-medium">
+                      <Save size={14} className="mr-2" /> Save as template
                     </button>
-                    {isTemplateDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1">
-                        {tableData.length === 0 ? (
-                          <button onClick={() => { setIsTemplateDropdownOpen(false); handleOpenEmptyAddTemplate(); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-green-500" /> Add template</button>
-                        ) : (
-                          <button onClick={() => { setIsTemplateDropdownOpen(false); setIsBranchSelectOpen(true); setSelectedBranchRowId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-green-500" /> Add template</button>
-                        )}
-                        {tableData.length > 0 && (
-                          <button onClick={handleOpenAddModal} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><Plus size={14} className="mr-2 text-orange-500" /> Override Template</button>
-                        )}
-                        <button onClick={handleOpenSaveModal} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center font-medium"><FileText size={14} className="mr-2 text-blue-500" /> Save as template</button>
-                      </div>
-                    )}
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-500 mb-1">Mode View</span>
