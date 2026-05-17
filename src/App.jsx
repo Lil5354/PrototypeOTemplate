@@ -2844,7 +2844,6 @@ const App = () => {
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className={`text-sm font-medium ${!isChecked ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span>
-                                  <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span>
                                 </div>
                                 {field.locked && <div className="text-[10px] text-amber-600 font-semibold mt-1 flex items-center gap-1"><AlertTriangle size={10}/> Required field</div>}
                                 
@@ -3222,7 +3221,6 @@ const App = () => {
                                 <div className="relative z-10">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className={`text-sm font-bold ${isChecked ? 'text-gray-800' : 'text-gray-500'}`}>{field.label}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${isChecked ? 'text-blue-500 bg-blue-50 border-blue-100' : 'text-gray-400 bg-gray-100 border-gray-200'}`}>{field.type === 'number' ? 'num' : field.type}</span>
                                   </div>
                                   <p className={`text-xs mt-1.5 leading-relaxed ${isChecked ? 'text-gray-600' : 'text-gray-400'}`}>{field.desc}</p>
                                   {!isChecked && <p className="text-[10px] text-amber-600 font-medium mt-2 flex items-center gap-1"><AlertTriangle size={10}/> Not included in export</p>}
@@ -3568,7 +3566,6 @@ ${exportSelectedTemplates.map(tId => {
                               />
                               <div>
                                 <span className="font-medium text-sm text-gray-800">{field.label}</span>
-                                <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600">{field.type === 'number' ? 'num' : field.type}</span>
                               </div>
                             </div>
                             <div className="w-2/3 flex flex-col justify-center">
@@ -3583,14 +3580,14 @@ ${exportSelectedTemplates.map(tId => {
                         <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({addSelectedFields.length}):</span>
                         {addSelectedFields.map(fId => {
                           const f = availableFields.find(x => x.id === fId);
-                          return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null;
+                          return f ? <span key={f.id} className="text-[10px] text-green-700 bg-green-50 px-1 rounded border border-green-200">{f.label}</span> : null;
                         })}
                       </div>
                       {addSelectedFields.length < availableFields.length && (
                         <div className="flex flex-wrap gap-1 text-xs">
                           <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - addSelectedFields.length}):</span>
                           {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => (
-                            <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>
+                            <span key={f.id} className="text-[10px] text-orange-700 bg-orange-50 px-1 rounded border border-orange-200">{f.label}</span>
                           ))}
                         </div>
                       )}
@@ -4121,7 +4118,6 @@ ${exportSelectedTemplates.map(tId => {
                               <input type="checkbox" checked={isChecked} disabled={field.locked} onChange={() => { const s = new Set(addSelectedFields); s.has(field.id) ? s.delete(field.id) : s.add(field.id); setAddSelectedFields([...s]); }} className={`mt-1 mr-3 w-4 h-4 rounded border-gray-300 ${field.locked ? 'text-gray-400' : 'text-blue-600 cursor-pointer'}`} />
                               <div>
                                 <span className="font-medium text-sm text-gray-800">{field.label}</span>
-                                <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600">{field.type === 'number' ? 'num' : field.type}</span>
                               </div>
                             </div>
                             <div className="w-2/3 flex flex-col justify-center">
@@ -4134,12 +4130,12 @@ ${exportSelectedTemplates.map(tId => {
                     <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
                       <div className="flex flex-wrap gap-1 text-xs">
                         <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({addSelectedFields.length}):</span>
-                        {addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="text-green-700 bg-green-50 px-1 py-0.5 rounded border border-green-200">{f.label}</span> : null; })}
+                        {addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="text-[10px] text-green-700 bg-green-50 px-1 rounded border border-green-200">{f.label}</span> : null; })}
                       </div>
                       {addSelectedFields.length < availableFields.length && (
                         <div className="flex flex-wrap gap-1 text-xs">
                           <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - addSelectedFields.length}):</span>
-                          {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-orange-700 bg-orange-50 px-1 py-0.5 rounded border border-orange-200">{f.label}</span>)}
+                          {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-[10px] text-orange-700 bg-orange-50 px-1 rounded border border-orange-200">{f.label}</span>)}
                         </div>
                       )}
                     </div>
@@ -4163,8 +4159,8 @@ ${exportSelectedTemplates.map(tId => {
                         <span className="text-xs text-gray-500 block mb-1">Fields Configuration</span>
                         <div className="text-sm mb-1 text-gray-700"><span className="font-medium text-blue-600">{addSelectedFields.length}</span> field(s) mapped from template.</div>
                         <div className="mt-2 space-y-2">
-                          <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700"><span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="px-1.5 py-0.5 bg-white border border-green-200 rounded text-[10px] text-green-700">{f.label}</span> : null; })}</div></div>
-                          {addSelectedFields.length < availableFields.length && <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700"><span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields using default values ({availableFields.length - addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="px-1.5 py-0.5 bg-white border border-orange-200 rounded text-[10px] text-orange-600">{f.label}</span>)}</div></div>}
+                          <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700"><span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="px-1 bg-white border border-green-200 rounded text-[10px] text-green-700">{f.label}</span> : null; })}</div></div>
+                          {addSelectedFields.length < availableFields.length && <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700"><span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields using default values ({availableFields.length - addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="px-1 bg-white border border-orange-200 rounded text-[10px] text-orange-600">{f.label}</span>)}</div></div>}
                         </div>
                       </div>
                     </div>
@@ -4541,7 +4537,7 @@ ${exportSelectedTemplates.map(tId => {
                     <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600" checked={importSelectedFields.length === availableFields.length} onChange={(e) => { if(e.target.checked) setImportSelectedFields(availableFields.map(f => f.id)); else setImportSelectedFields(['name']); }} /><span className="font-semibold text-xs text-gray-800">Select All</span></label>
                     <span className="text-[10px] text-gray-500">{availableFields.length} fields · {importSelectedFields.length} selected</span>
                   </div>
-                   <div className="flex-1 overflow-y-auto border-t border-gray-100">{availableFields.map(field => { const c = importSelectedFields.includes(field.id); return (<div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50"><div className="w-[140px] flex items-start gap-2"><input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600" checked={c} disabled={field.locked} onChange={() => toggleImportField(field.id)} /><div><span className={`text-sm font-medium ${!c ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span><span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">{field.type === 'number' ? 'num' : field.type}</span></div></div><div className="flex-1 text-xs text-gray-500"><p className={!c ? 'line-through opacity-50' : ''}>{field.desc}</p></div></div>);})}</div>
+                    <div className="flex-1 overflow-y-auto border-t border-gray-100">{availableFields.map(field => { const c = importSelectedFields.includes(field.id); return (<div key={field.id} className="py-2 px-2 border-b border-gray-100 flex gap-3 hover:bg-gray-50"><div className="w-[140px] flex items-start gap-2"><input type="checkbox" className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600" checked={c} disabled={field.locked} onChange={() => toggleImportField(field.id)} /><div><span className={`text-sm font-medium ${!c ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{field.id}</span></div></div><div className="flex-1 text-xs text-gray-500"><p className={!c ? 'line-through opacity-50' : ''}>{field.desc}</p></div></div>);})}</div>
                    <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
                      <div className="flex flex-wrap gap-1 text-xs">
                        <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({importSelectedFields.length}):</span>
