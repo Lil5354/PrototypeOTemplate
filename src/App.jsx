@@ -982,19 +982,24 @@ const App = () => {
       const next = new Set(prev);
       const node = findTreeNode(saveAsTreeData, nodeId);
       if (!node) return prev;
-      const all = getAllDescendantIds([node]);
-      if (prev.has(nodeId)) all.forEach(id => next.delete(id));
-      else all.forEach(id => next.add(id));
+      if (prev.has(nodeId)) {
+        next.delete(nodeId);
+        const walk = (list) => { list.forEach(n => { next.delete(n.id); if (n.children) walk(n.children); }); };
+        walk(node.children || []);
+      } else {
+        next.add(nodeId);
+        const walk = (list) => { list.forEach(n => { next.add(n.id); if (n.children) walk(n.children); }); };
+        walk(node.children || []);
+      }
       return next;
     });
   };
 
-  const handleSaveAsSelectAll = () => {
-    setSaveAsSelectedNodeIds(new Set(getAllDescendantIds(saveAsTreeData)));
-  };
-
-  const handleSaveAsDeselectAll = () => {
-    setSaveAsSelectedNodeIds(new Set());
+  const handleSaveAsToggleAll = () => {
+    const allIds = getAllDescendantIds(saveAsTreeData);
+    const allSelected = allIds.every(id => saveAsSelectedNodeIds.has(id));
+    if (allSelected) setSaveAsSelectedNodeIds(new Set());
+    else setSaveAsSelectedNodeIds(new Set(allIds));
   };
 
   const handleNextSaveAsStep = () => {
@@ -4274,9 +4279,8 @@ ${exportSelectedTemplates.map(tId => {
                       <span className="text-xs font-semibold text-gray-600">Nodes to save</span>
                       <span className="text-xs text-gray-500">{saveAsSelectedNodeIds.size} selected</span>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveAsSelectAll} className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100">Select All</button>
-                      <button onClick={handleSaveAsDeselectAll} className="px-3 py-1 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200 rounded hover:bg-gray-100">Deselect All</button>
+                    <div>
+                      <button onClick={handleSaveAsToggleAll} className="px-3 py-1 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100">{getAllDescendantIds(saveAsTreeData).every(id => saveAsSelectedNodeIds.has(id)) ? 'Deselect All' : 'Select All'}</button>
                     </div>
                   </div>
                 </div>
