@@ -2164,9 +2164,7 @@ const App = () => {
         <><div className="fixed inset-0 z-[60]" onClick={() => setActionDropdown(null)}></div>
           <div className="fixed z-[70] w-52 bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-[320px] overflow-y-auto custom-scrollbar" style={{ top: `${actionDropdown.top}px`, left: `${actionDropdown.left}px` }}>
             {(() => { const row = tableData.find(r => r.id === actionDropdown.rowId); const p = row ? isPersonalLevel(row.level) : false; return (<>
-              {!p && row && <button onClick={() => { setActionDropdown(null); handleOpenBranchAdd(row); }} className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"><Plus size={12} /> Add Template</button>}
-              <div className="border-t border-gray-100 my-1"></div>
-              <div className="px-3 py-1 text-[10px] text-gray-400 uppercase tracking-wider">Advanced</div>
+              {!p && row && <button onClick={() => { setActionDropdown(null); handleOpenBranchAdd(row); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Add Template</button>}
               <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Advanced select</div>
               <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Find and replace title</div>
               <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Bulk change</div>
@@ -3996,8 +3994,8 @@ ${exportSelectedTemplates.map(tId => {
                 {/* Right Side */}
                 <div className="flex items-end space-x-4">
                   <div className="flex flex-col pb-0.5">
-                    <button onClick={handleOpenSaveModal} className="flex items-center text-sm border border-blue-300 bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors font-medium">
-                      <Save size={14} className="mr-2" /> Save as template
+                    <button onClick={handleOpenSaveModal} className="flex items-center text-sm border border-blue-300 bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors font-medium" title="Save as template">
+                      <Save size={16} />
                     </button>
                   </div>
                   <div className="flex flex-col">
