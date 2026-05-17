@@ -770,7 +770,7 @@ const App = () => {
   const [addStep, setAddStep] = useState(1);
   const [addSearchQuery, setAddSearchQuery] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
-  const [addSelectedFields, setAddSelectedFields] = useState(['name']);
+  const [addSelectedFields, setAddSelectedFields] = useState(availableFields.map(f => f.id));
   const [addPreviewVisibleColumns, setAddPreviewVisibleColumns] = useState([...DEFAULT_VISIBLE_COLUMNS]);
 
   // --- STATES FLOW C & FLOW C' ---
@@ -2163,8 +2163,8 @@ const App = () => {
       {actionDropdown !== null && (
         <><div className="fixed inset-0 z-[60]" onClick={() => setActionDropdown(null)}></div>
           <div className="fixed z-[70] w-52 bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-[320px] overflow-y-auto custom-scrollbar" style={{ top: `${actionDropdown.top}px`, left: `${actionDropdown.left}px` }}>
-            {(() => { const row = tableData.find(r => r.id === actionDropdown.rowId); const p = row ? isPersonalLevel(row.level) : false; return (<>
-              {!p && row && <button onClick={() => { setActionDropdown(null); handleOpenBranchAdd(row); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Add Template</button>}
+            {(() => { const row = tableData.find(r => r.id === actionDropdown.rowId); return (<>
+              {row && <button onClick={() => { setActionDropdown(null); handleOpenBranchAdd(row); }} className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Add Template</button>}
               <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Advanced select</div>
               <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Find and replace title</div>
               <div className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 cursor-pointer flex items-center gap-2">Bulk change</div>
@@ -2219,7 +2219,7 @@ const App = () => {
             <div className="flex items-center justify-between mb-3 shrink-0"><h3 className="text-base font-bold text-gray-900 flex items-center gap-2"><FolderTree size={18} className="text-blue-500" /> Select Branch</h3><button onClick={() => setIsBranchSelectOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button></div>
             <p className="text-xs text-gray-500 mb-3 shrink-0">Choose a branch to add the template to:</p>
             <div className="flex-1 overflow-y-auto custom-scrollbar border border-gray-200 rounded">
-              {tableData.map(row => { const per = isPersonalLevel(row.level); const sel = selectedBranchRowId === row.id; return (<div key={row.id} onClick={() => !per && setSelectedBranchRowId(row.id)} className={`flex items-center gap-2 px-3 py-2 text-xs border-b border-gray-50 transition-colors ${per ? 'opacity-30 cursor-not-allowed' : sel ? 'bg-blue-50' : 'hover:bg-gray-50 cursor-pointer'}`} style={{ paddingLeft: `${12 + row.level * 16}px` }}><input type="radio" name="branchSelect" checked={sel} disabled={per} onChange={() => !per && setSelectedBranchRowId(row.id)} className="w-3.5 h-3.5 text-blue-600 border-gray-300" /><div className="flex items-center gap-1 min-w-0">{row.level === 0 && <Box size={12} className="text-blue-500 shrink-0" />}{row.level === 1 && <span className="text-gray-400 shrink-0 leading-none">↳</span>}{row.level === 2 && <Box size={12} className="text-green-500 shrink-0" />}{row.level >= 3 && <User size={12} className="text-purple-500 shrink-0" />}<span className={`truncate ${sel ? 'font-medium text-blue-700' : 'text-gray-700'}`}>{row.name}</span></div></div>); })}
+              {tableData.map(row => { const sel = selectedBranchRowId === row.id; return (<div key={row.id} onClick={() => setSelectedBranchRowId(row.id)} className={`flex items-center gap-2 px-3 py-2 text-xs border-b border-gray-50 transition-colors ${sel ? 'bg-blue-50' : 'hover:bg-gray-50 cursor-pointer'}`} style={{ paddingLeft: `${12 + row.level * 16}px` }}><input type="radio" name="branchSelect" checked={sel} onChange={() => setSelectedBranchRowId(row.id)} className="w-3.5 h-3.5 text-blue-600 border-gray-300" /><div className="flex items-center gap-1 min-w-0">{row.level === 0 && <Box size={12} className="text-blue-500 shrink-0" />}{row.level === 1 && <span className="text-gray-400 shrink-0 leading-none">↳</span>}{row.level === 2 && <Box size={12} className="text-green-500 shrink-0" />}{row.level >= 3 && <User size={12} className="text-purple-500 shrink-0" />}<span className={`truncate ${sel ? 'font-medium text-blue-700' : 'text-gray-700'}`}>{row.name}</span></div></div>); })}
             </div>
             <div className="flex justify-end gap-2 mt-4 shrink-0"><button onClick={() => setIsBranchSelectOpen(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Cancel</button><button onClick={handleConfirmBranchSelect} disabled={selectedBranchRowId === null} className={`px-4 py-1.5 text-xs font-medium text-white rounded ${selectedBranchRowId === null ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Continue</button></div>
           </div>
