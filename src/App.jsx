@@ -635,6 +635,8 @@ const App = () => {
   const isSaveAsMode = urlParams.get('saveAsTemplate') === 'true';
   const isViewMode = urlParams.get('viewTemplate') === 'true';
   const isEditMode = urlParams.get('editTemplate') === 'true';
+  const isImportMode = urlParams.get('importTemplate') === 'true';
+  const isExportMode = urlParams.get('exportTemplate') === 'true';
   const [branchInfo, setBranchInfo] = useState(null);
   const [branchAddStep, setBranchAddStep] = useState(1);
   const [branchSelectedTemplateId, setBranchSelectedTemplateId] = useState(null);
@@ -645,7 +647,7 @@ const App = () => {
 
   const redirectClean = () => { window.location.href = window.location.origin + window.location.pathname; };
   const navigateView = (view) => {
-    if (isBranchAddMode || isSaveAsMode || isViewMode || isEditMode) {
+    if (isBranchAddMode || isSaveAsMode || isViewMode || isEditMode || isImportMode || isExportMode) {
       window.location.href = window.location.origin + window.location.pathname + '?view=' + view;
     } else {
       setActiveView(view);
@@ -950,6 +952,14 @@ const App = () => {
   useEffect(() => {
     if (isEditMode) { try { const s = localStorage.getItem('editTemplate'); if (s) { const t = JSON.parse(s); setEditTargetId(t.id); setEditFormData({ title: t.title || '', desc: t.desc || '', tags: (t.tags || []).join(', ') }); setEditTreeData(JSON.parse(JSON.stringify(t.tree)) || []); setEditFormErrors({}); } } catch(e) {} }
   }, [isEditMode]);
+
+  useEffect(() => {
+    if (isImportMode) { try { const s = localStorage.getItem('importTemplateData'); if (s) { const d = JSON.parse(s); setActiveView('import'); setImportStep(d.step || 1); setImportFileStatus(d.fileStatus || 'idle'); setImportReviewTab(d.reviewTab || 'all'); setImportSelectedFields(d.selectedFields || availableFields.map(f => f.id)); setImportFormData(d.formData || { title: '', desc: '', tags: '' }); setImportFormErrors({}); setImportTreeVisibleColumns(d.treeVisibleColumns || [...DEFAULT_VISIBLE_COLUMNS]); setImportValidationVisibleColumns(d.validationVisibleColumns || [...DEFAULT_VISIBLE_COLUMNS]); } } catch(e) {} }
+  }, [isImportMode]);
+
+  useEffect(() => {
+    if (isExportMode) { try { const s = localStorage.getItem('exportTemplateData'); if (s) { const d = JSON.parse(s); setActiveView('export'); setExportStep(d.step || 1); setExportSelectedTemplates(d.selectedTemplates || templateList.map(t => t.id)); setExportSelectedFields(d.selectedFields || availableFields.map(f => f.id)); } } catch(e) {} }
+  }, [isExportMode]);
 
   const getAllDescendantIds = (nodes) => {
     const ids = [];
@@ -1351,23 +1361,19 @@ const App = () => {
 
   // --- HANDLERS: FLOW D (IMPORT) ---
   const handleBackFromImport = () => {
+    if (isImportMode) { window.close(); return; }
     if (importFileStatus === 'idle') { setActiveView('okr-template'); setImportStep(1); setImportFileStatus('idle'); }
     else { setConfirmCloseTarget('import'); }
   };
   const handleBackFromExport = () => {
+    if (isExportMode) { window.close(); return; }
     if (exportStep === 1 && exportSelectedTemplates.length === 0) { setActiveView('okr-template'); setExportStep(1); setExportSelectedTemplates([]); }
     else { setConfirmCloseTarget('export'); }
   };
   const handleOpenImportModal = () => {
-    setActiveView('import');
-    setImportStep(1);
-    setImportFileStatus('idle');
-    setImportReviewTab('all');
-    setImportSelectedFields(availableFields.map(f => f.id)); 
-    setImportFormData({ title: '', desc: '', tags: '' });
-    setImportFormErrors({});
-    setImportTreeVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
-    setImportValidationVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    const data = { step: 1, fileStatus: 'idle', reviewTab: 'all', selectedFields: availableFields.map(f => f.id), formData: { title: '', desc: '', tags: '' }, treeVisibleColumns: [...DEFAULT_VISIBLE_COLUMNS], validationVisibleColumns: [...DEFAULT_VISIBLE_COLUMNS] };
+    try { localStorage.setItem('importTemplateData', JSON.stringify(data)); } catch (e) { triggerToast('Failed to open import template.', 'error'); return; }
+    window.open(window.location.origin + window.location.pathname + '?importTemplate=true', '_blank');
   };
 
   const toggleImportValidationColumn = (colId) => {
@@ -1464,6 +1470,7 @@ const App = () => {
   };
 
   const handleConfirmImport = () => {
+    if (isImportMode) { try { localStorage.removeItem('importTemplateData'); } catch(e) {} window.close(); return; }
     setActiveView('okr-template');
     setConfirmCloseTarget(null);
     const finalDesc = importFormData.desc.trim() ? importFormData.desc : '';
@@ -1477,10 +1484,9 @@ const App = () => {
 
   // --- HANDLERS: FLOW E (EXPORT) ---
   const handleOpenExportModal = () => {
-    setActiveView('export');
-    setExportStep(1);
-    setExportSelectedTemplates(templateList.map(t => t.id));
-    setExportSelectedFields(availableFields.map(f => f.id)); 
+    const data = { step: 1, selectedTemplates: templateList.map(t => t.id), selectedFields: availableFields.map(f => f.id) };
+    try { localStorage.setItem('exportTemplateData', JSON.stringify(data)); } catch (e) { triggerToast('Failed to open export template.', 'error'); return; }
+    window.open(window.location.origin + window.location.pathname + '?exportTemplate=true', '_blank');
   };
   const handleNextExportStep = () => {
     if (exportStep === 1 && exportSelectedTemplates.length === 0) return;
@@ -1494,6 +1500,7 @@ const App = () => {
     setExportSelectedFields(prev => prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]);
   };
   const handleConfirmExport = () => {
+    if (isExportMode) { try { localStorage.removeItem('exportTemplateData'); } catch(e) {} window.close(); return; }
     setActiveView('okr-template');
     triggerToast('JSON file downloaded successfully.');
   };
@@ -3936,7 +3943,7 @@ ${exportSelectedTemplates.map(tId => {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' || isViewMode || isEditMode ? 'hidden' : ''}`}>
+        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' || isViewMode || isEditMode || isImportMode || isExportMode ? 'hidden' : ''}`}>
           
           {/* --- OKR BOARD MAIN VIEW --- */}
           {!isBranchAddMode && !isSaveAsMode && activeView === 'okr-dashboard' && (
