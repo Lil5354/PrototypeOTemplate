@@ -642,6 +642,7 @@ const App = () => {
   const [branchSelectedTemplateId, setBranchSelectedTemplateId] = useState(null);
   const [branchAddSearchQuery, setBranchAddSearchQuery] = useState('');
   const [branchError, setBranchError] = useState(null);
+  const [branchCompatibilityError, setBranchCompatibilityError] = useState(null);
   const [branchDuplicateConfirm, setBranchDuplicateConfirm] = useState(null);
   const handleBranchDuplicateForce = () => { setBranchDuplicateConfirm({ ...branchDuplicateConfirm, force: true }); setTimeout(() => handleBranchApplyTemplate(), 0); };
 
@@ -1513,6 +1514,14 @@ const App = () => {
   const handleOpenEmptyAddTemplate = () => { const bi = { isFullBoard: true, space: selectedSpace, year: selectedYear, period: selectedPeriod }; try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open add template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank'); };
   const filteredBranchTemplates = templateList.filter(t => t.title.toLowerCase().includes(branchAddSearchQuery.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(branchAddSearchQuery.toLowerCase())));
   const branchSelectedTemplateData = templateList.find(t => t.id === branchSelectedTemplateId);
+
+  useEffect(() => {
+    if (!branchSelectedTemplateData || !branchInfo || branchInfo.isFullBoard) { setBranchCompatibilityError(null); return; }
+    const getNodeLevel = (node, depth) => (node.level !== undefined && node.level !== null) ? (node.level - 1) : depth;
+    const hasIncompatibleLevel = (nodes, depth) => { for (const node of nodes) { const nl = getNodeLevel(node, depth); if (nl < branchInfo.nodeLevel) return true; if (node.children && node.children.length > 0) { if (hasIncompatibleLevel(node.children, depth + 1)) return true; } } return false; };
+    if (hasIncompatibleLevel(branchSelectedTemplateData.tree, 0)) setBranchCompatibilityError(`Template contains nodes at a higher level than the target branch "${branchInfo.nodeName}". Please choose another template with compatible level structure.`);
+    else setBranchCompatibilityError(null);
+  }, [branchSelectedTemplateId, branchInfo]);
 
   const handleBranchApplyTemplate = () => {
     try {
@@ -4107,7 +4116,9 @@ ${exportSelectedTemplates.map(tId => {
               </div>
               <div className="flex-1 overflow-hidden flex bg-gray-50/50">
                 <div className="w-[35%] p-4 overflow-y-auto bg-white border-r border-gray-200 custom-scrollbar relative">
-                  {branchAddStep === 1 && (<div className="space-y-3 animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Template Library</h3><div className="relative shrink-0"><input type="text" value={branchAddSearchQuery} onChange={(e) => setBranchAddSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm" /><Search size={14} className="absolute left-2.5 top-2 text-gray-400" /></div><div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pb-1 pr-1">{filteredBranchTemplates.map(t => (<div key={t.id} onClick={() => setBranchSelectedTemplateId(t.id)} className={`p-3 border rounded-md cursor-pointer ${branchSelectedTemplateId === t.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}><h4 className="font-semibold text-sm text-[#1e3a8a]">{t.title}</h4><p className="text-xs text-gray-500 mb-1">{t.desc}</p></div>))}{filteredBranchTemplates.length === 0 && (<div className="flex flex-col items-center justify-center py-8 text-gray-400"><Search size={28} className="mb-2 opacity-30" /><p className="text-sm">No matching templates</p></div>)}</div></div>)}
+                  {branchAddStep === 1 && (<div className="space-y-3 animate-fade-in flex flex-col h-full"><h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Template Library</h3><div className="relative shrink-0"><input type="text" value={branchAddSearchQuery} onChange={(e) => setBranchAddSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm" /><Search size={14} className="absolute left-2.5 top-2 text-gray-400" /></div><div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pb-1 pr-1">{filteredBranchTemplates.map(t => (<div key={t.id} onClick={() => setBranchSelectedTemplateId(t.id)} className={`p-3 border rounded-md cursor-pointer ${branchSelectedTemplateId === t.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}><h4 className="font-semibold text-sm text-[#1e3a8a]">{t.title}</h4><p className="text-xs text-gray-500 mb-1">{t.desc}</p></div>))}{filteredBranchTemplates.length === 0 && (<div className="flex flex-col items-center justify-center py-8 text-gray-400"><Search size={28} className="mb-2 opacity-30" /><p className="text-sm">No matching templates</p></div>)}</div>
+                     {branchCompatibilityError && <div className="shrink-0 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start gap-1.5"><AlertTriangle size={14} className="shrink-0 mt-0.5" /><span>{branchCompatibilityError}</span></div>}
+                   </div>)}
                    {branchAddStep === 2 && (<div className="animate-fade-in flex flex-col h-full">
                     <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4 shrink-0">Field Import Selection</h3>
                     <div className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center mb-4 shrink-0">
@@ -4189,7 +4200,7 @@ ${exportSelectedTemplates.map(tId => {
                 <div className="flex space-x-3 ml-auto">
                   <button onClick={() => window.close()} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Cancel</button>
                   {branchAddStep > 1 && (<button onClick={() => setBranchAddStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium">Back</button>)}
-                  {branchAddStep < 3 ? (<button onClick={() => { if (branchAddStep === 1 && !branchSelectedTemplateId) return; setBranchAddStep(prev => Math.min(prev + 1, 3)); }} disabled={branchAddStep === 1 && !branchSelectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium ${branchAddStep === 1 && !branchSelectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue</button>)
+                  {branchAddStep < 3 ? (<button onClick={() => { if (branchAddStep === 1 && (!branchSelectedTemplateId || branchCompatibilityError)) return; setBranchAddStep(prev => Math.min(prev + 1, 3)); }} disabled={branchAddStep === 1 && (!branchSelectedTemplateId || branchCompatibilityError)} className={`px-4 py-2 rounded-md text-sm font-medium ${branchAddStep === 1 && (!branchSelectedTemplateId || branchCompatibilityError) ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white'}`}>Continue</button>)
                    : (<button onClick={branchInfo?.isFullBoard ? handleEmptyApplyTemplate : handleBranchApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold flex items-center gap-1.5"><Download size={16} />Apply</button>)}
                 </div>
               </div>
