@@ -4086,8 +4086,9 @@ ${exportSelectedTemplates.map(tId => {
                 <div className="flex items-center gap-4"><div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><FolderTree size={16} /></div>
                   <div><h2 className="text-lg font-bold text-[#1e3a8a]">{branchInfo?.isFullBoard ? 'Add template to' : 'Add Template to Branch'}</h2>
                     <div className="flex items-center gap-4 text-xs text-gray-500 mt-0.5">
-                      {branchInfo?.isFullBoard ? (<><span>Space: <strong className="text-blue-700">{branchInfo?.space || '...'}</strong></span><span>Timeline: <strong className="text-blue-700">{branchInfo?.period || '...'}</strong></span></>)
-                      : (<><span>Space: <strong className="text-blue-700">{branchInfo?.space || '...'}</strong></span><span>Timeline: <strong className="text-blue-700">{branchInfo?.period || '...'}</strong></span><span>Branch: <strong className="text-blue-700">{branchInfo?.nodeName || '...'}</strong></span><span>Level: <strong className="text-blue-700">{branchInfo ? getLevelCategory(branchInfo.nodeLevel) : '...'}</strong></span></>)}
+                      <span>Space: <strong className="text-blue-700">{branchInfo?.space || '...'}</strong></span>
+                      <span>Timeline: <strong className="text-blue-700">{branchInfo?.period?.match(/\d{4}/)?.[0] || branchInfo?.year || '...'}</strong></span>
+                      {branchInfo?.nodeName && <span>Branch: <strong className="text-blue-700">{branchInfo.nodeName}</strong></span>}
                     </div>
                   </div>
                 </div>
@@ -4154,8 +4155,8 @@ ${exportSelectedTemplates.map(tId => {
                       <div className="bg-blue-50/50 p-2 rounded-md border border-blue-100">
                         <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context</span>
                         <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {branchInfo?.space || '...'}</div>
-                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {branchInfo?.period || '...'}</div>
-                        {!branchInfo?.isFullBoard && <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Branch:</span> {branchInfo?.nodeName || '...'}</div>}
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {branchInfo?.period?.match(/\d{4}/)?.[0] || branchInfo?.year || '...'}</div>
+                        {branchInfo?.nodeName && <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Branch:</span> {branchInfo.nodeName}</div>}
                       </div>
                       <div><span className="text-xs text-gray-500 block mb-1">Template Selected</span><div className="font-medium text-gray-900 border border-gray-200 px-3 py-2 rounded bg-gray-50">{branchSelectedTemplateData?.title || 'None'}</div></div>
                       <div>
