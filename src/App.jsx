@@ -628,6 +628,15 @@ const App = () => {
   })();
   const [okrDataMap, setOkrDataMap] = useState(initialOkrData);
   useEffect(() => { try { localStorage.setItem('okrDataMap', JSON.stringify(okrDataMap)); } catch (e) {} }, [okrDataMap]);
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === 'okrDataMap' && e.newValue) {
+        try { setOkrDataMap(JSON.parse(e.newValue)); } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const getMaxLevel = (data) => data.reduce((max, r) => Math.max(max, r.level), 0);
   const isPersonalLevel = (level) => level >= 3;
@@ -641,6 +650,7 @@ const App = () => {
   const isEditMode = urlParams.get('editTemplate') === 'true';
   const isImportMode = urlParams.get('importTemplate') === 'true';
   const isExportMode = urlParams.get('exportTemplate') === 'true';
+  const isAddTemplateRootMode = urlParams.get('addTemplateRoot') === 'true';
   const [branchInfo, setBranchInfo] = useState(null);
   const [branchAddStep, setBranchAddStep] = useState(1);
   const [branchSelectedTemplateId, setBranchSelectedTemplateId] = useState(null);
@@ -652,7 +662,7 @@ const App = () => {
 
   const redirectClean = () => { window.location.href = window.location.origin + window.location.pathname; };
   const navigateView = (view) => {
-    if (isBranchAddMode || isSaveAsMode || isViewMode || isEditMode || isImportMode || isExportMode) {
+    if (isBranchAddMode || isSaveAsMode || isViewMode || isEditMode || isImportMode || isExportMode || isAddTemplateRootMode) {
       window.location.href = window.location.origin + window.location.pathname + '?view=' + view;
     } else {
       setActiveView(view);
@@ -1023,6 +1033,21 @@ const App = () => {
   useEffect(() => {
     if (isExportMode) { try { const s = localStorage.getItem('exportTemplateData'); if (s) { const d = JSON.parse(s); setActiveView('export'); setExportStep(d.step || 1); setExportSelectedTemplates(d.selectedTemplates || templateList.map(t => t.id)); setExportSelectedFields(d.selectedFields || availableFields.map(f => f.id)); } } catch(e) {} }
   }, [isExportMode]);
+  useEffect(() => {
+    if (isAddTemplateRootMode) {
+      try {
+        const s = localStorage.getItem('addTemplateRoot');
+        if (s) { const d = JSON.parse(s); setSelectedSpace(d.space || 'Engineering'); setSelectedYear(d.year || '2025'); setSelectedPeriod(d.period || 'Quarter 4, 2025'); }
+      } catch (e) {}
+      setActiveView('add-template-root');
+      setIsAddModalOpen(true);
+      setAddStep(1);
+      setSelectedTemplateId(null);
+      setAddSearchQuery('');
+      setAddSelectedFields(availableFields.map(f => f.id));
+      setAddPreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    }
+  }, [isAddTemplateRootMode]);
 
   const getAllDescendantIds = (nodes) => {
     const ids = [];
@@ -1129,6 +1154,12 @@ const App = () => {
     setAddTimelineAction('add-modal');
   };
 
+  const handleOpenAddTemplateRoot = () => {
+    const data = { space: selectedSpace, year: selectedYear, period: selectedPeriod };
+    try { localStorage.setItem('addTemplateRoot', JSON.stringify(data)); } catch (e) { triggerToast('Failed to open add template.', 'error'); return; }
+    window.open(window.location.origin + window.location.pathname + '?addTemplateRoot=true', '_blank');
+  };
+
   const handleConfirmAddTimeline = () => {
     if (!selectedSpaceForAdd) {
       triggerToast('Please select Space to continue.', 'warning');
@@ -1191,6 +1222,7 @@ const App = () => {
     if (!t) { triggerToast('Template no longer exists.', 'error'); setIsAddModalOpen(true); return; }
     const targetCtx = addTargetContext || { space: selectedSpace, year: selectedYear, period: selectedPeriod };
     executeApplyToBoard(t ? t.tree : sampleTreeData, targetCtx.period, targetCtx.space);
+    if (isAddTemplateRootMode) { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} setTimeout(() => window.close(), 500); }
     } catch (err) { triggerToast('Apply failed. Please try again.', 'error'); }
   };
 
@@ -1542,7 +1574,7 @@ const App = () => {
     if (canClose[type]) {
       if (type === 'import') { setActiveView('okr-template'); setImportFileStatus('idle'); setImportStep(1); }
       else if (type === 'export') { setActiveView('okr-template'); setExportStep(1); setExportSelectedTemplates([]); }
-      else if (type === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
+      else if (type === 'add') { if (isAddTemplateRootMode) { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); return; } setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
       else if (type === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
     } else {
       setConfirmCloseTarget(type);
@@ -1552,7 +1584,7 @@ const App = () => {
   const handleConfirmClose = () => {
     if (confirmCloseTarget === 'import') { setActiveView('okr-template'); setImportFileStatus('idle'); setImportStep(1); }
     else if (confirmCloseTarget === 'export') { setActiveView('okr-template'); setExportStep(1); setExportSelectedTemplates([]); }
-    else if (confirmCloseTarget === 'add') { setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
+    else if (confirmCloseTarget === 'add') { if (isAddTemplateRootMode) { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); return; } setIsAddModalOpen(false); setAddStep(1); setSelectedTemplateId(null); }
     else if (confirmCloseTarget === 'save') { setIsSaveModalOpen(false); setSaveStep(1); setFormData({ title: '', desc: '', tags: '' }); }
     setConfirmCloseTarget(null);
   };
@@ -1700,16 +1732,13 @@ const App = () => {
       const prevApplied = (() => { try { return JSON.parse(localStorage.getItem('branchAppliedTemplates') || '{}'); } catch (e) { return {}; } })();
       const isDuplicate = prevApplied[branchKey] && prevApplied[branchKey].includes(t.id);
       if (isDuplicate && !branchDuplicateConfirm?.force) { setBranchDuplicateConfirm({ branchKey, templateId: t.id, title: t.title }); return; }
-      const getNodeLevel = (node, depth) => (node.level !== undefined && node.level !== null) ? (node.level - 1) : depth;
-      const hasIncompatibleLevel = (nodes, depth) => { for (const node of nodes) { const nl = getNodeLevel(node, depth); if (nl < branchInfo.nodeLevel) return true; if (node.children && node.children.length > 0) { if (hasIncompatibleLevel(node.children, depth + 1)) return true; } } return false; };
-      if (hasIncompatibleLevel(t.tree, 0)) { setBranchError('The selected template contains nodes at a higher or equal organizational level than the target branch. Please choose another template with compatible level structure.'); return; }
       const targetKey = `${branchInfo.space}|${branchInfo.year}|${branchInfo.period}`;
       const currentData = okrDataMap[targetKey] || [];
       const treeArray = tableToTreeArray(currentData);
       const targetNodeId = branchInfo.nodeId?.toString();
       let targetFound = false;
-      const findAndInsertSiblings = (nodes) => { for (let i = 0; i < nodes.length; i++) { if (nodes[i].id === targetNodeId || nodes[i].originalId === branchInfo.nodeId) { const ct = JSON.parse(JSON.stringify(t.tree)); nodes.splice(i + 1, 0, ...ct); targetFound = true; return true; } if (nodes[i].children && nodes[i].children.length > 0) { if (findAndInsertSiblings(nodes[i].children)) return true; } } return false; };
-      findAndInsertSiblings(treeArray);
+      const findAndInsertChildren = (nodes) => { for (let i = 0; i < nodes.length; i++) { if (nodes[i].id === targetNodeId || nodes[i].originalId === branchInfo.nodeId) { const ct = JSON.parse(JSON.stringify(t.tree)); nodes[i].children = [...(nodes[i].children || []), ...ct]; targetFound = true; return true; } if (nodes[i].children && nodes[i].children.length > 0) { if (findAndInsertChildren(nodes[i].children)) return true; } } return false; };
+      findAndInsertChildren(treeArray);
       if (!targetFound) { if (currentData.length === 0) { setBranchError('No data found.'); return; } const ct = JSON.parse(JSON.stringify(t.tree)); treeArray.push(...ct); }
       const newTableData = mapTreeToTableDeep(treeArray);
       setOkrDataMap(prev => { const updated = { ...prev, [targetKey]: newTableData.map(r => ({ ...r, id: Date.now() + Math.random(), progress: r.progress || 0, risk: 'low', result: 0, status: 'valid', warnMsg: null, errorMsg: null })) }; try { localStorage.setItem('okrDataMap', JSON.stringify(updated)); } catch (e) {} return updated; });
@@ -3884,9 +3913,9 @@ ${exportSelectedTemplates.map(tId => {
       {/* ================================================================================================== */}
       {/* --- MODAL B: ADD TEMPLATE FLOW (APPLY) --- */}
       {/* ================================================================================================== */}
-      {isAddModalOpen && (
+      {isAddModalOpen && !isAddTemplateRootMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-gray-500/75 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-[95vw] h-[95vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-[95vw] h-[95vh] flex flex-col overflow-hidden">
             
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div>
@@ -4376,7 +4405,7 @@ ${exportSelectedTemplates.map(tId => {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' || isViewMode || isEditMode || isImportMode || isExportMode ? 'hidden' : ''}`}>
+        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col space-y-4 relative z-0 ${isSaveAsMode || activeView === 'import' || activeView === 'export' || isViewMode || isEditMode || isImportMode || isExportMode || isAddTemplateRootMode ? 'hidden' : ''}`}>
           
           {/* --- OKR BOARD MAIN VIEW --- */}
           {!isBranchAddMode && !isSaveAsMode && activeView === 'okr-dashboard' && (
@@ -4435,6 +4464,11 @@ ${exportSelectedTemplates.map(tId => {
                 
                 {/* Right Side */}
                 <div className="flex items-end space-x-4">
+                  <div className="flex flex-col pb-0.5">
+                    <button onClick={handleOpenAddTemplateRoot} className="flex items-center justify-center p-1.5 border border-green-300 bg-green-50 text-green-700 rounded hover:bg-green-100 transition-colors shadow-sm" title="Add Template to Root">
+                      <FileText size={16} />
+                    </button>
+                  </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-500 mb-1">Mode View</span>
                     <div className="flex border border-gray-300 rounded overflow-hidden">
@@ -4474,8 +4508,7 @@ ${exportSelectedTemplates.map(tId => {
                       <div className="py-12 flex flex-col items-center justify-center text-gray-400">
                          <FolderTree size={40} className="mb-3 opacity-30" />
                          <p className="text-sm font-medium">No OKR data in this Timeline</p>
-                         <p className="text-xs mt-1 mb-4">Get started by adding a template.</p>
-                         <button onClick={handleOpenEmptyAddTemplate} className="px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition shadow-sm flex items-center gap-1.5"><FileText size={14} /> Add template</button>
+                         <p className="text-xs mt-1 mb-4">Use the <strong>Add Template to Root</strong> button in the toolbar to get started.</p>
                       </div>
                     ) : (
                       tableData.map((row) => (
@@ -5226,6 +5259,123 @@ ${exportSelectedTemplates.map(tId => {
         </div>
         )}
 
+        {isAddTemplateRootMode && isAddModalOpen && (
+        <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
+            <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-100 rounded-md" title="Close"><X size={20} /></button>
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2"><FileText size={20} className="text-[#3B5998]" /> Add Template</h2>
+          </div>
+          <div className="flex border-b border-gray-100 bg-white shrink-0">
+            {[1, 2, 3].map(step => (
+              <div key={step} className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center border-b-2 transition-colors ${addStep === step ? 'border-blue-600 text-blue-600' : addStep > step ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400'}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2 ${addStep === step ? 'bg-blue-600 text-white' : addStep > step ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                  {addStep > step ? <Check size={12} /> : step}
+                </div>
+                {step === 1 ? '1. Select Template' : step === 2 ? '2. Field Import' : '3. Review & Apply'}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 overflow-hidden flex bg-gray-50/50">
+            <div className="w-[35%] p-4 overflow-y-auto bg-white border-r border-gray-200 custom-scrollbar relative">
+              {addStep === 1 && (
+                <div className="space-y-3 animate-fade-in flex flex-col h-full">
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Template Library</h3>
+                  <div className="relative shrink-0">
+                    <input type="text" value={addSearchQuery} onChange={(e) => setAddSearchQuery(e.target.value)} placeholder="Search..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-sm" />
+                    <Search size={14} className="absolute left-2.5 top-2 text-gray-400" />
+                  </div>
+                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pb-1 pr-1">
+                    {filteredTemplates.map(t => (
+                      <div key={t.id} onClick={() => setSelectedTemplateId(t.id)} className={`p-3 border rounded-md cursor-pointer ${selectedTemplateId === t.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <h4 className="font-semibold text-sm text-[#1e3a8a]">{t.title}</h4>
+                        <p className="text-xs text-gray-500 mb-1">{t.desc}</p>
+                      </div>
+                    ))}
+                    {filteredTemplates.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-8 text-gray-400"><Search size={28} className="mb-2 opacity-30" /><p className="text-sm">No matching templates</p></div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {addStep === 2 && (
+                <div className="animate-fade-in flex flex-col h-full">
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4 shrink-0">Field Import Selection</h3>
+                  <div className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center mb-4 shrink-0">
+                    <label className="flex items-center font-bold text-sm text-gray-800 cursor-pointer">
+                      <input type="checkbox" checked={addSelectedFields.length === availableFields.length} onChange={() => { if (addSelectedFields.length === availableFields.length) setAddSelectedFields(['name']); else setAddSelectedFields(availableFields.map(f => f.id)); }} className="mr-3 w-4 h-4 text-blue-600 rounded border-gray-300" />
+                      Select All Fields
+                    </label>
+                    <span className="text-xs text-gray-500">{addSelectedFields.length} selected</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto border border-gray-200 rounded custom-scrollbar min-h-[200px]">
+                    <div className="flex px-3 py-2 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200"><div className="w-1/3">Field Name</div><div className="w-2/3">Description</div></div>
+                    {availableFields.map(field => {
+                      const isChecked = addSelectedFields.includes(field.id);
+                      return (
+                        <div key={field.id} className="flex px-3 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
+                          <div className="w-1/3 flex items-start">
+                            <input type="checkbox" checked={isChecked} disabled={field.locked} onChange={() => toggleAddField(field.id)} className={`mt-1 mr-3 w-4 h-4 rounded border-gray-300 ${field.locked ? 'text-gray-400' : 'text-blue-600 focus:ring-blue-500 cursor-pointer'}`} />
+                            <div><span className="font-medium text-sm text-gray-800">{field.label}</span></div>
+                          </div>
+                          <div className="w-2/3 flex flex-col justify-center"><span className={`text-sm ${isChecked ? 'text-gray-600' : 'text-gray-400 line-through'}`}>{field.desc}</span></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {addStep === 3 && (
+                <div className="space-y-3 animate-fade-in flex flex-col h-full">
+                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Review Summary</h3>
+                  <div className="bg-blue-50/50 p-2 rounded-md border border-blue-100">
+                    <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context (Apply to)</span>
+                    <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {addTargetContext?.space || selectedSpace}</div>
+                    <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {addTargetContext?.period || selectedPeriod}</div>
+                  </div>
+                  <div><span className="text-xs text-gray-500 block mb-1">Template Selected</span><div className="font-medium text-gray-900 border border-gray-200 px-3 py-2 rounded bg-gray-50">{selectedTemplateData?.title}</div></div>
+                  <div><span className="text-xs text-gray-500 block mb-1">Fields Configuration</span><div className="text-sm mb-1 text-gray-700"><span className="font-medium text-blue-600">{addSelectedFields.length}</span> field(s) mapped from template.</div></div>
+                </div>
+              )}
+            </div>
+            <div className="w-[65%] flex flex-col h-full bg-gray-50/50 border-l border-gray-200 relative">
+              {addStep === 1 && (
+                <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                  {selectedTemplateId && selectedTemplateData ? (
+                    <div className="flex-1 min-h-0">{renderPreviewTree(false, availableFields.map(f=>f.id), false, selectedTemplateData.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized)}</div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400"><FolderTree size={48} className="mb-3 opacity-20" /><p className="text-sm">Select a template to preview</p></div>
+                  )}
+                </div>
+              )}
+              {addStep === 2 && (
+                <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                  <div className="mb-4 shrink-0"><span className="text-sm font-bold text-gray-700 block">Import Data Preview</span></div>
+                  <div className="flex-1 min-h-0">{selectedTemplateData ? renderPreviewTree(true, addSelectedFields, false, selectedTemplateData.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized) : <div className="text-gray-400 text-sm">No template selected</div>}</div>
+                </div>
+              )}
+              {addStep === 3 && (
+                <div className="animate-fade-in flex flex-col flex-1 min-h-0 p-6">
+                  <div className="mb-4 shrink-0"><span className="text-sm font-bold text-gray-700 block">Final Preview</span></div>
+                  <div className="flex-1 min-h-0">{selectedTemplateData ? renderPreviewTree(true, addSelectedFields, true, selectedTemplateData.tree || sampleTreeData, addPreviewVisibleColumns, toggleAddPreviewColumn, previewMaximized, setPreviewMaximized) : <div className="text-gray-400 text-sm">No template selected</div>}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center shrink-0">
+            <div className="text-xs text-gray-500">{addStep === 2 && `${addSelectedFields.length} fields selected`}</div>
+            <div className="flex space-x-3 ml-auto">
+              <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
+              {addStep > 1 && (<button onClick={() => setAddStep(prev => prev - 1)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition">Back</button>)}
+              {addStep < 3 ? (
+                <button onClick={handleNextAddStep} disabled={addStep === 1 && !selectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium transition shadow-sm ${addStep === 1 && !selectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white hover:bg-blue-700'}`}>Continue</button>
+              ) : (
+                <button onClick={handleApplyTemplate} className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply</button>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
+        
       </div>
       
       {renderNodeDetailSidePanel()}
