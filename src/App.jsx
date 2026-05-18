@@ -829,6 +829,10 @@ const App = () => {
   const [useTemplateBranchRowId, setUseTemplateBranchRowId] = useState(null);
   const [useTemplateBranchContext, setUseTemplateBranchContext] = useState(null);
 
+  const [isAddRootTimelineOpen, setIsAddRootTimelineOpen] = useState(false);
+  const [addRootSelSpace, setAddRootSelSpace] = useState('Engineering');
+  const [addRootSelTimeline, setAddRootSelTimeline] = useState('');
+
   const [isBranchAddTimelineOpen, setIsBranchAddTimelineOpen] = useState(false);
   const [branchAddPendingRow, setBranchAddPendingRow] = useState(null);
   const [branchAddSelSpace, setBranchAddSelSpace] = useState('Engineering');
@@ -1037,7 +1041,7 @@ const App = () => {
     if (isAddTemplateRootMode) {
       try {
         const s = localStorage.getItem('addTemplateRoot');
-        if (s) { const d = JSON.parse(s); setSelectedSpace(d.space || 'Engineering'); setSelectedYear(d.year || '2025'); setSelectedPeriod(d.period || 'Quarter 4, 2025'); }
+        if (s) { const d = JSON.parse(s); setAddRootSelSpace(d.space || 'Engineering'); setAddRootSelTimeline(d.period || 'Quarter 4, 2025'); setSelectedSpace(d.space || 'Engineering'); setSelectedYear(d.year || '2025'); setSelectedPeriod(d.period || 'Quarter 4, 2025'); }
       } catch (e) {}
       setActiveView('add-template-root');
       setIsAddModalOpen(true);
@@ -1046,6 +1050,8 @@ const App = () => {
       setAddSearchQuery('');
       setAddSelectedFields(availableFields.map(f => f.id));
       setAddPreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+      setAddTargetContext(null);
+      setIsAddRootTimelineOpen(true);
     }
   }, [isAddTemplateRootMode]);
 
@@ -1160,6 +1166,15 @@ const App = () => {
     window.open(window.location.origin + window.location.pathname + '?addTemplateRoot=true', '_blank');
   };
 
+  const handleConfirmAddRootTimeline = () => {
+    if (!addRootSelSpace) { triggerToast('Please select Space.', 'warning'); return; }
+    if (!addRootSelTimeline) { triggerToast('Please select Timeline.', 'warning'); return; }
+    setAddTargetContext({ space: addRootSelSpace, year: '2025', period: addRootSelTimeline });
+    setSelectedSpace(addRootSelSpace);
+    setSelectedPeriod(addRootSelTimeline);
+    setIsAddRootTimelineOpen(false);
+  };
+
   const handleConfirmAddTimeline = () => {
     if (!selectedSpaceForAdd) {
       triggerToast('Please select Space to continue.', 'warning');
@@ -1198,6 +1213,21 @@ const App = () => {
 
   const handleNextAddStep = () => {
     if (addStep === 1 && !selectedTemplateId) return;
+    if (addStep === 1 && isAddTemplateRootMode) {
+      const t = templateList.find(x => x.id === selectedTemplateId);
+      if (t) {
+        const ctx = addTargetContext || { space: selectedSpace, year: selectedYear, period: selectedPeriod };
+        const targetKey = `${ctx.space}|2025|${ctx.period}`;
+        const hasExistingData = (okrDataMap[targetKey]?.length || 0) > 0;
+        if (hasExistingData) {
+          const hasTopLevel = (t.tree || []).some(node => node.type === 'objective');
+          if (!hasTopLevel) {
+            triggerToast('This template does not contain any top-level objectives (level 0). It can only be added as a child of an existing OKR node. Please use "Add Template to Branch" from a specific OKR row instead.', 'error');
+            return;
+          }
+        }
+      }
+    }
     setAddStep(prev => Math.min(prev + 1, 3));
   };
 
@@ -1216,11 +1246,23 @@ const App = () => {
 
   const handleApplyTemplate = () => {
     try {
+    const t = templateList.find(x => x.id === selectedTemplateId);
+    if (!t) { triggerToast('Template no longer exists.', 'error'); return; }
+    const targetCtx = addTargetContext || { space: selectedSpace, year: selectedYear, period: selectedPeriod };
+    if (isAddTemplateRootMode) {
+      const targetKey = `${targetCtx.space}|2025|${targetCtx.period}`;
+      const hasExistingData = (okrDataMap[targetKey]?.length || 0) > 0;
+      if (hasExistingData) {
+        const tree = t?.tree || sampleTreeData;
+        const hasTopLevel = tree.some(node => node.type === 'objective');
+        if (!hasTopLevel) {
+          triggerToast('This template does not contain any top-level objectives (level 0). It can only be added as a child of an existing OKR node. Please use "Add Template to Branch" from a specific OKR row instead.', 'error');
+          return;
+        }
+      }
+    }
     setIsAddModalOpen(false);
     setConfirmCloseTarget(null);
-    const t = templateList.find(x => x.id === selectedTemplateId);
-    if (!t) { triggerToast('Template no longer exists.', 'error'); setIsAddModalOpen(true); return; }
-    const targetCtx = addTargetContext || { space: selectedSpace, year: selectedYear, period: selectedPeriod };
     executeApplyToBoard(t ? t.tree : sampleTreeData, targetCtx.period, targetCtx.space);
     if (isAddTemplateRootMode) { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} setTimeout(() => window.close(), 500); }
     } catch (err) { triggerToast('Apply failed. Please try again.', 'error'); }
@@ -5259,7 +5301,35 @@ ${exportSelectedTemplates.map(tId => {
         </div>
         )}
 
-        {isAddTemplateRootMode && isAddModalOpen && (
+        {isAddTemplateRootMode && isAddRootTimelineOpen && (
+          <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-[420px] overflow-visible animate-fade-in flex flex-col">
+              <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
+                <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
+              </div>
+              <div className="p-5">
+                <p className="text-sm text-gray-600 mb-3">Select Space and timeline to add template:</p>
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Space</label>
+                  <SpaceDropdown selected={addRootSelSpace} onSelect={(s) => { setAddRootSelSpace(s); setAddRootSelTimeline(''); }} />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Timeline Tree</label>
+                  <TimelineTreeDropdown selected={addRootSelTimeline} onSelect={setAddRootSelTimeline} space={addRootSelSpace} />
+                </div>
+              </div>
+              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                  <button onClick={handleConfirmAddRootTimeline} disabled={!addRootSelSpace || !addRootSelTimeline} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!addRootSelSpace || !addRootSelTimeline ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Next</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isAddTemplateRootMode && isAddModalOpen && !isAddRootTimelineOpen && (
         <div className="flex flex-col flex-1 min-h-0 bg-white overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
             <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="text-gray-400 hover:text-gray-600 transition p-1 hover:bg-gray-100 rounded-md" title="Close"><X size={20} /></button>
