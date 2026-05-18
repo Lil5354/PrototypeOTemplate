@@ -26,6 +26,7 @@ const TREE_COLUMNS = [
   { id: 'progress', label: 'Progress', width: 'w-36' },
   { id: 'risk_level', label: 'Risk Level', width: 'w-28' },
   { id: 'timeline', label: 'Timeline', width: 'w-28' },
+  { id: 'stakeholders', label: 'Stakeholders', width: 'w-28' },
   { id: 'timeline_view_metric', label: 'TL - View Metric', width: 'w-28' },
   { id: 'status', label: 'Status', width: 'w-16' },
 ];
@@ -36,7 +37,7 @@ const COL_WIDTH_MAP = {
   description: '176px', user: '128px', group: '112px', team: '128px', assign_to: '112px',
   metric: '112px', metric_name: '112px', metric_key: '112px', metric_unit: '112px',
   agg: '112px', result: '112px', progress: '144px', risk_level: '112px',
-  timeline: '112px', timeline_view_metric: '112px', status: '64px'
+  stakeholders: '112px', timeline: '112px', timeline_view_metric: '112px', status: '64px'
 };
 
 const getGridTemplate = (visibleColumns) => {
@@ -234,7 +235,8 @@ const OKRTreePreview = ({
         'assign_to': 'Unassigned', 'metric': 'Default Metric',
         'metric_name': 'Default', 'metric_key': 'Default', 'metric_unit': 'Default',
         'agg': 'SUM', 'result': 'Default', 'progress_percent': '0%',
-        'risk_level': 'Low', 'timeline_view_metric': 'Default'
+        'risk_level': 'Low', 'timeline_view_metric': 'Default',
+        'stakeholders': 'Default', 'timeline': 'Default'
       };
       return defaults[fieldId] || 'Default';
     }
@@ -243,6 +245,8 @@ const OKRTreePreview = ({
       'description': node.description, 'user': node.assign || node.user,
       'group': node.group, 'team': node.team,
       'assign_to': node.assign || node.user,
+      'stakeholders': node.stakeholders,
+      'timeline': node.timeline,
       'metric': node.metric,
       'metric_name': node.mName || node.metricName,
       'metric_key': node.mKey || node.metricKey,
@@ -736,6 +740,8 @@ const App = () => {
     { id: 'result', label: 'Result', type: 'string', desc: 'Result value of the metric' },
     { id: 'progress', label: 'Progress', type: 'number', desc: 'Completion percentage, computed by system' },
     { id: 'risk_level', label: 'Risk Level', type: 'string', desc: 'Risk level indicator, read-only' },
+    { id: 'stakeholders', label: 'Stakeholders', type: 'string', desc: 'Stakeholders involved in this OKR' },
+    { id: 'timeline', label: 'Timeline', type: 'string', desc: 'Timeline period for this OKR' },
     { id: 'timeline_view_metric', label: 'Timeline - View Metric', type: 'string', desc: 'View metric timeline data' },
   ];
 
@@ -798,6 +804,30 @@ const App = () => {
   const [selectedSpaceForUse, setSelectedSpaceForUse] = useState('Engineering');
   const [selectedTimelineForUse, setSelectedTimelineForUse] = useState('Quarter 3, 2025');
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
+
+  const [isSaveFromTemplateOpen, setIsSaveFromTemplateOpen] = useState(false);
+  const [selectedSpaceForSave, setSelectedSpaceForSave] = useState('Engineering');
+  const [selectedTimelineForSave, setSelectedTimelineForSave] = useState('');
+
+  const [isAddTimelineOpen, setIsAddTimelineOpen] = useState(false);
+  const [selectedSpaceForAdd, setSelectedSpaceForAdd] = useState('Engineering');
+  const [selectedTimelineForAdd, setSelectedTimelineForAdd] = useState('');
+  const [addTargetContext, setAddTargetContext] = useState(null);
+  const [addTimelineAction, setAddTimelineAction] = useState(null);
+
+  const [isUseTemplateBranchOpen, setIsUseTemplateBranchOpen] = useState(false);
+  const [useTemplateBranchRowId, setUseTemplateBranchRowId] = useState(null);
+  const [useTemplateBranchContext, setUseTemplateBranchContext] = useState(null);
+
+  const [isBranchAddTimelineOpen, setIsBranchAddTimelineOpen] = useState(false);
+  const [branchAddPendingRow, setBranchAddPendingRow] = useState(null);
+  const [branchAddSelSpace, setBranchAddSelSpace] = useState('Engineering');
+  const [branchAddSelTimeline, setBranchAddSelTimeline] = useState('');
+  const [branchAddOrigCtx, setBranchAddOrigCtx] = useState(null);
+
+  const [isBranchAddBranchOpen, setIsBranchAddBranchOpen] = useState(false);
+  const [branchAddBranchRowId, setBranchAddBranchRowId] = useState(null);
+  const [branchAddBranchCtx, setBranchAddBranchCtx] = useState(null);
 
   const [editTargetId, setEditTargetId] = useState(null);
   const [editFormData, setEditFormData] = useState({ title: '', desc: '', tags: '' });
@@ -872,6 +902,38 @@ const App = () => {
       const saveCtx = { space: selectedSpace, year: selectedYear, period: selectedPeriod, tableData };
       localStorage.setItem('saveAsTemplate', JSON.stringify(saveCtx));
     } catch (e) { triggerToast('Failed to open save template.', 'error'); return; }
+    window.open(window.location.origin + window.location.pathname + '?saveAsTemplate=true', '_blank');
+  };
+
+  const handleOpenSaveFromTemplate = () => {
+    setIsSaveFromTemplateOpen(true);
+    setSelectedSpaceForSave('Engineering');
+    setSelectedTimelineForSave('');
+  };
+
+  const handleConfirmSaveFromTemplate = () => {
+    if (!selectedSpaceForSave) {
+      triggerToast('Please select Space to continue.', 'warning');
+      return;
+    }
+    if (!selectedTimelineForSave) {
+      triggerToast('Please select Timeline to continue.', 'warning');
+      return;
+    }
+    const targetKey = `${selectedSpaceForSave}|2025|${selectedTimelineForSave}`;
+    const data = okrDataMap[targetKey] || [];
+    if (data.length === 0) {
+      triggerToast('No OKR data found for this Space & Timeline. Please select a different combination.', 'error');
+      return;
+    }
+    try {
+      const saveCtx = { space: selectedSpaceForSave, year: '2025', period: selectedTimelineForSave, tableData: data };
+      localStorage.setItem('saveAsTemplate', JSON.stringify(saveCtx));
+    } catch (e) {
+      triggerToast('Failed to open save template.', 'error');
+      return;
+    }
+    setIsSaveFromTemplateOpen(false);
     window.open(window.location.origin + window.location.pathname + '?saveAsTemplate=true', '_blank');
   };
 
@@ -1061,13 +1123,46 @@ const App = () => {
 
   // --- HANDLERS: FLOW B (ADD TEMPLATE) ---
   const handleOpenAddModal = () => {
-    setIsTemplateDropdownOpen(false);
-    setIsAddModalOpen(true);
-    setAddStep(1);
-    setSelectedTemplateId(null);
-    setAddSearchQuery('');
-    setAddSelectedFields(['name']); 
-    setAddPreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    setIsAddTimelineOpen(true);
+    setSelectedSpaceForAdd('Engineering');
+    setSelectedTimelineForAdd('');
+    setAddTimelineAction('add-modal');
+  };
+
+  const handleConfirmAddTimeline = () => {
+    if (!selectedSpaceForAdd) {
+      triggerToast('Please select Space to continue.', 'warning');
+      return;
+    }
+    if (!selectedTimelineForAdd) {
+      triggerToast('Please select Timeline to continue.', 'warning');
+      return;
+    }
+    const ctx = { space: selectedSpaceForAdd, year: '2025', period: selectedTimelineForAdd };
+    const action = addTimelineAction;
+
+    if (action === 'add-modal') {
+      setAddTargetContext(ctx);
+      setIsAddTimelineOpen(false);
+      setIsAddModalOpen(true);
+      setAddStep(1);
+      setSelectedTemplateId(null);
+      setAddSearchQuery('');
+      setAddSelectedFields(['name']);
+      setAddPreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
+    } else if (action === 'add-tab') {
+      const bi = { isFullBoard: true, space: ctx.space, year: ctx.year, period: ctx.period };
+      try {
+        localStorage.setItem('branchAddTemplate', JSON.stringify(bi));
+      } catch (e) {
+        triggerToast('Failed to open add template.', 'error');
+        return;
+      }
+      setIsAddTimelineOpen(false);
+      window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank');
+    }
+
+    setAddTimelineAction(null);
   };
 
   const handleNextAddStep = () => {
@@ -1094,7 +1189,8 @@ const App = () => {
     setConfirmCloseTarget(null);
     const t = templateList.find(x => x.id === selectedTemplateId);
     if (!t) { triggerToast('Template no longer exists.', 'error'); setIsAddModalOpen(true); return; }
-    executeApplyToBoard(t ? t.tree : sampleTreeData, selectedPeriod, selectedSpace);
+    const targetCtx = addTargetContext || { space: selectedSpace, year: selectedYear, period: selectedPeriod };
+    executeApplyToBoard(t ? t.tree : sampleTreeData, targetCtx.period, targetCtx.space);
     } catch (err) { triggerToast('Apply failed. Please try again.', 'error'); }
   };
 
@@ -1194,10 +1290,37 @@ const App = () => {
        triggerToast('Please select Timeline to continue.', 'warning');
        return;
     }
-    executeApplyToBoard(viewTarget.tree, selectedTimelineForUse, selectedSpaceForUse, showOverrideConfirm);
-    setShowOverrideConfirm(false);
-    setIsTimelineModalOpen(false);
+    const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
+    const hasExistingData = okrDataMap[targetKey]?.length > 0;
+    if (hasExistingData) {
+      setUseTemplateBranchContext({ space: selectedSpaceForUse, period: selectedTimelineForUse, tree: viewTarget.tree, templateId: viewTarget.id });
+      setIsTimelineModalOpen(false);
+      setIsUseTemplateBranchOpen(true);
+      setUseTemplateBranchRowId(null);
+    } else {
+      executeApplyToBoard(viewTarget.tree, selectedTimelineForUse, selectedSpaceForUse, showOverrideConfirm);
+      setShowOverrideConfirm(false);
+      setIsTimelineModalOpen(false);
+      closeViewModal();
+    }
+  };
+
+  const handleConfirmUseTemplateBranch = () => {
+    if (!useTemplateBranchRowId || !useTemplateBranchContext) {
+      triggerToast('Please select a branch to add the template to.', 'warning');
+      return;
+    }
+    const ctx = useTemplateBranchContext;
+    const targetKey = `${ctx.space}|2025|${ctx.period}`;
+    const currentData = okrDataMap[targetKey] || [];
+    const row = currentData.find(r => r.id === useTemplateBranchRowId);
+    if (!row) { triggerToast('Selected branch not found.', 'error'); return; }
+    const bi = { nodeId: row.id, nodeLevel: row.level, nodeName: row.name, space: ctx.space, year: '2025', period: ctx.period, maxDepth: 10, preselectedTemplateId: ctx.templateId };
+    try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open branch add template.', 'error'); return; }
+    setUseTemplateBranchContext(null);
+    setIsUseTemplateBranchOpen(false);
     closeViewModal();
+    window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank');
   };
 
   const handleEditClick = (template) => { try { localStorage.setItem('editTemplate', JSON.stringify(template)); } catch(e) { triggerToast('Failed to open edit template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?editTemplate=true', '_blank'); };
@@ -1508,10 +1631,57 @@ const App = () => {
 
   // --- BRANCH ADD TEMPLATE HANDLERS ---
   useEffect(() => {
-    if (isBranchAddMode) { try { const s = localStorage.getItem('branchAddTemplate'); if (s) setBranchInfo(JSON.parse(s)); else setBranchError('No branch information found.'); } catch (e) { setBranchError('Failed to read branch information.'); } }
+    if (isBranchAddMode) { try { const s = localStorage.getItem('branchAddTemplate'); if (s) { const bi = JSON.parse(s); setBranchInfo(bi); if (bi.preselectedTemplateId) { setBranchSelectedTemplateId(bi.preselectedTemplateId); setBranchAddStep(2); } } else setBranchError('No branch information found.'); } catch (e) { setBranchError('Failed to read branch information.'); } }
   }, []);
-  const handleOpenBranchAdd = (row) => { const bi = { nodeId: row.id, nodeLevel: row.level, nodeName: row.name, space: selectedSpace, year: selectedYear, period: selectedPeriod, maxDepth: getMaxLevel(tableData) }; try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open branch add template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank'); };
-  const handleOpenEmptyAddTemplate = () => { const bi = { isFullBoard: true, space: selectedSpace, year: selectedYear, period: selectedPeriod }; try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open add template.', 'error'); return; } window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank'); };
+  const handleOpenBranchAdd = (row) => {
+    setBranchAddPendingRow(row);
+    setBranchAddOrigCtx({ space: selectedSpace, period: selectedPeriod });
+    setBranchAddSelSpace(selectedSpace);
+    setBranchAddSelTimeline(selectedPeriod);
+    setIsBranchAddTimelineOpen(true);
+  };
+  const handleConfirmBranchAddTimeline = () => {
+    if (!branchAddSelSpace) { triggerToast('Please select Space.', 'warning'); return; }
+    if (!branchAddSelTimeline) { triggerToast('Please select Timeline.', 'warning'); return; }
+    const orig = branchAddOrigCtx;
+    const same = branchAddSelSpace === orig.space && branchAddSelTimeline === orig.period;
+    if (same && branchAddPendingRow) {
+      const row = branchAddPendingRow;
+      const bi = { nodeId: row.id, nodeLevel: row.level, nodeName: row.name, space: orig.space, year: '2025', period: orig.period, maxDepth: 10 };
+      try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open branch add template.', 'error'); return; }
+      setIsBranchAddTimelineOpen(false);
+      setBranchAddPendingRow(null);
+      window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank');
+    } else {
+      const targetKey = `${branchAddSelSpace}|2025|${branchAddSelTimeline}`;
+      const ctxData = okrDataMap[targetKey] || [];
+      if (ctxData.length === 0) { triggerToast('No OKR data in selected Space & Timeline. Cannot select a branch.', 'error'); return; }
+      setBranchAddBranchCtx({ space: branchAddSelSpace, period: branchAddSelTimeline, pending: branchAddPendingRow });
+      setIsBranchAddTimelineOpen(false);
+      setIsBranchAddBranchOpen(true);
+      setBranchAddBranchRowId(null);
+    }
+  };
+  const handleConfirmBranchAddBranch = () => {
+    if (!branchAddBranchRowId || !branchAddBranchCtx) { triggerToast('Please select a branch.', 'warning'); return; }
+    const ctx = branchAddBranchCtx;
+    const targetKey = `${ctx.space}|2025|${ctx.period}`;
+    const data = okrDataMap[targetKey] || [];
+    const row = data.find(r => r.id === branchAddBranchRowId);
+    if (!row) { triggerToast('Selected branch not found.', 'error'); return; }
+    const bi = { nodeId: row.id, nodeLevel: row.level, nodeName: row.name, space: ctx.space, year: '2025', period: ctx.period, maxDepth: 10 };
+    try { localStorage.setItem('branchAddTemplate', JSON.stringify(bi)); } catch (e) { triggerToast('Failed to open branch add template.', 'error'); return; }
+    setBranchAddBranchCtx(null);
+    setIsBranchAddBranchOpen(false);
+    setBranchAddPendingRow(null);
+    window.open(window.location.origin + window.location.pathname + '?branchAddTemplate=true', '_blank');
+  };
+  const handleOpenEmptyAddTemplate = () => {
+    setIsAddTimelineOpen(true);
+    setSelectedSpaceForAdd('Engineering');
+    setSelectedTimelineForAdd('');
+    setAddTimelineAction('add-tab');
+  };
   const filteredBranchTemplates = templateList.filter(t => t.title.toLowerCase().includes(branchAddSearchQuery.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(branchAddSearchQuery.toLowerCase())));
   const branchSelectedTemplateData = templateList.find(t => t.id === branchSelectedTemplateId);
 
@@ -1630,10 +1800,10 @@ const App = () => {
     const getFieldValue = (node, fieldId) => {
       if (fieldId === 'progress') fieldId = 'progress_percent';
       if (isStep2 && !currentFields.includes(fieldId)) {
-        const defaults = { 'description': 'Default description', 'user': 'Unassigned', 'group': 'Default Group', 'team': 'Default Team', 'assign_to': 'Unassigned', 'metric': 'Default Metric', 'metric_name': 'Default', 'metric_key': 'Default', 'metric_unit': 'Default', 'agg': 'SUM', 'result': 'Default', 'progress_percent': '0%', 'risk_level': 'Low', 'timeline_view_metric': 'Default' };
+        const defaults = { 'description': 'Default description', 'user': 'Unassigned', 'group': 'Default Group', 'team': 'Default Team', 'assign_to': 'Unassigned', 'metric': 'Default Metric', 'metric_name': 'Default', 'metric_key': 'Default', 'metric_unit': 'Default', 'agg': 'SUM', 'result': 'Default', 'progress_percent': '0%', 'risk_level': 'Low', 'timeline_view_metric': 'Default', 'stakeholders': 'Default', 'timeline': 'Default' };
         return defaults[fieldId] || 'Default';
       }
-      const map = { 'description': node.description, 'user': node.assign || node.user, 'group': node.group, 'team': node.team, 'assign_to': node.assign || node.user, 'metric': node.metric, 'metric_name': node.mName, 'metric_key': node.mKey, 'metric_unit': node.mUnit, 'agg': node.agg, 'result': node.result, 'progress_percent': node.progress, 'risk_level': node.risk, 'timeline_view_metric': 'Default' };
+      const map = { 'description': node.description, 'user': node.assign || node.user, 'group': node.group, 'team': node.team, 'assign_to': node.assign || node.user, 'stakeholders': node.stakeholders, 'timeline': node.timeline, 'metric': node.metric, 'metric_name': node.mName, 'metric_key': node.mKey, 'metric_unit': node.mUnit, 'agg': node.agg, 'result': node.result, 'progress_percent': node.progress, 'risk_level': node.risk, 'timeline_view_metric': 'Default' };
       return map[fieldId] || 'Default';
     };
 
@@ -1666,6 +1836,7 @@ const App = () => {
           );
         }
         case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${node.risk === 'high' ? 'bg-red-100 text-red-600' : node.risk === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>{node.risk || 'Low'}</span>;
+        case 'stakeholders': return <span className="truncate">{node.stakeholders || 'Default'}</span>;
         case 'timeline': return <span className="truncate">{node.timeline || 'Default'}</span>;
         case 'timeline_view_metric': return <span className="text-[10px] text-gray-500 italic">Default</span>;
         case 'status':
@@ -2266,6 +2437,187 @@ const App = () => {
         </div>
       )}
 
+      {/* --- BRANCH ADD: SPACE & TIMELINE SELECTION --- */}
+      {isBranchAddTimelineOpen && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-[420px] overflow-visible animate-fade-in flex flex-col">
+             <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
+                <button onClick={() => { setIsBranchAddTimelineOpen(false); setBranchAddPendingRow(null); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
+             </div>
+             <div className="p-5">
+                <p className="text-sm text-gray-600 mb-3">Select Space and timeline to add template to branch:</p>
+                <div className="mb-4">
+                   <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Space</label>
+                   <SpaceDropdown selected={branchAddSelSpace} onSelect={(s) => { setBranchAddSelSpace(s); setBranchAddSelTimeline(''); }} />
+                </div>
+                <div className="mb-4">
+                   <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Timeline Tree</label>
+                    <TimelineTreeDropdown selected={branchAddSelTimeline} onSelect={setBranchAddSelTimeline} space={branchAddSelSpace} />
+                </div>
+             </div>
+             <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => { setIsBranchAddTimelineOpen(false); setBranchAddPendingRow(null); }} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                  <button onClick={handleConfirmBranchAddTimeline} disabled={!branchAddSelSpace || !branchAddSelTimeline} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!branchAddSelSpace || !branchAddSelTimeline ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Next</button>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- BRANCH ADD: BRANCH SELECTION (when context changes) --- */}
+      {isBranchAddBranchOpen && branchAddBranchCtx && (() => {
+        const targetKey = `${branchAddBranchCtx.space}|2025|${branchAddBranchCtx.period}`;
+        const ctxData = okrDataMap[targetKey] || [];
+        const ctxTree = tableToTreeArray(ctxData);
+        const ctxGridCols = '100px 1fr 60px';
+        return (
+          <div className="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-[90vw] max-w-5xl h-[85vh] flex flex-col animate-fade-in">
+              <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg shrink-0">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2"><FolderTree size={20} className="text-blue-500" /> Select Branch Position</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Space/Timeline changed. Select a branch position in the new context to insert template.</p>
+                </div>
+                <button onClick={() => { setIsBranchAddBranchOpen(false); setBranchAddBranchCtx(null); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={20}/></button>
+              </div>
+              <div className="flex-1 overflow-auto custom-scrollbar p-4">
+                <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm h-full flex flex-col">
+                  <div className="bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
+                       style={{ display: 'grid', gridTemplateColumns: ctxGridCols, alignItems: 'center' }}>
+                    <div>Branch</div>
+                    <div>Node</div>
+                    <div className="text-center">Select</div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {(() => {
+                      let rows = [];
+                      const renderNode = (nodes, depth) => {
+                        nodes.forEach(node => {
+                          const canSelect = depth >= 1;
+                          const sel = branchAddBranchRowId === node.originalId;
+                          rows.push(
+                            <div key={node.id} onClick={() => { if (canSelect) setBranchAddBranchRowId(node.originalId); }}
+                                 className={`border-b border-gray-50 transition-colors ${sel ? 'bg-blue-50' : canSelect ? 'hover:bg-gray-50 cursor-pointer opacity-70' : ''}`}
+                                 style={{ display: 'grid', gridTemplateColumns: ctxGridCols, alignItems: 'center', padding: '0' }}>
+                              <div className="px-3 py-2 flex items-center" style={{ paddingLeft: `${16 + depth * 24}px` }}>
+                                {depth === 0 ? <Box size={14} className="text-blue-500 shrink-0" /> : depth === 1 ? <span className="text-gray-400 shrink-0 leading-none">↳</span> : depth === 2 ? <Box size={14} className="text-green-500 shrink-0" /> : <User size={14} className="text-purple-500 shrink-0" />}
+                              </div>
+                              <div className={`text-[13px] truncate pr-2 ${sel ? 'font-bold text-blue-800' : canSelect ? 'text-gray-600' : 'text-gray-400'}`}>{node.name}</div>
+                              <div className="flex justify-center">
+                                {canSelect ? <input type="radio" name="branchAddBranch" checked={sel} onChange={() => setBranchAddBranchRowId(node.originalId)} className="w-4 h-4 text-blue-600 border-gray-300 cursor-pointer" />
+                                  : <div className="w-4 h-4 rounded-full border-2 border-gray-200 bg-gray-100"></div>}
+                              </div>
+                            </div>
+                          );
+                          if (node.children) renderNode(node.children, depth + 1);
+                        });
+                      };
+                      renderNode(ctxTree, 0);
+                      if (ctxTree.length === 0) rows.push(<div className="p-4 text-center text-gray-400 text-sm">No OKR data found.</div>);
+                      return rows;
+                    })()}
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-between items-center shrink-0">
+                <span className="text-xs text-gray-500">{branchAddBranchRowId !== null ? `Selected: ${ctxData.find(r => r.id === branchAddBranchRowId)?.name || ''}` : 'No branch selected'}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => { setIsBranchAddBranchOpen(false); setBranchAddBranchCtx(null); }} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                  <button onClick={handleConfirmBranchAddBranch} disabled={branchAddBranchRowId === null} className={`px-5 py-1.5 text-sm font-medium text-white rounded ${branchAddBranchRowId === null ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Confirm Branch</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* --- SAVE FROM TEMPLATE: SPACE & TIMELINE SELECTION --- */}
+      {isSaveFromTemplateOpen && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-[420px] overflow-visible animate-fade-in flex flex-col">
+             <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
+                <button onClick={() => setIsSaveFromTemplateOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
+             </div>
+             <div className="p-5">
+                <p className="text-sm text-gray-600 mb-3">Select Space and timeline to save OKR data as a template:</p>
+                <div className="mb-4">
+                   <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Space</label>
+                   <SpaceDropdown selected={selectedSpaceForSave} onSelect={(s) => { setSelectedSpaceForSave(s); setSelectedTimelineForSave(''); }} />
+                </div>
+                <div className="mb-4">
+                   <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Timeline Tree</label>
+                    <TimelineTreeDropdown selected={selectedTimelineForSave} onSelect={setSelectedTimelineForSave} space={selectedSpaceForSave} />
+                </div>
+             </div>
+             <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <div className="flex flex-col gap-3">
+                  {(() => {
+                    const targetKey = `${selectedSpaceForSave}|2025|${selectedTimelineForSave}`;
+                    const hasData = selectedSpaceForSave && selectedTimelineForSave && (okrDataMap[targetKey]?.length > 0);
+                    return !hasData && selectedSpaceForSave && selectedTimelineForSave ? (
+                      <div className="bg-red-50 border border-red-200 p-3 rounded shadow-sm">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
+                          <div>
+                            <h4 className="text-sm font-bold text-red-800">No OKR data available</h4>
+                            <p className="text-xs text-red-700 mt-1">This Space & Timeline combination has no OKR data to save as template. Please select another combination that has data.</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setIsSaveFromTemplateOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                    {(() => {
+                      const targetKey = `${selectedSpaceForSave}|2025|${selectedTimelineForSave}`;
+                      const hasData = selectedSpaceForSave && selectedTimelineForSave && (okrDataMap[targetKey]?.length > 0);
+                      return !hasData || !selectedTimelineForSave ? (
+                        <button disabled className="px-4 py-1.5 text-sm text-gray-400 bg-gray-200 border border-gray-200 rounded font-medium cursor-not-allowed">No data to save</button>
+                      ) : (
+                        <button onClick={handleConfirmSaveFromTemplate} disabled={!selectedSpaceForSave || !selectedTimelineForSave} className="px-4 py-1.5 text-sm text-white rounded font-medium bg-blue-600 hover:bg-blue-700">Continue to Save</button>
+                      );
+                    })()}
+                  </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADD TEMPLATE: SPACE & TIMELINE SELECTION --- */}
+      {isAddTimelineOpen && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-[420px] overflow-visible animate-fade-in flex flex-col">
+             <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
+                <button onClick={() => setIsAddTimelineOpen(false)} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
+             </div>
+             <div className="p-5">
+                <p className="text-sm text-gray-600 mb-3">Select Space and timeline to apply template:</p>
+                <div className="mb-4">
+                   <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Space</label>
+                   <SpaceDropdown selected={selectedSpaceForAdd} onSelect={(s) => { setSelectedSpaceForAdd(s); setSelectedTimelineForAdd(''); }} />
+                </div>
+                <div className="mb-4">
+                   <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Timeline Tree</label>
+                    <TimelineTreeDropdown selected={selectedTimelineForAdd} onSelect={setSelectedTimelineForAdd} space={selectedSpaceForAdd} />
+                </div>
+             </div>
+             <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setIsAddTimelineOpen(false)} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                    <button onClick={handleConfirmAddTimeline} disabled={!selectedSpaceForAdd || !selectedTimelineForAdd} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForAdd || !selectedTimelineForAdd ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Continue</button>
+                  </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* --- TIMELINE SELECTION POPUP CHO USE TEMPLATE --- */}
       {isTimelineModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
@@ -2296,7 +2648,7 @@ const App = () => {
                             <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
                             <div>
                               <h4 className="text-sm font-bold text-amber-800">Timeline has existing data</h4>
-                              <p className="text-xs text-amber-700 mt-1">This timeline already has OKR data. Template can only be applied to an empty timeline. Please select another timeline without data.</p>
+                              <p className="text-xs text-amber-700 mt-1">This timeline already has OKR data. You can add the template as siblings of a selected branch.</p>
                             </div>
                           </div>
                         </div>
@@ -2308,7 +2660,7 @@ const App = () => {
                         const targetKey = `${selectedSpaceForUse}|2025|${selectedTimelineForUse}`;
                         const hasData = selectedSpaceForUse && selectedTimelineForUse && (okrDataMap[targetKey]?.length > 0);
                         return hasData ? (
-                          <button disabled className="px-4 py-1.5 text-sm text-gray-400 bg-gray-200 border border-gray-200 rounded font-medium cursor-not-allowed">Timeline not empty</button>
+                          <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}>Add to Branch</button>
                         ) : (
                           <button onClick={handleConfirmUseTemplate} disabled={!selectedSpaceForUse || !selectedTimelineForUse} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!selectedSpaceForUse || !selectedTimelineForUse ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>Apply Template</button>
                         );
@@ -2319,6 +2671,78 @@ const App = () => {
           </div>
         </div>
       )}
+
+      {/* --- USE TEMPLATE BRANCH SELECTION --- */}
+      {isUseTemplateBranchOpen && useTemplateBranchContext && (() => {
+        const targetKey = `${useTemplateBranchContext.space}|2025|${useTemplateBranchContext.period}`;
+        const branchData = okrDataMap[targetKey] || [];
+        const treeData = tableToTreeArray(branchData);
+        const isSelectableBranch = (depth) => depth >= 1;
+        const gridCols = '100px 1fr 60px';
+        return (
+          <div className="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-[90vw] max-w-5xl h-[85vh] flex flex-col animate-fade-in">
+              <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg shrink-0">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2"><FolderTree size={20} className="text-blue-500" /> Select Branch Position</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">The timeline already has OKR data. Select a position to insert template siblings.</p>
+                </div>
+                <button onClick={() => { setIsUseTemplateBranchOpen(false); setUseTemplateBranchContext(null); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={20}/></button>
+              </div>
+              <div className="flex-1 overflow-auto custom-scrollbar p-4">
+                <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm h-full flex flex-col">
+                  <div className="bg-gray-50 border-b border-gray-200 py-2 px-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wider shrink-0"
+                       style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center' }}>
+                    <div>Branch</div>
+                    <div>Node</div>
+                    <div className="text-center">Select</div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {(() => {
+                      let rows = [];
+                      const renderNode = (nodes, depth) => {
+                        nodes.forEach(node => {
+                          const canSelect = isSelectableBranch(depth);
+                          const sel = useTemplateBranchRowId === node.originalId;
+                          rows.push(
+                            <div key={node.id}
+                                 onClick={() => { if (canSelect) setUseTemplateBranchRowId(node.originalId); }}
+                                 className={`border-b border-gray-50 transition-colors ${sel ? 'bg-blue-50' : canSelect ? 'hover:bg-gray-50 cursor-pointer opacity-70' : ''}`}
+                                 style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center', padding: '0' }}>
+                              <div className="px-3 py-2 flex items-center" style={{ paddingLeft: `${16 + depth * 24}px` }}>
+                                {depth === 0 ? <Box size={14} className="text-blue-500 shrink-0" /> : depth === 1 ? <span className="text-gray-400 shrink-0 leading-none">↳</span> : depth === 2 ? <Box size={14} className="text-green-500 shrink-0" /> : <User size={14} className="text-purple-500 shrink-0" />}
+                              </div>
+                              <div className={`text-[13px] truncate pr-2 ${sel ? 'font-bold text-blue-800' : canSelect ? 'text-gray-600' : 'text-gray-400'}`}>{node.name}</div>
+                              <div className="flex justify-center">
+                                {canSelect ? (
+                                  <input type="radio" name="useTemplateBranch" checked={sel} onChange={() => setUseTemplateBranchRowId(node.originalId)} className="w-4 h-4 text-blue-600 border-gray-300 cursor-pointer" />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full border-2 border-gray-200 bg-gray-100"></div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                          if (node.children) renderNode(node.children, depth + 1);
+                        });
+                      };
+                      renderNode(treeData, 0);
+                      if (treeData.length === 0) rows.push(<div className="p-4 text-center text-gray-400 text-sm">No OKR data found.</div>);
+                      return rows;
+                    })()}
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-between items-center shrink-0">
+                <span className="text-xs text-gray-500">{useTemplateBranchRowId !== null ? `Selected: ${branchData.find(r => r.id === useTemplateBranchRowId)?.name || ''}` : 'No branch selected'}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => { setIsUseTemplateBranchOpen(false); setUseTemplateBranchContext(null); }} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                  <button onClick={handleConfirmUseTemplateBranch} disabled={useTemplateBranchRowId === null} className={`px-5 py-1.5 text-sm font-medium text-white rounded ${useTemplateBranchRowId === null ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Add Template Here</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* --- C1: VIEW TEMPLATE MODAL --- */}
       {!isViewMode && viewTarget && (
@@ -3466,10 +3890,10 @@ ${exportSelectedTemplates.map(tId => {
             
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-[#1e3a8a]">{tableData.length === 0 ? 'Add template to' : 'Override template to'} <span className="text-sm font-normal text-gray-500">(Apply to)</span></h2>
+                <h2 className="text-xl font-bold text-[#1e3a8a]">Add template to <span className="text-sm font-normal text-gray-500">(Apply to)</span></h2>
                 <div className="flex items-center gap-6 mt-2">
-                  <div className="flex items-center gap-2"><span className="text-xs font-medium text-gray-500">Space:</span><span className="text-xs font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2.5 py-1 rounded">{selectedSpace}</span></div>
-                  <div className="flex items-center gap-2"><span className="text-xs font-medium text-gray-500">Timeline:</span><span className="text-xs font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2.5 py-1 rounded">{selectedYear}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-xs font-medium text-gray-500">Space:</span><span className="text-xs font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2.5 py-1 rounded">{addTargetContext?.space || selectedSpace}</span></div>
+                  <div className="flex items-center gap-2"><span className="text-xs font-medium text-gray-500">Timeline:</span><span className="text-xs font-bold text-blue-700 bg-blue-100/50 border border-blue-200 px-2.5 py-1 rounded">{addTargetContext?.period || selectedPeriod}</span></div>
                 </div>
               </div>
               <button onClick={() => handleCloseAttempt('add')} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-200">
@@ -3626,7 +4050,7 @@ ${exportSelectedTemplates.map(tId => {
                           <div>
                             <h4 className="text-sm font-bold text-red-800">Important Warning</h4>
                             <p className="text-xs text-red-700 mt-1 leading-relaxed">
-                              ⚠️ Apply Template will create and overwrite OKR data immediately on the current Timeline. 
+                              ⚠️ Apply Template will create and overwrite OKR data immediately on the selected Timeline. 
                               <strong> This action cannot be undone after confirmation.</strong>
                             </p>
                           </div>
@@ -3637,8 +4061,8 @@ ${exportSelectedTemplates.map(tId => {
                     <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                       <div className="bg-blue-50/50 p-2 rounded-md border border-blue-100">
                         <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context (Apply to)</span>
-                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {selectedSpace}</div>
-                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {selectedYear}</div>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Space:</span> {addTargetContext?.space || selectedSpace}</div>
+                        <div className="text-sm font-bold text-[#1e3a8a]"><span className="text-gray-500 font-normal">Timeline:</span> {addTargetContext?.period || selectedPeriod}</div>
                       </div>
                       <div>
                         <span className="text-xs text-gray-500 block mb-1">Template Selected</span>
@@ -4011,11 +4435,6 @@ ${exportSelectedTemplates.map(tId => {
                 
                 {/* Right Side */}
                 <div className="flex items-end space-x-4">
-                  <div className="flex flex-col pb-0.5">
-                    <button onClick={handleOpenSaveModal} className="flex items-center text-sm border border-blue-300 bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors font-medium" title="Save as template">
-                      <Save size={16} />
-                    </button>
-                  </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-gray-500 mb-1">Mode View</span>
                     <div className="flex border border-gray-300 rounded overflow-hidden">
@@ -4217,6 +4636,9 @@ ${exportSelectedTemplates.map(tId => {
                   <p className="text-sm text-gray-500">Manage and use available OKR templates</p>
                 </div>
                 <div className="flex space-x-3 mt-1">
+                  <button onClick={handleOpenSaveFromTemplate} className="flex items-center justify-center p-2 bg-white text-blue-600 border border-blue-300 rounded-md hover:bg-blue-50 transition shadow-sm" title="Save as Template">
+                    <Save size={16} className="text-blue-500" />
+                  </button>
                   <button onClick={handleOpenImportModal} className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition shadow-sm">
                     <UploadCloud size={16} className="mr-2 text-gray-500" /> Import
                   </button>
@@ -4396,8 +4818,8 @@ ${exportSelectedTemplates.map(tId => {
                       const gridCols = getGridTemplate(saveAsPreviewVisibleColumns);
                       const getFieldVal = (node, fId) => {
                         if (fId === 'progress') fId = 'progress_percent';
-                        if (!saveAsSelectedFields.includes(fId)) { const d = {'description':'Default description','user':'Unassigned','group':'Default Group','team':'Default Team','assign_to':'Unassigned','metric':'Default Metric','metric_name':'Default','metric_key':'Default','metric_unit':'Default','agg':'SUM','result':'Default','progress_percent':'0%','risk_level':'Low','timeline_view_metric':'Default'}; return d[fId]||'Default'; }
-                        const m = {'description':node.description,'user':node.assign||node.user,'group':node.group,'team':node.team,'assign_to':node.assign||node.user,'metric':node.metric,'metric_name':node.mName,'metric_key':node.mKey,'metric_unit':node.mUnit,'agg':node.agg,'result':node.result,'progress_percent':node.progress,'risk_level':node.risk,'timeline_view_metric':'Default'};
+                        if (!saveAsSelectedFields.includes(fId)) { const d = {'description':'Default description','user':'Unassigned','group':'Default Group','team':'Default Team','assign_to':'Unassigned','metric':'Default Metric','metric_name':'Default','metric_key':'Default','metric_unit':'Default','agg':'SUM','result':'Default','progress_percent':'0%','risk_level':'Low','timeline_view_metric':'Default','stakeholders':'Default','timeline':'Default'}; return d[fId]||'Default'; }
+                        const m = {'description':node.description,'user':node.assign||node.user,'group':node.group,'team':node.team,'assign_to':node.assign||node.user,'stakeholders':node.stakeholders,'timeline':node.timeline,'metric':node.metric,'metric_name':node.mName,'metric_key':node.mKey,'metric_unit':node.mUnit,'agg':node.agg,'result':node.result,'progress_percent':node.progress,'risk_level':node.risk,'timeline_view_metric':'Default'};
                         return m[fId]||'Default';
                       };
                       const getNodeIcon = (nd) => { const lv = nd.level ?? 2; if (lv === 1) return <Box size={11} className="text-blue-500 shrink-0" />; if (lv === 2) return <span className="text-gray-400 shrink-0 leading-none">↳</span>; if (lv === 3) return <Box size={11} className="text-green-500 shrink-0" />; return <User size={11} className="text-purple-500 shrink-0" />; };
@@ -4415,7 +4837,7 @@ ${exportSelectedTemplates.map(tId => {
                             </div>
                             {TREE_COLUMNS.filter(c => saveAsPreviewVisibleColumns.includes(c.id)).map(col => (
                               <div key={col.id} className={`px-1.5 text-[10px] text-gray-600 ${isCenteredCol(col.id)?'text-center':'text-left'} overflow-hidden truncate`}>
-                                {(() => { switch(col.id) { case 'description': return <span className="truncate">{getFieldVal(node,'description')}</span>; case 'user': return <span className="truncate">{getFieldVal(node,'user')}</span>; case 'group': return <span className="truncate">{getFieldVal(node,'group')}</span>; case 'team': return <span className="truncate">{getFieldVal(node,'team')}</span>; case 'assign_to': return <span className="truncate">{getFieldVal(node,'assign_to')}</span>; case 'metric': return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{getFieldVal(node,'metric')}</span>; case 'metric_name': return <span className="truncate">{getFieldVal(node,'metric_name')}</span>; case 'metric_key': return <span className="truncate">{getFieldVal(node,'metric_key')}</span>; case 'metric_unit': return <span className="truncate">{getFieldVal(node,'metric_unit')}</span>; case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{getFieldVal(node,'agg')}</span>; case 'result': return <span className="truncate">{getFieldVal(node,'result')}</span>; case 'progress': return <span className="text-green-600 font-medium">{getFieldVal(node,'progress_percent')}</span>; case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${(getFieldVal(node,'risk_level'))==='high'?'bg-red-100 text-red-600':(getFieldVal(node,'risk_level'))==='medium'?'bg-amber-100 text-amber-600':'bg-green-100 text-green-600'}`}>{getFieldVal(node,'risk_level')}</span>; case 'status': return <div className="flex justify-center"><CheckCircle2 size={14} className="text-green-600" /></div>; default: return null; } })()}
+                                {(() => { switch(col.id) { case 'description': return <span className="truncate">{getFieldVal(node,'description')}</span>; case 'user': return <span className="truncate">{getFieldVal(node,'user')}</span>; case 'group': return <span className="truncate">{getFieldVal(node,'group')}</span>; case 'team': return <span className="truncate">{getFieldVal(node,'team')}</span>; case 'assign_to': return <span className="truncate">{getFieldVal(node,'assign_to')}</span>; case 'stakeholders': return <span className="truncate">{getFieldVal(node,'stakeholders')}</span>; case 'timeline': return <span className="truncate">{getFieldVal(node,'timeline')}</span>; case 'metric': return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">{getFieldVal(node,'metric')}</span>; case 'metric_name': return <span className="truncate">{getFieldVal(node,'metric_name')}</span>; case 'metric_key': return <span className="truncate">{getFieldVal(node,'metric_key')}</span>; case 'metric_unit': return <span className="truncate">{getFieldVal(node,'metric_unit')}</span>; case 'agg': return <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 font-medium">{getFieldVal(node,'agg')}</span>; case 'result': return <span className="truncate">{getFieldVal(node,'result')}</span>; case 'progress': return <span className="text-green-600 font-medium">{getFieldVal(node,'progress_percent')}</span>; case 'risk_level': return <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${(getFieldVal(node,'risk_level'))==='high'?'bg-red-100 text-red-600':(getFieldVal(node,'risk_level'))==='medium'?'bg-amber-100 text-amber-600':'bg-green-100 text-green-600'}`}>{getFieldVal(node,'risk_level')}</span>; case 'status': return <div className="flex justify-center"><CheckCircle2 size={14} className="text-green-600" /></div>; default: return null; } })()}
                               </div>
                             ))}
                           </div>
