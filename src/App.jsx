@@ -1039,19 +1039,28 @@ const App = () => {
   }, [isExportMode]);
   useEffect(() => {
     if (isAddTemplateRootMode) {
+      let tlConfirmed = false;
+      let savedSpace = 'Engineering';
+      let savedPeriod = 'Quarter 4, 2025';
+      let savedYear = '2025';
       try {
         const s = localStorage.getItem('addTemplateRoot');
-        if (s) { const d = JSON.parse(s); setAddRootSelSpace(d.space || 'Engineering'); setAddRootSelTimeline(d.period || 'Quarter 4, 2025'); setSelectedSpace(d.space || 'Engineering'); setSelectedYear(d.year || '2025'); setSelectedPeriod(d.period || 'Quarter 4, 2025'); }
+        if (s) { const d = JSON.parse(s); savedSpace = d.space || 'Engineering'; savedPeriod = d.period || 'Quarter 4, 2025'; savedYear = d.year || '2025'; tlConfirmed = d.rootTimelineConfirmed === true; }
       } catch (e) {}
+      setAddRootSelSpace(savedSpace);
+      setAddRootSelTimeline(savedPeriod);
+      setSelectedSpace(savedSpace);
+      setSelectedYear(savedYear);
+      setSelectedPeriod(savedPeriod);
       setActiveView('add-template-root');
+      setAddTargetContext(null);
+      setIsAddRootTimelineOpen(!tlConfirmed);
       setIsAddModalOpen(true);
       setAddStep(1);
       setSelectedTemplateId(null);
       setAddSearchQuery('');
       setAddSelectedFields(availableFields.map(f => f.id));
       setAddPreviewVisibleColumns([...DEFAULT_VISIBLE_COLUMNS]);
-      setAddTargetContext(null);
-      setIsAddRootTimelineOpen(true);
     }
   }, [isAddTemplateRootMode]);
 
@@ -1161,18 +1170,19 @@ const App = () => {
   };
 
   const handleOpenAddTemplateRoot = () => {
-    const data = { space: selectedSpace, year: selectedYear, period: selectedPeriod };
-    try { localStorage.setItem('addTemplateRoot', JSON.stringify(data)); } catch (e) { triggerToast('Failed to open add template.', 'error'); return; }
-    window.open(window.location.origin + window.location.pathname + '?addTemplateRoot=true', '_blank');
+    setAddRootSelSpace(selectedSpace);
+    setAddRootSelTimeline(selectedPeriod);
+    setIsAddRootTimelineOpen(true);
   };
 
   const handleConfirmAddRootTimeline = () => {
     if (!addRootSelSpace) { triggerToast('Please select Space.', 'warning'); return; }
     if (!addRootSelTimeline) { triggerToast('Please select Timeline.', 'warning'); return; }
+    const data = { space: addRootSelSpace, year: '2025', period: addRootSelTimeline, rootTimelineConfirmed: true };
+    try { localStorage.setItem('addTemplateRoot', JSON.stringify(data)); } catch (e) { triggerToast('Failed to open add template.', 'error'); return; }
     setAddTargetContext({ space: addRootSelSpace, year: '2025', period: addRootSelTimeline });
-    setSelectedSpace(addRootSelSpace);
-    setSelectedPeriod(addRootSelTimeline);
     setIsAddRootTimelineOpen(false);
+    window.open(window.location.origin + window.location.pathname + '?addTemplateRoot=true', '_blank');
   };
 
   const handleConfirmAddTimeline = () => {
@@ -2516,8 +2526,8 @@ const App = () => {
                 <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
                 <button onClick={() => { setIsBranchAddTimelineOpen(false); setBranchAddPendingRow(null); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
              </div>
-             <div className="p-5">
-                <p className="text-sm text-gray-600 mb-3">Select Space and timeline to add template to branch:</p>
+              <div className="p-5">
+                 <p className="text-sm text-gray-600 mb-3">Select Space and timeline to add template to branch <strong className="text-blue-700">"{branchAddPendingRow?.name || ''}"</strong>:</p>
                 <div className="mb-4">
                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Space</label>
                    <SpaceDropdown selected={branchAddSelSpace} onSelect={(s) => { setBranchAddSelSpace(s); setBranchAddSelTimeline(''); }} />
@@ -4231,7 +4241,7 @@ ${exportSelectedTemplates.map(tId => {
                 {addStep < 3 ? (
                   <button onClick={handleNextAddStep} disabled={addStep === 1 && !selectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium transition shadow-sm ${addStep === 1 && !selectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white hover:bg-blue-700'}`}>Continue</button>
                 ) : (
-                  <button onClick={handleApplyTemplate} className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply</button>
+                <button onClick={handleApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold hover:bg-green-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply</button>
                 )}
               </div>
             </div>
@@ -4651,7 +4661,7 @@ ${exportSelectedTemplates.map(tId => {
                       </div>
                       {addSelectedFields.length < availableFields.length && (
                         <div className="flex flex-wrap gap-1 text-xs">
-                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using defaults ({availableFields.length - addSelectedFields.length}):</span>
+                          <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using default data ({availableFields.length - addSelectedFields.length}):</span>
                           {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-[10px] text-orange-700 bg-orange-50 px-1 rounded border border-orange-200">{f.label}</span>)}
                         </div>
                       )}
@@ -4661,9 +4671,7 @@ ${exportSelectedTemplates.map(tId => {
                     <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 shrink-0">Review Summary</h3>
                     {branchInfo?.isFullBoard ? (
                       <div className="bg-amber-50 border border-amber-200 p-2 rounded shrink-0"><div className="flex items-start"><AlertTriangle className="text-amber-500 mr-2 shrink-0 mt-0.5" size={18} /><p className="text-xs text-amber-700 leading-relaxed">Template will be applied to this timeline.</p></div></div>
-                    ) : (
-                      <div className="bg-red-50 border border-red-200 p-2 rounded shrink-0"><div className="flex items-start"><AlertTriangle className="text-red-500 mr-2 shrink-0 mt-0.5" size={18} /><div><h4 className="text-sm font-bold text-red-800">Important Warning</h4><p className="text-xs text-red-700 mt-1 leading-relaxed">Template will be added as sibling of the selected branch. <strong>This action cannot be undone.</strong></p></div></div></div>
-                    )}
+                    ) : null}
                     <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
                       <div className="bg-blue-50/50 p-2 rounded-md border border-blue-100">
                         <span className="text-xs text-blue-600 font-semibold block mb-1">Target Context</span>
@@ -4677,7 +4685,7 @@ ${exportSelectedTemplates.map(tId => {
                         <div className="text-sm mb-1 text-gray-700"><span className="font-medium text-blue-600">{addSelectedFields.length}</span> field(s) mapped from template.</div>
                         <div className="mt-2 space-y-2">
                           <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700"><span className="font-semibold block mb-1"><Check size={12} className="inline mr-1"/> Fields selected ({addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="px-1 bg-white border border-green-200 rounded text-[10px] text-green-700">{f.label}</span> : null; })}</div></div>
-                          {addSelectedFields.length < availableFields.length && <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700"><span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-1"/> Fields using default values ({availableFields.length - addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="px-1 bg-white border border-orange-200 rounded text-[10px] text-orange-600">{f.label}</span>)}</div></div>}
+                          {addSelectedFields.length < availableFields.length && <div className="p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700"><span className="font-semibold block mb-1"><AlertTriangle size={12} className="inline mr-0.5"/> Fields using default data ({availableFields.length - addSelectedFields.length}):</span><div className="flex flex-wrap gap-1">{availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="px-1 bg-white border border-orange-200 rounded text-[10px] text-orange-600">{f.label}</span>)}</div></div>}
                         </div>
                       </div>
                     </div>
@@ -5301,12 +5309,12 @@ ${exportSelectedTemplates.map(tId => {
         </div>
         )}
 
-        {isAddTemplateRootMode && isAddRootTimelineOpen && (
+        {isAddRootTimelineOpen && (
           <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-[420px] overflow-visible animate-fade-in flex flex-col">
               <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
                 <h3 className="font-bold text-gray-800">Select Space & Timeline</h3>
-                <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
+                <button onClick={() => { setIsAddRootTimelineOpen(false); }} className="text-gray-400 hover:text-gray-600 p-1"><X size={18}/></button>
               </div>
               <div className="p-5">
                 <p className="text-sm text-gray-600 mb-3">Select Space and timeline to add template:</p>
@@ -5321,7 +5329,7 @@ ${exportSelectedTemplates.map(tId => {
               </div>
               <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => { try { localStorage.removeItem('addTemplateRoot'); } catch(e) {} window.close(); }} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
+                  <button onClick={() => { setIsAddRootTimelineOpen(false); }} className="px-4 py-1.5 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-100">Cancel</button>
                   <button onClick={handleConfirmAddRootTimeline} disabled={!addRootSelSpace || !addRootSelTimeline} className={`px-4 py-1.5 text-sm text-white rounded font-medium ${!addRootSelSpace || !addRootSelTimeline ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>Next</button>
                 </div>
               </div>
@@ -5392,6 +5400,18 @@ ${exportSelectedTemplates.map(tId => {
                       );
                     })}
                   </div>
+                  <div className="mt-3 pt-2 border-t border-gray-100 space-y-1.5 shrink-0">
+                    <div className="flex flex-wrap gap-1 text-xs">
+                      <span className="font-semibold text-green-600"><Check size={11} className="inline mr-0.5"/> Selected ({addSelectedFields.length}):</span>
+                      {addSelectedFields.map(fId => { const f = availableFields.find(x => x.id === fId); return f ? <span key={f.id} className="text-[10px] text-green-700 bg-green-50 px-1 rounded border border-green-200">{f.label}</span> : null; })}
+                    </div>
+                    {addSelectedFields.length < availableFields.length && (
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <span className="font-semibold text-orange-600"><AlertTriangle size={11} className="inline mr-0.5"/> Using default data ({availableFields.length - addSelectedFields.length}):</span>
+                        {availableFields.filter(f => !addSelectedFields.includes(f.id)).map(f => <span key={f.id} className="text-[10px] text-orange-700 bg-orange-50 px-1 rounded border border-orange-200">{f.label}</span>)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               {addStep === 3 && (
@@ -5439,7 +5459,7 @@ ${exportSelectedTemplates.map(tId => {
               {addStep < 3 ? (
                 <button onClick={handleNextAddStep} disabled={addStep === 1 && !selectedTemplateId} className={`px-4 py-2 rounded-md text-sm font-medium transition shadow-sm ${addStep === 1 && !selectedTemplateId ? 'bg-blue-300 cursor-not-allowed text-white' : 'bg-[#2563eb] text-white hover:bg-blue-700'}`}>Continue</button>
               ) : (
-                <button onClick={handleApplyTemplate} className="px-6 py-2 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply</button>
+                <button onClick={handleApplyTemplate} className="px-6 py-2 bg-green-600 text-white rounded-md text-sm font-bold hover:bg-green-700 transition shadow-sm flex items-center"><Download size={16} className="mr-2" /> Apply</button>
               )}
             </div>
           </div>
